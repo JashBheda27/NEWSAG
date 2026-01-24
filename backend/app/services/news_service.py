@@ -1,4 +1,5 @@
 import httpx
+import hashlib
 from typing import List, Dict
 from app.core.config import settings
 
@@ -63,7 +64,7 @@ class NewsService:
                 continue
 
             normalized.append({
-                "id": hash(article["url"]),
+                "id": hashlib.md5(article["url"].encode()).hexdigest(),
                 "title": article.get("title"),
                 "description": article.get("description"),
                 "imageUrl": article.get("urlToImage"),

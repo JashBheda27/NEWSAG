@@ -1,8 +1,9 @@
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import Field
+from app.models.base import MongoBase
 
 
-class ReadLaterModel(BaseModel):
+class ReadLaterModel(MongoBase):
     """
     Read Later model for deferred articles.
     """

@@ -35,8 +35,7 @@ async def get_comments(article_id: str, db=Depends(get_db)):
     cursor = db.comments.find({"article_id": article_id}).sort("created_at", -1)
 
     async for comment in cursor:
-        comment["_id"] = str(comment["_id"])
-        comments.append(comment)
+        comments.append(CommentModel(**comment))
 
     return {
         "count": len(comments),

@@ -43,8 +43,7 @@ async def get_read_later(user_id: str, db=Depends(get_db)):
     cursor = db.read_later.find({"user_id": user_id}).sort("created_at", -1)
 
     async for item in cursor:
-        item["_id"] = str(item["_id"])
-        items.append(item)
+        items.append(ReadLaterModel(**item))
 
     return {
         "count": len(items),

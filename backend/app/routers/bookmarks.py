@@ -43,8 +43,7 @@ async def get_bookmarks(user_id: str, db=Depends(get_db)):
     cursor = db.bookmarks.find({"user_id": user_id}).sort("created_at", -1)
 
     async for item in cursor:
-        item["_id"] = str(item["_id"])
-        bookmarks.append(item)
+        bookmarks.append(BookmarkModel(**item))
 
     return {
         "count": len(bookmarks),

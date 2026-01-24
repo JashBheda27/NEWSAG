@@ -1,3 +1,4 @@
+import hashlib
 from fastapi import APIRouter, HTTPException
 from app.core.cache import sentiment_cache, get_from_cache, set_in_cache
 from app.services.sentiment import SentimentAnalyzer
@@ -21,7 +22,7 @@ async def analyze_sentiment(payload: dict):
             detail="Text is too short for sentiment analysis"
         )
 
-    cache_key = f"sentiment:{text[:200]}"
+    cache_key = f"sentiment:{hashlib.md5(text.encode()).hexdigest()}"
 
     # --------------------------------------------------
     # Cache check

@@ -22,7 +22,7 @@ class MongoDB:
 
         if cls.client is None:
             cls.client = AsyncIOMotorClient(settings.MONGO_URI)
-            print("✅ MongoDB connected (async)")
+            print("[OK] MongoDB connected (async)")
 
     @classmethod
     def close(cls):
@@ -32,7 +32,7 @@ class MongoDB:
         """
         if cls.client:
             cls.client.close()
-            print("❌ MongoDB connection closed")
+            print("[CLOSED] MongoDB connection closed")
 
     @classmethod
     def get_database(cls):

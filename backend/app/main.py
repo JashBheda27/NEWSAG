@@ -2,12 +2,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.database import MongoDB
 from app.core.logging import configure_logging
+from app.core.indexes import create_indexes
 
 
 from app.routers import (
     news,
     summary,
-    sentiment,
+    sentiments,
     comments,
     bookmarks,
     read_laters,
@@ -56,7 +57,7 @@ async def health_check():
 # --------------------------------------------------
 app.include_router(news.router, prefix="/api/news", tags=["News"])
 app.include_router(summary.router, prefix="/api/summary", tags=["Summary"])
-app.include_router(sentiment.router, prefix="/api/sentiment", tags=["Sentiment"])
+app.include_router(sentiments.router, prefix="/api/sentiment", tags=["Sentiment"])
 app.include_router(comments.router, prefix="/api/comments", tags=["Comments"])
 app.include_router(bookmarks.router, prefix="/api/bookmarks", tags=["Bookmarks"])
 app.include_router(read_laters.router, prefix="/api/read-later", tags=["Read Later"])
@@ -66,6 +67,7 @@ app.include_router(feedbacks.router, prefix="/api/feedback", tags=["Feedback"])
 async def startup_event():
     configure_logging()
     MongoDB.connect()
+    await create_indexes()
 
 @app.on_event("shutdown")
 async def shutdown_event():

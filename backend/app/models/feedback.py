@@ -1,9 +1,10 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import Field, EmailStr
+from app.models.base import MongoBase
 
 
-class FeedbackModel(BaseModel):
+class FeedbackModel(MongoBase):
     """
     Feedback model for user suggestions or issues.
     """

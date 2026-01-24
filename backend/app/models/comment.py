@@ -1,9 +1,10 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import Field
+from app.models.base import MongoBase
 
 
-class CommentModel(BaseModel):
+class CommentModel(MongoBase):
     """
     Comment data model stored in MongoDB.
     """

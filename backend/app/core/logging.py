@@ -12,6 +12,12 @@ def configure_logging() -> None:
     - Respects LOG_LEVEL env var; defaults to INFO.
     """
 
+    root_logger = logging.getLogger()
+    
+    # Check if logging is already configured to prevent duplicate handlers
+    if root_logger.handlers:
+        return
+
     log_level = os.getenv("LOG_LEVEL", "INFO").upper()
 
     # Basic formatter shared by handlers
@@ -20,12 +26,17 @@ def configure_logging() -> None:
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    root_logger = logging.getLogger()
     root_logger.setLevel(log_level)
 
-    # Stream handler (stdout)
+    # Stream handler (stdout) with UTF-8 encoding for Windows compatibility
     stream_handler = logging.StreamHandler()
     stream_handler.setFormatter(formatter)
+    # Force UTF-8 encoding to handle Unicode characters on Windows
+    if hasattr(stream_handler.stream, 'reconfigure'):
+        try:
+            stream_handler.stream.reconfigure(encoding='utf-8')
+        except Exception:
+            pass  # Fallback gracefully if reconfigure fails
     root_logger.addHandler(stream_handler)
 
     # Rotating file handler (optional, skip if path not provided)

@@ -1,8 +1,9 @@
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import Field
+from app.models.base import MongoBase
 
 
-class BookmarkModel(BaseModel):
+class BookmarkModel(MongoBase):
     """
     Bookmark model for saving articles.
     """
