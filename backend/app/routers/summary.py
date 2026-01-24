@@ -1,3 +1,4 @@
+import hashlib
 from fastapi import APIRouter, HTTPException
 from app.core.cache import summary_cache, get_from_cache, set_in_cache
 from app.services.summarizer import TextSummarizer
@@ -15,7 +16,7 @@ async def generate_summary(article_url: str):
     Uses extractive NLP-based summarization (no AI).
     """
 
-    cache_key = f"summary:{article_url}"
+    cache_key = "summary:" + hashlib.md5(article_url.encode()).hexdigest()
 
     # --------------------------------------------------
     # 1. Cache check
