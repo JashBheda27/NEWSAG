@@ -59,7 +59,11 @@ async def remove_read_later(item_id: str, db=Depends(get_db)):
     """
     Remove article from Read Later list.
     """
-
+    
+    # Validate ObjectId format
+    if not ObjectId.is_valid(item_id):
+        raise HTTPException(status_code=400, detail="Invalid item ID format")
+    
     result = await db.read_later.delete_one({"_id": ObjectId(item_id)})
 
     if result.deleted_count == 0:

@@ -59,7 +59,11 @@ async def delete_bookmark(bookmark_id: str, db=Depends(get_db)):
     """
     Remove a bookmark by ID.
     """
-
+    
+    # Validate ObjectId format
+    if not ObjectId.is_valid(bookmark_id):
+        raise HTTPException(status_code=400, detail="Invalid bookmark ID format")
+    
     result = await db.bookmarks.delete_one({"_id": ObjectId(bookmark_id)})
 
     if result.deleted_count == 0:

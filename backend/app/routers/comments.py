@@ -51,7 +51,11 @@ async def delete_comment(comment_id: str, db=Depends(get_db)):
     """
     Delete a comment by ID.
     """
-
+    
+    # Validate ObjectId format
+    if not ObjectId.is_valid(comment_id):
+        raise HTTPException(status_code=400, detail="Invalid comment ID format")
+    
     result = await db.comments.delete_one({"_id": ObjectId(comment_id)})
 
     if result.deleted_count == 0:
