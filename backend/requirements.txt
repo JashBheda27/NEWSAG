@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+python-dotenv
+httpx
+motor
+pydantic
+cachetools
+nltk
+scikit-learn
+numpy
