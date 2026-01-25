@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from bson import ObjectId
 from app.core.database import get_db
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user_optional
 from app.models.comment import CommentModel
 
 router = APIRouter()
@@ -10,7 +10,7 @@ router = APIRouter()
 @router.post("/")
 async def add_comment(
     comment: CommentModel,
-    user=Depends(get_current_user),
+    user=Depends(get_current_user_optional),
     db=Depends(get_db),
 ):
     data = comment.dict()
@@ -44,7 +44,7 @@ async def get_comments(article_id: str, db=Depends(get_db)):
 @router.delete("/{comment_id}")
 async def delete_comment(
     comment_id: str,
-    user=Depends(get_current_user),
+    user=Depends(get_current_user_optional),
     db=Depends(get_db),
 ):
     result = await db.comments.delete_one({

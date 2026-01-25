@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.core.database import get_db
 from app.models.bookmark import BookmarkModel
 from bson import ObjectId
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user_optional
 
 
 router = APIRouter()
@@ -14,7 +14,7 @@ router = APIRouter()
 @router.post("/")
 async def add_bookmark(
     bookmark: BookmarkModel,
-    user=Depends(get_current_user),
+    user=Depends(get_current_user_optional),
     db=Depends(get_db),
 ):
     user_id = user["user_id"]
@@ -44,7 +44,7 @@ async def add_bookmark(
 # --------------------------------------------------
 @router.get("/")
 async def get_bookmarks(
-    user=Depends(get_current_user),
+    user=Depends(get_current_user_optional),
     db=Depends(get_db),
 ):
     user_id = user["user_id"]
@@ -55,6 +55,7 @@ async def get_bookmarks(
     ).sort("created_at", -1)
 
     async for item in cursor:
+        item["_id"] = str(item["_id"])
         bookmarks.append(BookmarkModel(**item))
 
     return {
@@ -70,7 +71,7 @@ async def get_bookmarks(
 @router.delete("/{bookmark_id}")
 async def delete_bookmark(
     bookmark_id: str,
-    user=Depends(get_current_user),
+    user=Depends(get_current_user_optional),
     db=Depends(get_db),
 ):
     user_id = user["user_id"]
