@@ -9,3 +9,5 @@ cachetools
 numpy
 scikit-learn
 beautifulsoup4
+PyJWT
+python-multipart
