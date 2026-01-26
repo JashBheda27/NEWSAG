@@ -8,6 +8,10 @@ from typing import Dict, Optional
 from threading import Lock
 import hashlib
 
+# Import cache functions for per-article sentiment caching
+from app.core.cache import get_from_cache, set_in_cache
+from app.core.config import settings
+
 logger = logging.getLogger(__name__)
 
 # Singleton lock for thread-safe model loading
@@ -81,9 +85,10 @@ class SentimentService:
     MODEL_NAME = "roberta-news"
     
     @staticmethod
-    def analyze(text: str) -> Dict[str, any]:
+    async def analyze(text: str) -> Dict[str, any]:
         """
         Analyze sentiment of given text using HuggingFace transformer.
+        Includes per-article Redis caching to avoid repeated ML inference.
         
         Args:
             text: Input text (title, description, or content)
@@ -102,6 +107,15 @@ class SentimentService:
                 "model": SentimentService.MODEL_NAME
             }
         
+        # Generate cache key for this specific text
+        cache_key = SentimentService.get_sentiment_cache_key(text)
+        
+        # Check Redis cache BEFORE running expensive ML inference
+        cached_sentiment = await get_from_cache(cache_key)
+        if cached_sentiment:
+            logger.debug(f"[SENTIMENT CACHE HIT] {text[:50]}")
+            return cached_sentiment
+        
         try:
             # Load model (singleton)
             pipeline = _load_model()
@@ -109,7 +123,7 @@ class SentimentService:
             # Truncate to avoid overflow
             truncated_text = _truncate_text(text.strip(), max_tokens=512)
             
-            # Run inference
+            # Run inference (expensive operation)
             results = pipeline(truncated_text, top_k=1)
             
             if not results or len(results) == 0:
@@ -127,15 +141,20 @@ class SentimentService:
             
             # Normalize label and ensure confidence is 0-1 float
             normalized_label = _normalize_label(raw_label)
-            confidence = float(raw_score)
+            confidence = float(raw_score)  # Keep raw precision, frontend formats
             
-            logger.debug(f"Sentiment: {normalized_label} ({confidence:.2f}) for: {text[:60]}")
+            logger.debug(f"Sentiment: {normalized_label} ({confidence:.4f}) for: {text[:60]}")
             
-            return {
+            sentiment_result = {
                 "label": normalized_label,
-                "confidence": round(confidence, 2),  # Round to 2 decimal places
+                "confidence": confidence,  # Raw float (not rounded)
                 "model": SentimentService.MODEL_NAME
             }
+            
+            # Cache result to avoid repeated ML inference on same text
+            await set_in_cache(cache_key, sentiment_result, ttl=settings.CACHE_TTL_NEWS)
+            
+            return sentiment_result
             
         except Exception as e:
             logger.error(f"Sentiment analysis error: {str(e)}")
@@ -147,10 +166,11 @@ class SentimentService:
             }
     
     @staticmethod
-    def analyze_article(title: str = "", description: str = "", content: str = "") -> Dict[str, any]:
+    async def analyze_article(title: str = "", description: str = "", content: str = "") -> Dict[str, any]:
         """
         Analyze sentiment for a complete article.
         Combines title, description, and content, ignoring empty fields.
+        Includes Redis caching per unique text combination.
         
         Args:
             title: Article title
@@ -164,7 +184,7 @@ class SentimentService:
         parts = [p.strip() for p in [title, description, content] if p and p.strip()]
         combined_text = " ".join(parts)
         
-        return SentimentService.analyze(combined_text)
+        return await SentimentService.analyze(combined_text)
     
     @staticmethod
     def get_sentiment_cache_key(text: str) -> str:

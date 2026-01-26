@@ -14,14 +14,15 @@ CATEGORIES = ["general", "nation", "business", "technology", "sports", "entertai
 # --------------------------------------------------
 # HELPER: Add ML-based sentiment to articles
 # --------------------------------------------------
-def add_sentiment_to_articles(articles):
+async def add_sentiment_to_articles(articles):
     """
     Calculate sentiment for each article using ML model.
     Combines title + description + content for analysis.
+    Includes Redis caching to avoid repeated ML inference.
     """
     for article in articles:
-        # Use ML service to analyze article sentiment
-        sentiment_result = SentimentService.analyze_article(
+        # Use ML service to analyze article sentiment (checks Redis cache first)
+        sentiment_result = await SentimentService.analyze_article(
             title=article.get('title', ''),
             description=article.get('description', ''),
             content=article.get('content', '')
@@ -42,20 +43,20 @@ def add_sentiment_to_articles(articles):
 @router.get("/topic/{topic}")
 async def get_news_by_topic(topic: str):
     """Fetch news by topic/category with caching"""
+    # TODO: Future enhancement - include country/language/pagination in cache key
     cache_key = f"gnews:{topic}"
 
     cached = await get_from_cache(cache_key)
     if cached:
         logger.info(f"[CACHE HIT] {topic}")
-        # ✅ Add sentiment to cached articles
-        cached = add_sentiment_to_articles(cached)
-        # ✅ Return hit status even from cache
+        # Cached articles ALREADY have sentiment - do NOT recompute
+        # (Sentiment was added before caching, see API fetch branch below)
         hit_status = await GNewsCounter.get_hit_status()
         return {
             "source": "cache",
             "count": len(cached),
             "articles": cached,
-            "hits": hit_status,  # ✅ Added
+            "hits": hit_status,
         }
 
     logger.info(f"[GNEWS HIT] {topic}")
@@ -65,8 +66,8 @@ async def get_news_by_topic(topic: str):
         logger.error(f"Error fetching news for {topic}: {str(e)}")
         raise HTTPException(status_code=502, detail=str(e))
 
-    # ✅ Add sentiment analysis to articles before caching
-    articles = add_sentiment_to_articles(articles)
+    # Add sentiment ONCE before caching (includes per-article Redis caching)
+    articles = await add_sentiment_to_articles(articles)
     
     await set_in_cache(cache_key, articles)
     
@@ -125,6 +126,9 @@ async def refresh_category(category: str):
         logger.error(f"Error refreshing {category}: {str(e)}")
         raise HTTPException(status_code=502, detail=str(e))
     
+    # Add sentiment BEFORE caching (computed once, cached with articles)
+    articles = await add_sentiment_to_articles(articles)
+    
     await set_in_cache(cache_key, articles)
 
     return {
@@ -148,6 +152,8 @@ async def refresh_all():
         try:
             await delete_from_cache(f"gnews:{cat}")
             articles = await GNewsService.fetch_category(cat)
+            # Add sentiment BEFORE caching (computed once, cached with articles)
+            articles = await add_sentiment_to_articles(articles)
             await set_in_cache(f"gnews:{cat}", articles)
             total_articles += len(articles)
         except Exception as e:

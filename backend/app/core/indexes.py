@@ -45,6 +45,12 @@ async def create_indexes():
             name="idx_article_created"
         )
         
+        # Compound index for user's comments (_id + user_id) for faster lookups
+        await db.comments.create_index(
+            [("_id", 1), ("user_id", 1)],
+            name="idx_id_user"
+        )
+        
         logger.info("[OK] Comments indexes created")
         
         # --------------------------------------------------
