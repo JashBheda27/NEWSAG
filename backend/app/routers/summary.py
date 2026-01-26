@@ -5,23 +5,27 @@ from app.services.summarizer import TextSummarizer
 from app.services.text_utils import extract_article_text
 
 router = APIRouter()
-
 summarizer = TextSummarizer()
 
+@router.post("/")
+async def generate_summary(payload: dict):
+    """
+    Generate summary using:
+    1. GNews content (preferred)
+    2. Scraped article text (fallback)
+    """
 
-@router.get("/")
-async def generate_summary(article_url: str):
-    """
-    Generate summary for a given article URL.
-    Uses extractive NLP-based summarization (no AI).
-    Fallback: returns placeholder for paywall-protected content.
-    """
+    article_url = payload.get("url")
+    gnews_content = payload.get("content")
+
+    if not article_url:
+        raise HTTPException(status_code=400, detail="Article URL is required")
 
     cache_key = "summary:" + hashlib.md5(article_url.encode()).hexdigest()
 
-    # --------------------------------------------------
-    # 1. Cache check
-    # --------------------------------------------------
+    # -----------------------------
+    # CACHE CHECK
+    # -----------------------------
     cached = get_from_cache(summary_cache, cache_key)
     if cached:
         return {
@@ -29,38 +33,49 @@ async def generate_summary(article_url: str):
             "summary": cached,
         }
 
-    # --------------------------------------------------
-    # 2. Fetch article content
-    # --------------------------------------------------
     article_text = None
-    try:
-        article_text = await extract_article_text(article_url)
-    except Exception as exc:
-        # Log the error but don't fail - return placeholder
-        print(f"[Summary] Failed to extract text from {article_url}: {exc}")
-        article_text = None
 
-    # If extraction failed or content is too short, return placeholder
-    if not article_text or len(article_text) < 300:
-        placeholder_summary = "Unable to generate a summary for this article. It may be behind a paywall or require authentication. Please visit the article directly to read the full content."
-        set_in_cache(summary_cache, cache_key, placeholder_summary)
+    # -----------------------------
+    # 1️⃣ USE GNEWS CONTENT FIRST
+    # -----------------------------
+    if gnews_content and len(gnews_content.strip()) > 120:
+        article_text = gnews_content
+
+    # -----------------------------
+    # 2️⃣ FALLBACK TO SCRAPING
+    # -----------------------------
+    if not article_text:
+        try:
+            article_text = await extract_article_text(article_url)
+        except Exception as exc:
+            print(f"[SUMMARY] Scrape failed: {exc}")
+            article_text = None
+
+    # -----------------------------
+    # 3️⃣ FINAL VALIDATION
+    # -----------------------------
+    if not article_text or len(article_text) < 120:
+        placeholder = (
+            "Summary not available for this article. "
+            "This may be due to publisher restrictions or limited content access. "
+            "Please open the full article to read more."
+        )
+
+        set_in_cache(summary_cache, cache_key, placeholder)
+
         return {
             "source": "placeholder",
-            "summary": placeholder_summary,
+            "summary": placeholder,
         }
 
-    # --------------------------------------------------
-    # 3. Generate summary
-    # --------------------------------------------------
+    # -----------------------------
+    # 4️⃣ GENERATE SUMMARY
+    # -----------------------------
     summary = summarizer.summarize(article_text)
 
-    # --------------------------------------------------
-    # 4. Cache result
-    # --------------------------------------------------
     set_in_cache(summary_cache, cache_key, summary)
 
     return {
         "source": "generated",
         "summary": summary,
     }
-
