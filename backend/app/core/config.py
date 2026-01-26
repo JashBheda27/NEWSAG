@@ -15,6 +15,11 @@ class Settings:
     MONGO_URI: str = os.getenv("MONGO_URI", "")
 
     # -----------------------------
+    # REDIS CONFIG
+    # -----------------------------
+    REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379")
+
+    # -----------------------------
     # GNEWS CONFIG (ONLY SOURCE)
     # -----------------------------
     GNEWS_API_KEY: str = os.getenv("GNEWS_API_KEY", "")

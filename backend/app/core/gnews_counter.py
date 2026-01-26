@@ -3,9 +3,9 @@ GNews API Hit Counter
 Tracks API calls for rate limiting (100 requests/day free tier)
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict
-from app.core.cache import news_cache
+from app.core.cache import get_from_cache, set_in_cache, delete_from_cache
 
 class GNewsCounter:
     """
@@ -25,7 +25,7 @@ class GNewsCounter:
         return f"{GNewsCounter.CACHE_KEY}:{date_str}"
     
     @staticmethod
-    def increment_hit() -> Dict[str, int]:
+    async def increment_hit() -> Dict[str, int]:
         """
         Increment hit counter for today
         Returns: {"today_hits": int, "remaining_hits": int, "warning": bool}
@@ -33,14 +33,13 @@ class GNewsCounter:
         cache_key = GNewsCounter.get_today_key()
         
         # Get current count (default 0 if not set)
-        current_hits = news_cache.get(cache_key, 0)
+        current_hits = await get_from_cache(cache_key) or 0
         
         # Increment
         new_hits = current_hits + 1
         
         # Store back in cache with 24-hour TTL
-        # TTL must be >= 24 hours to span the full day
-        news_cache[cache_key] = new_hits
+        await set_in_cache(cache_key, new_hits, ttl=86400)
         
         remaining = max(0, GNewsCounter.MAX_HITS_PER_DAY - new_hits)
         is_warning = new_hits >= GNewsCounter.WARNING_THRESHOLD
@@ -53,7 +52,7 @@ class GNewsCounter:
         }
     
     @staticmethod
-    def get_hit_status() -> Dict[str, int]:
+    async def get_hit_status() -> Dict[str, int]:
         """
         Get current hit status without incrementing
         Returns: {"today_hits": int, "remaining_hits": int}
@@ -61,7 +60,7 @@ class GNewsCounter:
         cache_key = GNewsCounter.get_today_key()
         
         # Get current count (default 0 if not set)
-        current_hits = news_cache.get(cache_key, 0)
+        current_hits = await get_from_cache(cache_key) or 0
         remaining = max(0, GNewsCounter.MAX_HITS_PER_DAY - current_hits)
         is_warning = current_hits >= GNewsCounter.WARNING_THRESHOLD
         
@@ -73,13 +72,13 @@ class GNewsCounter:
         }
     
     @staticmethod
-    def check_limit() -> tuple[bool, str]:
+    async def check_limit() -> tuple[bool, str]:
         """
         Check if we can make another API call
         Returns: (can_call: bool, message: str)
         """
         cache_key = GNewsCounter.get_today_key()
-        current_hits = news_cache.get(cache_key, 0)
+        current_hits = await get_from_cache(cache_key) or 0
         
         if current_hits >= GNewsCounter.MAX_HITS_PER_DAY:
             return (
@@ -97,13 +96,13 @@ class GNewsCounter:
         return (True, "OK")
     
     @staticmethod
-    def reset_counter() -> Dict[str, int]:
+    async def reset_counter() -> Dict[str, int]:
         """
         Manually reset counter (for testing/admin)
         Returns: reset status
         """
         cache_key = GNewsCounter.get_today_key()
-        news_cache.pop(cache_key, None)
+        await delete_from_cache(cache_key)
         
         return {
             "status": "reset",

@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.database import MongoDB
 from app.core.logging import configure_logging
 from app.core.indexes import create_indexes
+from app.core.cache import get_redis, close_redis
 
 
 from app.routers import (
@@ -68,7 +69,13 @@ async def startup_event():
     configure_logging()
     MongoDB.connect()
     await create_indexes()
+    # ✅ Initialize Redis connection on startup
+    await get_redis()
+    print("[REDIS] Connected to Redis cache")
 
 @app.on_event("shutdown")
 async def shutdown_event():
     MongoDB.close()
+    # ✅ Close Redis connection on shutdown
+    await close_redis()
+    print("[REDIS] Disconnected from Redis cache")

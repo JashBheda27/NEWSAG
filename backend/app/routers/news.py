@@ -1,7 +1,7 @@
 ﻿import logging
 from fastapi import APIRouter, HTTPException
 from app.services.news_service import GNewsService
-from app.core.cache import news_cache, get_from_cache, set_in_cache
+from app.core.cache import get_from_cache, set_in_cache, delete_from_cache
 from app.core.gnews_counter import GNewsCounter  # ✅ Added
 
 router = APIRouter()
@@ -18,11 +18,11 @@ async def get_news_by_topic(topic: str):
     """Fetch news by topic/category with caching"""
     cache_key = f"gnews:{topic}"
 
-    cached = get_from_cache(news_cache, cache_key)
+    cached = await get_from_cache(cache_key)
     if cached:
         logger.info(f"[CACHE HIT] {topic}")
         # ✅ Return hit status even from cache
-        hit_status = GNewsCounter.get_hit_status()
+        hit_status = await GNewsCounter.get_hit_status()
         return {
             "source": "cache",
             "count": len(cached),
@@ -37,10 +37,10 @@ async def get_news_by_topic(topic: str):
         logger.error(f"Error fetching news for {topic}: {str(e)}")
         raise HTTPException(status_code=502, detail=str(e))
 
-    set_in_cache(news_cache, cache_key, articles)
+    await set_in_cache(cache_key, articles)
     
     # ✅ Get hit status after API call
-    hit_status = GNewsCounter.get_hit_status()
+    hit_status = await GNewsCounter.get_hit_status()
 
     return {
         "source": "api",
@@ -59,7 +59,7 @@ async def get_news(category: str):
 @router.get("/status/hits")
 async def get_hit_status():
     """Get current GNews API hit count for today"""
-    hit_status = GNewsCounter.get_hit_status()
+    hit_status = await GNewsCounter.get_hit_status()
     return {
         "status": "ok",
         "hits": hit_status,
@@ -70,7 +70,7 @@ async def get_hit_status():
 @router.post("/admin/reset-hits")
 async def reset_hit_counter():
     """Reset hit counter (ADMIN ONLY - for testing)"""
-    result = GNewsCounter.reset_counter()
+    result = await GNewsCounter.reset_counter()
     return {
         "status": "reset",
         "hits": result,
@@ -85,7 +85,7 @@ async def reset_hit_counter():
 async def refresh_category(category: str):
     """Manually refresh news for a specific category"""
     cache_key = f"gnews:{category}"
-    news_cache.pop(cache_key, None)
+    await delete_from_cache(cache_key)
 
     logger.warning(f"[MANUAL REFRESH] {category}")
     try:
@@ -94,7 +94,7 @@ async def refresh_category(category: str):
         logger.error(f"Error refreshing {category}: {str(e)}")
         raise HTTPException(status_code=502, detail=str(e))
     
-    set_in_cache(news_cache, cache_key, articles)
+    await set_in_cache(cache_key, articles)
 
     return {
         "message": f"{category} refreshed",
@@ -115,9 +115,9 @@ async def refresh_all():
 
     for cat in categories:
         try:
-            news_cache.pop(f"gnews:{cat}", None)
+            await delete_from_cache(f"gnews:{cat}")
             articles = await GNewsService.fetch_category(cat)
-            set_in_cache(news_cache, f"gnews:{cat}", articles)
+            await set_in_cache(f"gnews:{cat}", articles)
             total_articles += len(articles)
         except Exception as e:
             logger.error(f"Error refreshing {cat}: {str(e)}")

@@ -1,6 +1,6 @@
 import hashlib
 from fastapi import APIRouter, HTTPException
-from app.core.cache import sentiment_cache, get_from_cache, set_in_cache
+from app.core.cache import get_from_cache, set_in_cache
 from app.services.sentiment import SentimentAnalyzer
 
 router = APIRouter()
@@ -27,7 +27,7 @@ async def analyze_sentiment(payload: dict):
     # --------------------------------------------------
     # Cache check
     # --------------------------------------------------
-    cached = get_from_cache(sentiment_cache, cache_key)
+    cached = await get_from_cache(cache_key)
     if cached:
         return {
             "source": "cache",
@@ -42,7 +42,7 @@ async def analyze_sentiment(payload: dict):
     # --------------------------------------------------
     # Cache result
     # --------------------------------------------------
-    set_in_cache(sentiment_cache, cache_key, result)
+    await set_in_cache(cache_key, result)
 
     return {
         "source": "computed",

@@ -23,7 +23,7 @@ class GNewsService:
             category = "general"
 
         # ✅ Check API limit before calling
-        can_call, message = GNewsCounter.check_limit()
+        can_call, message = await GNewsCounter.check_limit()
         if not can_call:
             raise Exception(f"GNews API limit: {message}")
 
@@ -43,7 +43,7 @@ class GNewsService:
 
         # ✅ Increment hit counter on successful API call
         if response.status_code == 200:
-            GNewsCounter.increment_hit()
+            await GNewsCounter.increment_hit()
 
         if response.status_code != 200:
             raise Exception(

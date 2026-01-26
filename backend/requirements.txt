@@ -5,9 +5,4 @@ httpx
 motor
 pydantic
 email-validator
-cachetools
-numpy
-scikit-learn
-beautifulsoup4
-PyJWT
-python-multipart
+redis

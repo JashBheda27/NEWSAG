@@ -1,6 +1,6 @@
 import hashlib
 from fastapi import APIRouter, HTTPException
-from app.core.cache import summary_cache, get_from_cache, set_in_cache
+from app.core.cache import get_from_cache, set_in_cache
 from app.services.summarizer import TextSummarizer
 from app.services.text_utils import extract_article_text
 
@@ -26,7 +26,7 @@ async def generate_summary(payload: dict):
 
     cache_key = "summary:" + hashlib.md5(article_url.encode()).hexdigest()
 
-    cached = get_from_cache(summary_cache, cache_key)
+    cached = await get_from_cache(cache_key)
     if cached:
         return cached
 
@@ -84,6 +84,6 @@ async def generate_summary(payload: dict):
         "is_fallback": source != "generated",
     }
 
-    set_in_cache(summary_cache, cache_key, response)
+    await set_in_cache(cache_key, response)
 
     return response
