@@ -1,9 +1,11 @@
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.database import MongoDB
 from app.core.logging import configure_logging
 from app.core.indexes import create_indexes
 from app.core.cache import get_redis, close_redis
+from app.services.sentiment_ml import SentimentService, _load_model
 
 
 from app.routers import (
@@ -64,18 +66,32 @@ app.include_router(bookmarks.router, prefix="/api/bookmarks", tags=["Bookmarks"]
 app.include_router(read_laters.router, prefix="/api/read-later", tags=["Read Later"])
 app.include_router(feedbacks.router, prefix="/api/feedback", tags=["Feedback"])
 
+logger = logging.getLogger(__name__)
+
 @app.on_event("startup")
 async def startup_event():
     configure_logging()
     MongoDB.connect()
     await create_indexes()
-    # ✅ Initialize Redis connection on startup
-    await get_redis()
-    print("[REDIS] Connected to Redis cache")
+    # ✅ Initialize Redis connection on startup without blocking app availability
+    try:
+        await get_redis()
+        print("[REDIS] Connected to Redis cache")
+    except Exception as exc:
+        logger.warning("[REDIS] Startup connection failed; continuing without cache: %s", exc)
+    # ✅ Preload sentiment model to avoid first-request latency; do not block on failure
+    try:
+        _load_model()
+        print("[SENTIMENT] ML model loaded successfully at startup")
+    except Exception as exc:
+        logger.warning("[SENTIMENT] Model preload failed; will use neutral fallback: %s", exc)
 
 @app.on_event("shutdown")
 async def shutdown_event():
     MongoDB.close()
     # ✅ Close Redis connection on shutdown
-    await close_redis()
-    print("[REDIS] Disconnected from Redis cache")
+    try:
+        await close_redis()
+        print("[REDIS] Disconnected from Redis cache")
+    except Exception as exc:
+        logger.warning("[REDIS] Shutdown cleanup failed: %s", exc)
