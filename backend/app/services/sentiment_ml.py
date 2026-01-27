@@ -36,7 +36,7 @@ def _load_model():
         
         try:
             from transformers import pipeline
-            
+
             logger.info("Loading sentiment model: cardiffnlp/twitter-roberta-base-sentiment-latest")
             _sentiment_pipeline = pipeline(
                 "sentiment-analysis",
@@ -47,7 +47,8 @@ def _load_model():
             return _sentiment_pipeline
         except Exception as e:
             logger.error(f"Failed to load sentiment model: {str(e)}")
-            raise
+            # Do not raise to avoid blocking startup; allow neutral fallback
+            return None
 
 
 def _normalize_label(raw_label: str) -> str:
@@ -119,10 +120,19 @@ class SentimentService:
         try:
             # Load model (singleton)
             pipeline = _load_model()
-            
+
+            # If model failed to load, fallback gracefully
+            if pipeline is None:
+                logger.warning("Sentiment model unavailable; returning neutral fallback")
+                return {
+                    "label": "Neutral",
+                    "confidence": 1.0,
+                    "model": SentimentService.MODEL_NAME
+                }
+
             # Truncate to avoid overflow
             truncated_text = _truncate_text(text.strip(), max_tokens=512)
-            
+
             # Run inference (expensive operation)
             results = pipeline(truncated_text, top_k=1)
             
@@ -164,6 +174,15 @@ class SentimentService:
                 "confidence": 1.0,
                 "model": SentimentService.MODEL_NAME
             }
+
+    @staticmethod
+    def ensure_model_loaded() -> None:
+        """Best-effort model preload; never raises."""
+        try:
+            _load_model()
+        except Exception:
+            # Should not happen because _load_model swallows, but guard defensively
+            logger.warning("Sentiment model preload failed; will fallback to neutral on requests")
     
     @staticmethod
     async def analyze_article(title: str = "", description: str = "", content: str = "") -> Dict[str, any]:

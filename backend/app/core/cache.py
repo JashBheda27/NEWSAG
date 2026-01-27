@@ -13,11 +13,15 @@ async def get_redis() -> redis.Redis:
     """Get Redis client singleton"""
     global _redis_client
     if _redis_client is None:
-        _redis_client = await redis.from_url(
-            settings.REDIS_URL,
-            encoding="utf-8",
-            decode_responses=True
-        )
+        try:
+            _redis_client = await redis.from_url(
+                settings.REDIS_URL,
+                encoding="utf-8",
+                decode_responses=True
+            )
+        except Exception as e:
+            print(f"[REDIS INIT ERROR] {e}")
+            return None
     return _redis_client
 
 
@@ -25,8 +29,12 @@ async def close_redis():
     """Close Redis connection"""
     global _redis_client
     if _redis_client:
-        await _redis_client.close()
-        _redis_client = None
+        try:
+            await _redis_client.close()
+        except Exception as e:
+            print(f"[REDIS CLOSE ERROR] {e}")
+        finally:
+            _redis_client = None
 
 
 # -----------------------------
@@ -39,6 +47,8 @@ async def get_from_cache(key: str) -> Optional[Any]:
     """
     try:
         client = await get_redis()
+        if client is None:
+            return None
         value = await client.get(key)
         if value:
             return json.loads(value)
@@ -57,6 +67,8 @@ async def set_in_cache(key: str, value: Any, ttl: int = None):
     """
     try:
         client = await get_redis()
+        if client is None:
+            return
         serialized = json.dumps(value)
         
         if ttl is None:
@@ -71,6 +83,8 @@ async def delete_from_cache(key: str):
     """Delete key from Redis cache"""
     try:
         client = await get_redis()
+        if client is None:
+            return
         await client.delete(key)
     except Exception as e:
         print(f"[REDIS DELETE ERROR] {key}: {e}")
@@ -80,6 +94,8 @@ async def clear_pattern(pattern: str):
     """Delete all keys matching a pattern"""
     try:
         client = await get_redis()
+        if client is None:
+            return
         keys = await client.keys(pattern)
         if keys:
             await client.delete(*keys)
