@@ -31,11 +31,19 @@ class TextSummarizer:
         if not sentences:
             return ""
 
-        full_text = " ".join(sentences)
-        if len(full_text.split()) <= min_words:
-            return full_text.strip()
+        full_text = " ".join(sentences).strip()
 
-        scores = self._score(sentences)
+        # Avoid TF-IDF empty vocabulary errors when too few sentences
+        if len(sentences) < 2:
+            return full_text
+
+        if len(full_text.split()) <= min_words:
+            return full_text
+
+        try:
+            scores = self._score(sentences)
+        except ValueError:
+            return full_text
 
         ranked = np.argsort(scores)[::-1]
 

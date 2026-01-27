@@ -41,10 +41,6 @@ class GNewsService:
                 params=params
             )
 
-        # ✅ Increment hit counter on successful API call
-        if response.status_code == 200:
-            await GNewsCounter.increment_hit()
-
         if response.status_code != 200:
             raise Exception(
                 f"GNews error {response.status_code}: {response.text}"
@@ -72,5 +68,9 @@ class GNewsService:
                 "published_at": item.get("publishedAt"),
                 "category": category,
             })
+
+        # ✅ Increment hit counter only when at least one valid article is returned
+        if articles:
+            await GNewsCounter.increment_hit()
 
         return articles[:MAX_ARTICLES]
