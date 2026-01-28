@@ -197,19 +197,19 @@ export const NewsCard: React.FC<NewsCardProps> = ({
   return (
     <div className="group relative bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col">
       {/* Image Section */}
-      <div className="relative h-48 overflow-hidden">
+      <div className="relative h-40 overflow-hidden">
         <img 
           src={article.image_url || `https://picsum.photos/seed/${article.title.length}/600/400`} 
           alt={article.title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
-        <div className="absolute top-3 left-3 flex gap-2">
+        <div className="absolute top-2 left-2 flex gap-2">
           <SentimentBadge sentiment={article.sentiment} />
         </div>
       </div>
 
       {/* Content Section */}
-      <div className="p-5 flex-grow flex flex-col">
+      <div className="p-4 flex-grow flex flex-col">
         <div className="flex justify-between items-start mb-2">
           <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
             {article.source}
@@ -225,22 +225,22 @@ export const NewsCard: React.FC<NewsCardProps> = ({
           </div>
         </div>
         
-        <h3 className="text-lg font-bold leading-tight mb-3 line-clamp-2 hover:text-indigo-600 transition-colors">
+        <h3 className="text-base font-bold leading-tight mb-2 line-clamp-2 hover:text-indigo-600 transition-colors">
           <a href={article.url} target="_blank" rel="noopener noreferrer">{article.title}</a>
         </h3>
         
-        <p className="text-slate-600 dark:text-slate-400 text-sm line-clamp-3 mb-4">
+        <p className="text-slate-600 dark:text-slate-400 text-xs line-clamp-2 mb-3">
           {article.description}
         </p>
 
-        <div className="mt-auto pt-4 flex items-center justify-between border-t border-slate-50 dark:border-slate-700">
+        <div className="mt-auto pt-3 flex items-center justify-between border-t border-slate-50 dark:border-slate-700">
           <div className="flex gap-1">
             <button 
               onClick={toggleBookmark}
               className={`p-2 rounded-full transition-colors ${isBookmarked ? 'text-amber-500 bg-amber-50 dark:bg-amber-900/20' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
               title="Bookmark"
             >
-              <svg className="w-5 h-5" fill={isBookmarked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-4 h-4" fill={isBookmarked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
               </svg>
             </button>
@@ -249,7 +249,7 @@ export const NewsCard: React.FC<NewsCardProps> = ({
               className={`p-2 rounded-full transition-colors ${isInReadLater ? 'text-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
               title="Read Later"
             >
-              <svg className="w-5 h-5" fill={isInReadLater ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-4 h-4" fill={isInReadLater ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </button>
@@ -258,13 +258,13 @@ export const NewsCard: React.FC<NewsCardProps> = ({
               className="p-2 rounded-full transition-colors text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
               title="Comments"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
             </button>
           </div>
           
-          <Button variant="ghost" size="sm" onClick={handleSummary} className="text-indigo-600 font-bold dark:text-indigo-400">
+          <Button variant="ghost" size="sm" onClick={handleSummary} className="text-indigo-600 font-bold dark:text-indigo-400 text-xs">
             ✨ AI Summary
           </Button>
         </div>
@@ -283,34 +283,34 @@ export const NewsCard: React.FC<NewsCardProps> = ({
              <Button onClick={() => setIsModalOpen(false)}>Close Bulletin</Button>
           </div>
         ) : (
-          <div className="newspaper-paper p-1 border-2 border-black">
-            <div className="border border-black p-6 sm:p-10">
+          <div className="newspaper-paper p-1 border-2 border-black max-h-[80vh] overflow-y-auto">
+            <div className="border border-black p-4 sm:p-6">
                {/* Masthead */}
-               <div className="text-center mb-8 pb-4 border-b-4 border-black border-double">
-                  <div className="mb-2">
-                    <span className="text-[10px] font-black uppercase tracking-widest italic">Special AI Edition</span>
+               <div className="text-center mb-6 pb-3 border-b-4 border-black border-double">
+                  <div className="mb-1">
+                    <span className="text-[8px] font-black uppercase tracking-widest italic">Special AI Edition</span>
                   </div>
-                  <h4 className="font-serif text-3xl sm:text-4xl font-black tracking-tighter uppercase mb-1">
+                  <h4 className="font-serif text-xl sm:text-2xl font-black tracking-tighter uppercase mb-1">
                     {typeof article.source === 'string' ? article.source : article.source?.name || 'The Artificial Dispatch'}
                   </h4>
                </div>
 
                {/* Headline */}
-               <h2 className="font-serif text-2xl sm:text-3xl font-black mb-6 leading-none text-center italic">
+               <h2 className="font-serif text-lg sm:text-xl font-black mb-4 leading-tight text-center italic">
                  "{article.title}"
                </h2>
 
                {/* 2-Column Text Body */}
-               <div className="font-serif text-lg leading-relaxed text-justify md:columns-2 gap-8 dropped-cap whitespace-pre-wrap">
+               <div className="font-serif text-sm leading-relaxed text-justify md:columns-2 gap-6 dropped-cap whitespace-pre-wrap">
                  {summary}
                </div>
 
                {/* Traditional Rule Line & Actions */}
-               <div className="mt-12 pt-6 border-t border-black flex flex-col sm:flex-row justify-between items-center gap-4">
-                  <div className="text-[10px] font-black uppercase tracking-widest italic opacity-60">
+               <div className="mt-8 pt-4 border-t border-black flex flex-col sm:flex-row justify-between items-center gap-3">
+                  <div className="text-[8px] font-black uppercase tracking-widest italic opacity-60">
                     — End of Briefing —
                   </div>
-                  <div className="flex gap-4">
+                  <div className="flex gap-3">
                     <button 
                       onClick={() => setIsModalOpen(false)}
                       className="text-xs font-black uppercase tracking-widest border-b-2 border-black hover:opacity-60 transition-opacity"
@@ -319,7 +319,7 @@ export const NewsCard: React.FC<NewsCardProps> = ({
                     </button>
                     <button 
                       onClick={() => window.open(article.url, '_blank')}
-                      className="text-xs font-black uppercase tracking-widest border-2 border-black px-4 py-2 hover:bg-black hover:text-white transition-all"
+                      className="text-xs font-black uppercase tracking-widest border-2 border-black px-3 py-1.5 hover:bg-black hover:text-white transition-all"
                     >
                       Read Full Article
                     </button>
