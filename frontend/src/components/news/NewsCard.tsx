@@ -290,7 +290,9 @@ export const NewsCard: React.FC<NewsCardProps> = ({
                   <div className="mb-2">
                     <span className="text-[10px] font-black uppercase tracking-widest italic">Special AI Edition</span>
                   </div>
-                  <h4 className="font-serif text-3xl sm:text-4xl font-black tracking-tighter uppercase mb-1">The Artificial Dispatch</h4>
+                  <h4 className="font-serif text-3xl sm:text-4xl font-black tracking-tighter uppercase mb-1">
+                    {typeof article.source === 'string' ? article.source : article.source?.name || 'The Artificial Dispatch'}
+                  </h4>
                </div>
 
                {/* Headline */}
