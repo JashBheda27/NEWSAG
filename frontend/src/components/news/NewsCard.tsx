@@ -270,36 +270,64 @@ export const NewsCard: React.FC<NewsCardProps> = ({
         </div>
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="✨ Article AI Summary">
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
         {isLoadingSummary ? (
-          <div className="py-12 flex flex-col items-center justify-center">
-            <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-            <p className="text-slate-500 animate-pulse font-medium">Reading between the lines...</p>
+          <div className="py-20 flex flex-col items-center justify-center">
+            <div className="w-12 h-12 border-4 border-slate-900 border-t-transparent rounded-full animate-spin mb-4"></div>
+            <p className="text-slate-500 font-serif italic animate-pulse">Consulting the archives...</p>
           </div>
         ) : summaryError ? (
-          <div className="py-8 text-center">
-             <div className="w-12 h-12 bg-rose-50 dark:bg-rose-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-6 h-6 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-             </div>
-             <h4 className="font-bold text-lg mb-2">Summarization Failed</h4>
-             <p className="text-slate-500 dark:text-slate-400 mb-6 px-4">{summaryError}</p>
-             <div className="flex justify-center gap-3">
-                <Button variant="outline" onClick={() => setIsModalOpen(false)}>Close</Button>
-                <Button onClick={handleSummary}>Retry Summary</Button>
-             </div>
+          <div className="py-8 text-center font-serif">
+             <h4 className="font-serif text-2xl mb-4">DISPATCH ERROR</h4>
+             <p className="text-slate-600 mb-6">{summaryError}</p>
+             <Button onClick={() => setIsModalOpen(false)}>Close Bulletin</Button>
           </div>
         ) : (
-          <div className="space-y-4">
-            <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800/50">
-               <p className="text-slate-700 dark:text-slate-300 leading-relaxed italic">
-                 "{summary}"
-               </p>
-            </div>
-            <div className="flex justify-end gap-3 pt-4">
-              <Button variant="outline" onClick={() => setIsModalOpen(false)}>Close</Button>
-              <Button onClick={() => window.open(article.url, '_blank')}>Read Full Article</Button>
+          <div className="newspaper-paper p-1 border-2 border-black">
+            <div className="border border-black p-6 sm:p-10">
+               {/* Masthead */}
+               <div className="text-center mb-8 pb-4 border-b-4 border-black border-double">
+                  <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest mb-2 px-1">
+                    <span>Vol. 1 — No. 42</span>
+                    <span className="font-serif italic font-bold">Special AI Edition</span>
+                    <span>Est. 2024</span>
+                  </div>
+                  <h4 className="font-serif text-3xl sm:text-4xl font-black tracking-tighter uppercase mb-1">The Artificial Dispatch</h4>
+                  <div className="border-t border-black mt-2 pt-1 text-[10px] font-bold uppercase tracking-[0.2em]">
+                    Summarized by Gemini Intelligence • {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                  </div>
+               </div>
+
+               {/* Headline */}
+               <h2 className="font-serif text-2xl sm:text-3xl font-black mb-6 leading-none text-center italic">
+                 "{article.title}"
+               </h2>
+
+               {/* 2-Column Text Body */}
+               <div className="font-serif text-lg leading-relaxed text-justify md:columns-2 gap-8 dropped-cap whitespace-pre-wrap">
+                 {summary}
+               </div>
+
+               {/* Traditional Rule Line & Actions */}
+               <div className="mt-12 pt-6 border-t border-black flex flex-col sm:flex-row justify-between items-center gap-4">
+                  <div className="text-[10px] font-black uppercase tracking-widest italic opacity-60">
+                    — End of Briefing —
+                  </div>
+                  <div className="flex gap-4">
+                    <button 
+                      onClick={() => setIsModalOpen(false)}
+                      className="text-xs font-black uppercase tracking-widest border-b-2 border-black hover:opacity-60 transition-opacity"
+                    >
+                      Close
+                    </button>
+                    <button 
+                      onClick={() => window.open(article.url, '_blank')}
+                      className="text-xs font-black uppercase tracking-widest border-2 border-black px-4 py-2 hover:bg-black hover:text-white transition-all"
+                    >
+                      Read Full Article
+                    </button>
+                  </div>
+               </div>
             </div>
           </div>
         )}

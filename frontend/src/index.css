@@ -13,6 +13,22 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Newspaper Styles */
+.newspaper-paper {
+  background-color: #fdfcf0;
+  color: #1a1a1a;
+}
+
+.dropped-cap::first-letter {
+  float: left;
+  font-size: 4rem;
+  line-height: 0.8;
+  padding-top: 4px;
+  padding-right: 8px;
+  font-weight: 900;
+  color: #000;
+}
+
 a {
   font-weight: 500;
   color: #646cff;
