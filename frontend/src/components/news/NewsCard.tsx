@@ -5,6 +5,7 @@ import { Button } from '../ui/Button';
 import { newsService } from '../../services/news.service';
 import { userService } from '../../services/user.service';
 import { Modal } from '../ui/Modal';
+import { CommentSection } from './commentSection';
 import { formatRelativeTime, getReadTimeText } from '../../utils/timeUtils';
 
 interface NewsCardProps {
@@ -28,6 +29,7 @@ export const NewsCard: React.FC<NewsCardProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
+  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
 
   const handleSummary = async () => {
     setIsModalOpen(true);
@@ -136,6 +138,15 @@ export const NewsCard: React.FC<NewsCardProps> = ({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </button>
+              <button 
+                onClick={() => setIsCommentsOpen(true)}
+                className="p-2 rounded-full transition-colors text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+                title="Comments"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+              </button>
             </div>
             
             <Button variant="ghost" size="sm" onClick={handleSummary} className="text-indigo-600 font-bold dark:text-indigo-400 text-xs">
@@ -242,6 +253,15 @@ export const NewsCard: React.FC<NewsCardProps> = ({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </button>
+            <button 
+              onClick={() => setIsCommentsOpen(true)}
+              className="p-2 rounded-full transition-colors text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+              title="Comments"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+            </button>
           </div>
           
           <Button variant="ghost" size="sm" onClick={handleSummary} className="text-indigo-600 font-bold dark:text-indigo-400">
@@ -283,6 +303,10 @@ export const NewsCard: React.FC<NewsCardProps> = ({
             </div>
           </div>
         )}
+      </Modal>
+
+      <Modal isOpen={isCommentsOpen} onClose={() => setIsCommentsOpen(false)} title="💬 Comments">
+        <CommentSection articleId={article.id} articleTitle={article.title} />
       </Modal>
     </div>
   );
