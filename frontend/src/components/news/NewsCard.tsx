@@ -288,38 +288,38 @@ export const NewsCard: React.FC<NewsCardProps> = ({
                {/* Masthead */}
                <div className="text-center mb-6 pb-3 border-b-4 border-black border-double">
                   <div className="mb-1">
-                    <span className="text-[8px] font-bold uppercase tracking-widest italic">Special AI Edition</span>
+                    <span className="text-[8px] font-normal uppercase tracking-widest italic">Special AI Edition</span>
                   </div>
-                  <h4 className="font-serif text-xl sm:text-2xl font-bold tracking-tight uppercase mb-1">
+                  <h4 className="font-serif text-xl sm:text-2xl font-normal tracking-tight uppercase mb-1">
                     {typeof article.source === 'string' ? article.source : article.source?.name || 'The Artificial Dispatch'}
                   </h4>
                </div>
 
                {/* Headline */}
-               <h2 className="font-serif text-lg sm:text-xl font-semibold mb-4 leading-tight text-center italic">
+               <h2 className="font-serif text-lg sm:text-xl font-normal mb-4 leading-tight text-center italic">
                  "{article.title}"
                </h2>
 
                {/* 2-Column Text Body */}
-               <div className="font-serif text-sm font-normal leading-relaxed text-justify md:columns-2 gap-6 dropped-cap whitespace-pre-wrap">
+               <div className="font-serif text-sm font-normal leading-relaxed text-justify md:columns-2 gap-6 dropped-cap whitespace-pre-wrap opacity-90">
                  {summary}
                </div>
 
                {/* Traditional Rule Line & Actions */}
                <div className="mt-8 pt-4 border-t border-black flex flex-col sm:flex-row justify-between items-center gap-3">
-                  <div className="text-[8px] font-bold uppercase tracking-widest italic opacity-60">
+                  <div className="text-[8px] font-normal uppercase tracking-widest italic opacity-60">
                     — End of Briefing —
                   </div>
                   <div className="flex gap-3">
                     <button 
                       onClick={() => setIsModalOpen(false)}
-                      className="text-xs font-bold uppercase tracking-widest border-b-2 border-black hover:opacity-60 transition-opacity"
+                      className="text-xs font-normal uppercase tracking-widest border-b-2 border-black hover:opacity-60 transition-opacity"
                     >
                       Close
                     </button>
                     <button 
                       onClick={() => window.open(article.url, '_blank')}
-                      className="text-xs font-bold uppercase tracking-widest border-2 border-black px-3 py-1.5 hover:bg-black hover:text-white transition-all"
+                      className="text-xs font-normal uppercase tracking-widest border-2 border-black px-3 py-1.5 hover:bg-black hover:text-white transition-all"
                     >
                       Read Full Article
                     </button>
