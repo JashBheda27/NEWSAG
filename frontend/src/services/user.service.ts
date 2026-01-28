@@ -61,16 +61,32 @@ export const userService = {
   // Comments
   getComments: async (articleId: string): Promise<Comment[]> => {
     try {
-      const response = await api.get<{ comments: Comment[]; count: number }>(`/api/comments/${articleId}/`);
-      return response.data.comments;
+      const response = await api.get<{ comments: any[]; count: number }>(`/api/comments/${articleId}`);
+      return response.data.comments.map(c => ({
+        id: c.id || c._id,
+        article_id: c.article_id,
+        article_title: c.article_title,
+        text: c.text,
+        user_id: c.user_id,
+        username: c.username,
+        created_at: c.created_at,
+      }));
     } catch (err) {
       throw new Error(getErrorMessage(err));
     }
   },
   postComment: async (comment: Partial<Comment>): Promise<Comment> => {
     try {
-      const response = await api.post<{ message: string; comment_id: string }>('/api/comments/', comment);
-      return { ...comment, id: response.data.comment_id } as Comment;
+      const response = await api.post<any>('/api/comments/', comment);
+      return {
+        id: response.data.id || response.data._id,
+        article_id: response.data.article_id,
+        article_title: response.data.article_title,
+        text: response.data.text,
+        user_id: response.data.user_id,
+        username: response.data.username,
+        created_at: response.data.created_at,
+      } as Comment;
     } catch (err) {
       throw new Error(getErrorMessage(err));
     }
