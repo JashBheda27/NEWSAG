@@ -287,15 +287,10 @@ export const NewsCard: React.FC<NewsCardProps> = ({
             <div className="border border-black p-6 sm:p-10">
                {/* Masthead */}
                <div className="text-center mb-8 pb-4 border-b-4 border-black border-double">
-                  <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest mb-2 px-1">
-                    <span>Vol. 1 — No. 42</span>
-                    <span className="font-serif italic font-bold">Special AI Edition</span>
-                    <span>Est. 2024</span>
+                  <div className="mb-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest italic">Special AI Edition</span>
                   </div>
                   <h4 className="font-serif text-3xl sm:text-4xl font-black tracking-tighter uppercase mb-1">The Artificial Dispatch</h4>
-                  <div className="border-t border-black mt-2 pt-1 text-[10px] font-bold uppercase tracking-[0.2em]">
-                    Summarized by Gemini Intelligence • {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                  </div>
                </div>
 
                {/* Headline */}
