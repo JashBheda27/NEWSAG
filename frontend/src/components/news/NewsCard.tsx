@@ -155,36 +155,69 @@ export const NewsCard: React.FC<NewsCardProps> = ({
           </div>
         </div>
 
-        <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="✨ Article AI Summary">
+        <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
           {isLoadingSummary ? (
-            <div className="py-12 flex flex-col items-center justify-center">
-              <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-              <p className="text-slate-500 animate-pulse font-medium">Reading between the lines...</p>
+            <div className="py-20 flex flex-col items-center justify-center">
+              <div className="w-12 h-12 border-4 border-slate-900 border-t-transparent rounded-full animate-spin mb-4"></div>
+              <p className="text-slate-500 font-serif italic animate-pulse">Consulting the archives...</p>
             </div>
           ) : summaryError ? (
-            <div className="py-8 text-center">
-               <div className="w-12 h-12 bg-rose-50 dark:bg-rose-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-6 h-6 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-               </div>
-               <h4 className="font-bold text-lg mb-2">Summarization Failed</h4>
-               <p className="text-slate-500 dark:text-slate-400 mb-6 px-4">{summaryError}</p>
-               <div className="flex justify-center gap-3">
-                  <Button variant="outline" onClick={() => setIsModalOpen(false)}>Close</Button>
-                  <Button onClick={handleSummary}>Retry Summary</Button>
-               </div>
+            <div className="py-8 text-center font-serif">
+               <h4 className="font-serif text-2xl mb-4">DISPATCH ERROR</h4>
+               <p className="text-slate-600 mb-6">{summaryError}</p>
+               <Button onClick={() => setIsModalOpen(false)}>Close Bulletin</Button>
             </div>
           ) : (
-            <div className="space-y-4">
-              <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800/50">
-                 <p className="text-slate-700 dark:text-slate-300 leading-relaxed italic">
-                   "{summary}"
-                 </p>
-              </div>
-              <div className="flex justify-end gap-3 pt-4">
-                <Button variant="outline" onClick={() => setIsModalOpen(false)}>Close</Button>
-                <Button onClick={() => window.open(article.url, '_blank')}>Read Full Article</Button>
+            <div className="newspaper-paper p-1 border-2 border-black max-h-[80vh] overflow-y-auto">
+              <div className="border border-black p-4 sm:p-6">
+                 {/* Masthead */}
+                 <div className="text-center mb-6 pb-3 border-b-4 border-black border-double">
+                    <div className="mb-1">
+                      <span className="text-[8px] font-normal uppercase tracking-widest italic">Special AI Edition</span>
+                    </div>
+                    <h4 className="font-serif text-xl sm:text-2xl font-normal tracking-tight uppercase mb-1">
+                      {typeof article.source === 'string' ? article.source : article.source?.name || 'The Artificial Dispatch'}
+                    </h4>
+                 </div>
+
+                 {/* Headline */}
+                 <h2 className="font-serif text-lg sm:text-xl font-normal mb-4 leading-tight text-center italic">
+                   "{article.title}"
+                 </h2>
+
+                 {/* 2-Column Text Body */}
+                 <div 
+                   className="text-sm leading-relaxed text-justify md:columns-2 gap-6 whitespace-pre-wrap" 
+                   style={{ 
+                     fontFamily: 'Georgia, "Times New Roman", serif',
+                     fontWeight: '300',
+                     opacity: 0.85,
+                     color: '#333'
+                   }}
+                 >
+                   {summary}
+                 </div>
+
+                 {/* Traditional Rule Line & Actions */}
+                 <div className="mt-8 pt-4 border-t border-black flex flex-col sm:flex-row justify-between items-center gap-3">
+                    <div className="text-[8px] font-normal uppercase tracking-widest italic opacity-60">
+                      — End of Briefing —
+                    </div>
+                    <div className="flex gap-3">
+                      <button 
+                        onClick={() => setIsModalOpen(false)}
+                        className="text-xs font-normal uppercase tracking-widest border-b-2 border-black hover:opacity-60 transition-opacity"
+                      >
+                        Close
+                      </button>
+                      <button 
+                        onClick={() => window.open(article.url, '_blank')}
+                        className="text-xs font-normal uppercase tracking-widest border-2 border-black px-3 py-1.5 hover:bg-black hover:text-white transition-all"
+                      >
+                        Read Full Article
+                      </button>
+                    </div>
+                 </div>
               </div>
             </div>
           )}
@@ -301,7 +334,15 @@ export const NewsCard: React.FC<NewsCardProps> = ({
                </h2>
 
                {/* 2-Column Text Body */}
-               <div className="font-serif text-sm font-normal leading-relaxed text-justify md:columns-2 gap-6 dropped-cap whitespace-pre-wrap opacity-90">
+               <div 
+                 className="text-sm leading-relaxed text-justify md:columns-2 gap-6 whitespace-pre-wrap" 
+                 style={{ 
+                   fontFamily: 'Georgia, "Times New Roman", serif',
+                   fontWeight: '300',
+                   opacity: 0.85,
+                   color: '#333'
+                 }}
+               >
                  {summary}
                </div>
 
