@@ -2,7 +2,42 @@ import { api, getErrorMessage } from './api';
 import type { Article, SentimentData, SummaryData } from '../types';
 import type { Topic } from '../types';
 
+// Trending headline type (lightweight for ticker)
+export interface TrendingHeadline {
+  id: string;
+  title: string;
+  source: string;
+  url: string;
+  published_at?: string;
+  category?: string;
+}
+
 export const newsService = {
+  // --------------------------------------------------
+  // TRENDING HEADLINES (BULLETIN TICKER)
+  // --------------------------------------------------
+  getTrendingHeadlines: async (
+    maxItems: number = 8
+  ): Promise<{ headlines: TrendingHeadline[]; isDemo: boolean }> => {
+    try {
+      const response = await api.get<{
+        headlines: TrendingHeadline[];
+        count: number;
+        source: string;
+      }>(`/api/news/trending/headlines`, {
+        params: { max_items: maxItems }
+      });
+
+      return {
+        headlines: response.data.headlines,
+        isDemo: false,
+      };
+    } catch (err: unknown) {
+      console.error('Failed to fetch trending headlines:', err);
+      throw new Error(getErrorMessage(err));
+    }
+  },
+
   // --------------------------------------------------
   // INDIA TOPIC-BASED NEWS
   // --------------------------------------------------
