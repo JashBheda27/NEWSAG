@@ -11,6 +11,99 @@ logger = logging.getLogger(__name__)
 # Default categories
 CATEGORIES = ["general", "nation", "business", "technology", "sports", "entertainment", "health"]
 
+
+# -----------------------------
+# GET TRENDING HEADLINES (BULLETIN)
+# -----------------------------
+@router.get("/trending/headlines")
+async def get_trending_headlines(max_items: int = 8):
+    """
+    Fetch trending top headlines for the bulletin ticker.
+    Uses cached general news or fetches fresh if needed.
+    Returns lightweight headline data for the ticker display.
+    """
+    cache_key = "gnews:trending:headlines"
+    
+    # Try trending headlines cache first
+    cached = await get_from_cache(cache_key)
+    if cached:
+        logger.info(f"[CACHE HIT] trending headlines | count={len(cached)}")
+        hit_status = await GNewsCounter.get_hit_status()
+        return {
+            "source": "cache",
+            "count": len(cached),
+            "headlines": cached,
+            "hits": hit_status,
+        }
+    
+    # Fallback: Use general news cache to avoid extra API hit
+    logger.info("[CACHE MISS] trending headlines | checking general news cache...")
+    general_cache = await get_from_cache("gnews:general")
+    
+    if general_cache:
+        logger.info(f"[CACHE HIT] general news for trending | extracting {max_items} headlines")
+        # Extract headlines from cached general news
+        headlines = [
+            {
+                "id": article.get("id"),
+                "title": article.get("title"),
+                "source": article.get("source"),
+                "url": article.get("url"),
+                "published_at": article.get("published_at"),
+                "category": article.get("category", "general"),
+            }
+            for article in general_cache[:max_items]
+        ]
+        # Cache the extracted headlines with shorter TTL
+        await set_in_cache(cache_key, headlines, ttl=60 * 10)  # 10 min TTL
+        logger.info(f"[CACHE SET] trending headlines | count={len(headlines)} | ttl=600s")
+        hit_status = await GNewsCounter.get_hit_status()
+        return {
+            "source": "cache",
+            "count": len(headlines),
+            "headlines": headlines,
+            "hits": hit_status,
+        }
+    
+    # No cache available - fetch fresh general news (uses 1 API hit)
+    logger.warning("[GNEWS HIT] trending headlines | no cache available, fetching fresh...")
+    try:
+        articles = await GNewsService.fetch_category("general")
+        logger.info(f"[GNEWS OK] trending headlines | fetched {len(articles)} articles")
+    except Exception as e:
+        logger.error(f"[GNEWS ERROR] trending headlines | {str(e)}")
+        raise HTTPException(status_code=502, detail=str(e))
+    
+    # Extract headlines (no sentiment needed for ticker - faster response)
+    headlines = [
+        {
+            "id": article.get("id"),
+            "title": article.get("title"),
+            "source": article.get("source"),
+            "url": article.get("url"),
+            "published_at": article.get("published_at"),
+            "category": article.get("category", "general"),
+        }
+        for article in articles[:max_items]
+    ]
+    
+    # Cache trending headlines
+    await set_in_cache(cache_key, headlines, ttl=60 * 10)  # 10 min TTL
+    logger.info(f"[CACHE SET] trending headlines | count={len(headlines)} | ttl=600s")
+    
+    # Also cache full articles for general category (avoids double fetch)
+    await set_in_cache("gnews:general", articles)
+    logger.info(f"[CACHE SET] general news (from trending) | count={len(articles)}")
+    
+    hit_status = await GNewsCounter.get_hit_status()
+    
+    return {
+        "source": "api",
+        "count": len(headlines),
+        "headlines": headlines,
+        "hits": hit_status,
+    }
+
 # --------------------------------------------------
 # HELPER: Add ML-based sentiment to articles
 # --------------------------------------------------
