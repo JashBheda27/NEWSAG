@@ -8,3 +8,5 @@ email-validator
 redis
 transformers
 torch
+numpy<2
+pyjwt[crypto]
