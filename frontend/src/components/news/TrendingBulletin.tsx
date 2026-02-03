@@ -80,15 +80,15 @@ export const TrendingBulletin: React.FC<TrendingBulletinProps> = ({ onError }) =
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 dark:from-slate-950 dark:via-indigo-950/80 dark:to-slate-950 rounded-2xl overflow-hidden border border-indigo-500/20 shadow-lg shadow-indigo-500/5">
+      <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 dark:from-blue-700 dark:via-indigo-700 dark:to-purple-700 rounded-2xl overflow-hidden border border-indigo-400/30 dark:border-indigo-500/30 shadow-lg shadow-indigo-500/20">
         {/* Top bar with label and navigation */}
-        <div className="flex items-center justify-between px-4 py-2 bg-indigo-600/10 border-b border-indigo-500/20">
+        <div className="flex items-center justify-between px-4 py-2 bg-white/10 backdrop-blur-sm border-b border-white/20">
           <div className="flex items-center gap-3">
-            <span className="flex items-center gap-2 px-3 py-1 bg-indigo-500 text-white rounded-full text-[10px] font-black uppercase tracking-widest">
-              <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
+            <span className="flex items-center gap-2 px-3 py-1 bg-white text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">
+              <span className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-pulse"></span>
               LIVE TRENDS
             </span>
-            <span className="text-indigo-300/70 text-xs font-medium hidden sm:block">
+            <span className="text-white/90 text-xs font-medium hidden sm:block">
               Top stories from India
             </span>
           </div>
@@ -99,10 +99,10 @@ export const TrendingBulletin: React.FC<TrendingBulletinProps> = ({ onError }) =
               <button
                 key={idx}
                 onClick={() => setActiveIndex(idx)}
-                className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
+                className={`h-1.5 rounded-full transition-all duration-300 ${
                   idx === activeIndex 
-                    ? 'bg-indigo-400 w-4' 
-                    : 'bg-indigo-600/50 hover:bg-indigo-500/70'
+                    ? 'bg-white w-6' 
+                    : 'bg-white/40 hover:bg-white/60 w-1.5'
                 }`}
               />
             ))}
@@ -128,21 +128,21 @@ export const TrendingBulletin: React.FC<TrendingBulletinProps> = ({ onError }) =
             >
               <div className="flex items-center gap-4 w-full group">
                 {/* Index number */}
-                <span className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-indigo-500/20 text-indigo-400 rounded-lg text-sm font-black">
+                <span className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-white/20 backdrop-blur-sm text-white rounded-lg text-sm font-black">
                   {String(idx + 1).padStart(2, '0')}
                 </span>
                 
                 {/* Headline text */}
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-slate-200 font-semibold text-sm sm:text-base truncate group-hover:text-slate-100 transition-colors">
+                  <h4 className="text-white font-semibold text-sm sm:text-base truncate group-hover:text-white/90 transition-colors">
                     {headline.title}
                   </h4>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-indigo-400 text-xs font-semibold">
+                    <span className="text-white/80 text-xs font-semibold">
                       {headline.source}
                     </span>
-                    <span className="text-slate-500 text-xs">•</span>
-                    <span className="text-slate-400 text-xs">
+                    <span className="text-white/50 text-xs">•</span>
+                    <span className="text-white/70 text-xs">
                       {formatTimeAgo(headline.published_at)}
                     </span>
                   </div>
@@ -150,7 +150,7 @@ export const TrendingBulletin: React.FC<TrendingBulletinProps> = ({ onError }) =
 
                 {/* Arrow indicator */}
                 <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <svg className="w-5 h-5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                   </svg>
                 </div>
@@ -160,7 +160,7 @@ export const TrendingBulletin: React.FC<TrendingBulletinProps> = ({ onError }) =
         </div>
 
         {/* Bottom scrolling ticker (continuous) */}
-        <div className="border-t border-indigo-500/20 bg-slate-950/50 overflow-hidden">
+        <div className="border-t border-white/20 bg-white/5 backdrop-blur-sm overflow-hidden">
           <div className="flex animate-scroll-x whitespace-nowrap py-2">
             {[...headlines, ...headlines].map((headline, idx) => (
               <a
@@ -168,11 +168,11 @@ export const TrendingBulletin: React.FC<TrendingBulletinProps> = ({ onError }) =
                 href={headline.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 text-xs text-slate-400 hover:text-indigo-300 transition-colors"
+                className="inline-flex items-center gap-2 px-4 text-xs text-white/80 hover:text-white transition-colors"
               >
-                <span className="text-indigo-500">●</span>
+                <span className="text-white/60">●</span>
                 <span className="truncate max-w-[300px]">{headline.title}</span>
-                <span className="text-slate-600">|</span>
+                <span className="text-white/40">|</span>
               </a>
             ))}
           </div>

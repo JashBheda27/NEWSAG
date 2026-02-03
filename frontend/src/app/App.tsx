@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { AppRouter } from './router';
 import { Navbar } from '../components/layout/Navbar';
+import { Sidebar } from '../components/layout/Sidebar';
 import { Footer } from '../components/layout/Footer';
 import { Toast } from '../components/ui/Toast';
 import { FeedbackFAB } from '../components/ui/FeedbackFAB';
@@ -29,7 +30,9 @@ const App: React.FC = () => {
           isDark={isDark}
         />
 
-        <main className="flex-grow">
+        <Sidebar />
+
+        <main className="flex-grow lg:ml-64">
           <AppRouter showNotification={showNotification} />
         </main>
 
