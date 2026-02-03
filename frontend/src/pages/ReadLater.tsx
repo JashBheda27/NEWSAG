@@ -34,7 +34,7 @@ export const ReadLater: React.FC = () => {
   };
 
   return (
-    <div className="w-full px-4 md:px-8 py-12 animate-fade-in">
+    <div className="w-full max-w-[calc(100vw-120px)] lg:max-w-[calc(100vw-140px)] px-4 md:px-8 py-12 animate-fade-in">
       <h2 className="text-3xl font-black mb-8 flex items-center gap-4">
         ⏳ Read Later
         <span className="text-sm font-bold bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full text-slate-500">{items.length}</span>
