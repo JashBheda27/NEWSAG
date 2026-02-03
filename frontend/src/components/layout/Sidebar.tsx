@@ -113,7 +113,7 @@ export const Sidebar: React.FC = () => {
         }
 
         .sidebar-container:hover {
-          width: 300px;
+          width: 260px;
         }
 
         /* Left Icon Rail */
@@ -186,7 +186,7 @@ export const Sidebar: React.FC = () => {
         }
 
         .sidebar-container:hover .sidebar-right {
-          width: 220px;
+          width: 180px;
         }
 
         .sidebar-right-inner {
@@ -209,7 +209,7 @@ export const Sidebar: React.FC = () => {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
-          padding: 20px 16px;
+          padding: 16px 12px;
           border-bottom: 1px solid rgb(226, 232, 240);
         }
 
@@ -218,24 +218,24 @@ export const Sidebar: React.FC = () => {
         }
 
         .sidebar-nav-items {
-          padding: 12px;
+          padding: 8px;
           display: flex;
           flex-direction: column;
-          gap: 4px;
+          gap: 2px;
         }
 
         .sidebar-nav-btn {
           width: 100%;
-          height: 44px;
+          height: 40px;
           display: flex;
           align-items: center;
-          gap: 12px;
-          padding: 0 12px;
+          gap: 10px;
+          padding: 0 10px;
           border-radius: 10px;
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           color: rgb(71, 85, 105);
           font-weight: 600;
-          font-size: 14px;
+          font-size: 13px;
         }
 
         .dark .sidebar-nav-btn {
