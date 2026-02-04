@@ -71,38 +71,6 @@ export const Profile: React.FC = () => {
           </div>
         </div>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12">
-        <Link to="/bookmarks" className="group bg-indigo-600 p-8 rounded-[2rem] text-white shadow-xl shadow-indigo-600/20 hover:-translate-y-1 transition-all">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-3 bg-white/20 rounded-2xl">
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-              </svg>
-            </div>
-            <svg className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </div>
-          <h3 className="text-xl font-black mb-1">My Bookmarks</h3>
-          <p className="text-indigo-100 text-sm font-medium">Stories you want to keep forever.</p>
-        </Link>
-
-        <Link to="/read-later" className="group bg-emerald-600 p-8 rounded-[2rem] text-white shadow-xl shadow-emerald-600/20 hover:-translate-y-1 transition-all">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-3 bg-white/20 rounded-2xl">
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <svg className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </div>
-          <h3 className="text-xl font-black mb-1">Read Later</h3>
-          <p className="text-emerald-100 text-sm font-medium">Clear your queue when you have time.</p>
-        </Link>
-      </div>
     </div>
   );
 };
