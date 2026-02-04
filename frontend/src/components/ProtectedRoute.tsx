@@ -12,7 +12,7 @@ interface ProtectedRouteProps {
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   requiredCategory,
-  fallback,
+  
 }) => {
   const { isLoaded, isSignedIn } = useUser();
   const navigate = useNavigate();
