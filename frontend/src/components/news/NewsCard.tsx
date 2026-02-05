@@ -30,6 +30,7 @@ export const NewsCard: React.FC<NewsCardProps> = ({
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
 
   const handleSummary = async () => {
     setIsModalOpen(true);
@@ -168,8 +169,11 @@ export const NewsCard: React.FC<NewsCardProps> = ({
                <Button onClick={() => setIsModalOpen(false)}>Close Bulletin</Button>
             </div>
           ) : (
-            <div className="newspaper-paper p-1 border-2 border-black max-h-[80vh] overflow-y-auto">
-              <div className="border border-black p-4 sm:p-6">
+            <div
+              className="newspaper-paper border border-black w-full"
+              style={{ outline: '1px solid #000', outlineOffset: '4px' }}
+            >
+              <div className="border p-4 sm:p-6" style={{ borderColor: '#d0d0d0', borderWidth: '1px' }}>
                  {/* Masthead */}
                  <div className="text-center mb-6 pb-3 border-b-4 border-black border-double">
                     <div className="mb-1">
@@ -198,28 +202,57 @@ export const NewsCard: React.FC<NewsCardProps> = ({
                    }}
                  >
                    {summary}
-                 </div>
-
-                 {/* Traditional Rule Line & Actions */}
-                 <div className="mt-8 pt-4 border-t border-black flex flex-col sm:flex-row justify-between items-center gap-3">
-                    <div className="text-[8px] font-normal uppercase tracking-widest italic opacity-60">
-                      — End of Briefing —
+                </div>
+              
+                {/* Horizontal Line Separator */}
+                <div className="border-t border-black mt-6"></div>
+              
+                {/* Action Footer */}
+                <div className="px-6 py-3" style={{backgroundColor: '#fdfcf0'}}>
+                  <div className="flex items-center justify-center gap-4">
+                    {/* Icon Buttons - Like & Comment */}
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => setIsCommentsOpen(true)}
+                        className="p-1.5 hover:opacity-60 transition-opacity"
+                        title="Comments"
+                        style={{color: '#333'}}
+                      >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                      </button>
+                      <button 
+                        onClick={() => setIsLiked(!isLiked)}
+                        className="p-1.5 hover:opacity-60 transition-opacity"
+                        title="Like"
+                        style={{color: '#333'}}
+                      >
+                        <svg className="w-5 h-5" fill={isLiked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                        </svg>
+                      </button>
                     </div>
-                    <div className="flex gap-3">
+
+                    <div className="h-4 w-px" style={{backgroundColor: '#333', opacity: 0.3}}></div>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center gap-3">
                       <button 
                         onClick={() => setIsModalOpen(false)}
-                        className="text-xs font-normal uppercase tracking-widest border-b-2 border-white hover:opacity-60 transition-opacity text-black dark:text-white"
+                        className="text-[10px] font-normal uppercase tracking-widest text-slate-700 dark:text-slate-200 px-2 py-1 rounded hover:text-white dark:hover:text-white hover:bg-indigo-600 dark:hover:bg-indigo-500 transition-colors"
                       >
                         Close
                       </button>
                       <button 
                         onClick={() => window.open(article.url, '_blank')}
-                        className="text-xs font-normal uppercase tracking-widest border-2 border-white bg-white text-black px-3 py-1.5 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 active:bg-indigo-700 transition-all"
+                        className="text-[10px] font-normal uppercase tracking-widest border border-slate-800 dark:border-slate-200 px-3 py-1 text-slate-900 dark:text-slate-100 bg-[#fdfcf0] dark:bg-slate-900/80 hover:text-white dark:hover:text-white hover:border-indigo-600 dark:hover:border-indigo-300 hover:bg-indigo-600 dark:hover:bg-indigo-500 transition-colors"
                       >
                         Read Full Article
                       </button>
                     </div>
-                 </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -318,8 +351,11 @@ export const NewsCard: React.FC<NewsCardProps> = ({
              <Button onClick={() => setIsModalOpen(false)}>Close Bulletin</Button>
           </div>
         ) : (
-          <div className="newspaper-paper p-1 border-2 border-black max-h-[80vh] overflow-y-auto">
-            <div className="border border-black p-4 sm:p-6">
+          <div
+            className="newspaper-paper border border-black w-full"
+            style={{ outline: '1px solid #000', outlineOffset: '4px' }}
+          >
+            <div className="border p-4 sm:p-6" style={{ borderColor: '#d0d0d0', borderWidth: '1px' }}>
                {/* Masthead */}
                <div className="text-center mb-6 pb-3 border-b-4 border-black border-double">
                   <div className="mb-1">
@@ -348,28 +384,57 @@ export const NewsCard: React.FC<NewsCardProps> = ({
                  }}
                >
                  {summary}
-               </div>
+              </div>
+            
+            {/* Horizontal Line Separator */}
+            <div className="border-t border-black mt-6" ></div>
+            
+            {/* Action Footer */}
+            <div className="px-6 py-3" style={{backgroundColor: '#fdfcf0'}}>
+              <div className="flex items-center justify-center gap-4">
+                {/* Icon Buttons - Like & Comment */}
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => setIsCommentsOpen(true)}
+                    className="p-1.5 hover:opacity-60 transition-opacity"
+                    title="Comments"
+                    style={{color: '#333'}}
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  </button>
+                  <button 
+                    onClick={() => setIsLiked(!isLiked)}
+                    className="p-1.5 hover:opacity-60 transition-opacity"
+                    title="Like"
+                    style={{color: '#333'}}
+                  >
+                    <svg className="w-5 h-5" fill={isLiked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                  </button>
+                </div>
 
-               {/* Traditional Rule Line & Actions */}
-               <div className="mt-8 pt-4 border-t border-black flex flex-col sm:flex-row justify-between items-center gap-3">
-                  <div className="text-[8px] font-normal uppercase tracking-widest italic opacity-60">
-                    — End of Briefing —
-                  </div>
-                  <div className="flex gap-3">
-                    <button 
-                      onClick={() => setIsModalOpen(false)}
-                      className="text-xs font-normal uppercase tracking-widest border-b-2 border-white hover:opacity-60 transition-opacity text-black dark:text-white"
-                    >
-                      Close
-                    </button>
-                    <button 
-                      onClick={() => window.open(article.url, '_blank')}
-                      className="text-xs font-normal uppercase tracking-widest border-2 border-white bg-white text-black px-3 py-1.5 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 active:bg-indigo-700 transition-all"
-                    >
-                      Read Full Article
-                    </button>
-                  </div>
-               </div>
+                <div className="h-4 w-px" style={{backgroundColor: '#333', opacity: 0.3}}></div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => setIsModalOpen(false)}
+                    className="text-[10px] font-normal uppercase tracking-widest text-slate-700 dark:text-slate-200 px-2 py-1 rounded hover:text-white dark:hover:text-white hover:bg-indigo-600 dark:hover:bg-indigo-500 transition-colors"
+                  >
+                    Close
+                  </button>
+                  <button 
+                    onClick={() => window.open(article.url, '_blank')}
+                    className="text-[10px] font-normal uppercase tracking-widest border border-slate-800 dark:border-slate-200 px-3 py-1 text-slate-900 dark:text-slate-100 bg-[#fdfcf0] dark:bg-slate-900/80 hover:text-white dark:hover:text-white hover:border-indigo-600 dark:hover:border-indigo-300 hover:bg-indigo-600 dark:hover:bg-indigo-500 transition-colors"
+                  >
+                    Read Full Article
+                  </button>
+                </div>
+              </div>
+            </div>
             </div>
           </div>
         )}
