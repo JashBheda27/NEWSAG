@@ -127,44 +127,12 @@ async def get_trending_headlines(max_items: int = 8):
             "hits": hit_status,
         }
     
-    # No cache available - fetch fresh general news (uses 1 API hit)
-    logger.warning("[GNEWS HIT] trending headlines | no cache available, fetching fresh...")
-    try:
-        articles = await GNewsService.fetch_category("general")
-        logger.info(f"[GNEWS OK] trending headlines | fetched {len(articles)} articles")
-    except Exception as e:
-        logger.error(f"[GNEWS ERROR] trending headlines | {str(e)}")
-        raise HTTPException(status_code=502, detail=str(e))
-    
-    # Extract headlines (no sentiment needed for ticker - faster response)
-    headlines = [
-        {
-            "id": article.get("id"),
-            "title": article.get("title"),
-            "source": article.get("source"),
-            "url": article.get("url"),
-            "published_at": article.get("published_at"),
-            "category": article.get("category", "general"),
-        }
-        for article in articles[:max_items]
-    ]
-    
-    # Cache trending headlines
-    await set_in_cache(cache_key, headlines, ttl=60 * 10)  # 10 min TTL
-    logger.info(f"[CACHE SET] trending headlines | count={len(headlines)} | ttl=600s")
-    
-    # Also cache full articles for general category (avoids double fetch)
-    await set_in_cache("gnews:general", articles)
-    logger.info(f"[CACHE SET] general news (from trending) | count={len(articles)}")
-    
-    hit_status = await GNewsCounter.get_hit_status()
-    
-    return {
-        "source": "api",
-        "count": len(headlines),
-        "headlines": headlines,
-        "hits": hit_status,
-    }
+    # No cache available - do NOT fetch to avoid extra API hits
+    logger.warning("[CACHE MISS] trending headlines | no cache available, skipping API fetch")
+    raise HTTPException(
+        status_code=503,
+        detail="Trending headlines are unavailable until the news cache is populated."
+    )
 
 # --------------------------------------------------
 # HELPER: Add ML-based sentiment to articles
@@ -203,6 +171,15 @@ async def get_news_by_topic(topic: str):
 
     cached = await get_from_cache(cache_key)
     if cached:
+        updated = False
+        for article in cached:
+            if "content_is_full" not in article:
+                content_value = article.get("content")
+                article["content_is_full"] = GNewsService.is_content_complete(content_value)
+                updated = True
+        if updated:
+            await set_in_cache(cache_key, cached)
+            logger.info(f"[CACHE UPDATE] {topic} | added content_is_full")
         logger.info(f"[CACHE HIT] {topic}")
         # Cached articles ALREADY have sentiment - do NOT recompute
         # (Sentiment was added before caching, see API fetch branch below)
@@ -225,6 +202,16 @@ async def get_news_by_topic(topic: str):
     articles = await add_sentiment_to_articles(articles)
     
     await set_in_cache(cache_key, articles)
+    full_count = sum(1 for article in articles if article.get("content_is_full"))
+    partial_count = sum(1 for article in articles if article.get("content") and not article.get("content_is_full"))
+    missing_count = sum(1 for article in articles if not article.get("content"))
+    logger.info(
+        "[CACHE SET] %s | content_full=%d partial=%d missing=%d",
+        topic,
+        full_count,
+        partial_count,
+        missing_count,
+    )
     
     # ✅ Get hit status after API call
     hit_status = await GNewsCounter.get_hit_status()
