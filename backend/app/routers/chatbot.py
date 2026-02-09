@@ -203,6 +203,23 @@ async def find_article_in_cache(article_id: str) -> Optional[dict]:
     return None
 
 
+def is_article_content_complete(article: dict) -> bool:
+    """Heuristic to detect whether cached content looks complete."""
+    content = article.get("content")
+    if not content or not isinstance(content, str):
+        return False
+    content_stripped = content.strip()
+    if not content_stripped:
+        return False
+    lowered = content_stripped.lower()
+    truncation_markers = ["[+", "read more", "continue reading", "...", "…"]
+    if any(marker in lowered for marker in truncation_markers):
+        return False
+    if content_stripped.endswith(("...", "…")):
+        return False
+    return True
+
+
 async def get_user_analytics(db, user_id: str) -> dict:
     """Get analytics data for the user."""
     bookmarks_count = await db.bookmarks.count_documents({"user_id": user_id})
@@ -290,6 +307,38 @@ def build_llm_context(
     This ensures the LLM ONLY has access to user's saved data.
     """
     context_parts = []
+
+    if intent == "news_feed":
+        if cached_articles:
+            context_parts.append("=== CURRENT NEWS FEED ===")
+            for i, item in enumerate(cached_articles[:8], 1):
+                title = item.get("title", "Untitled")[:80]
+                source = item.get("source", "Unknown")
+                if isinstance(source, dict):
+                    source = source.get("name", "Unknown")
+                cat = item.get("category", "general")
+                context_parts.append(f"{i}. [{cat.upper()}] {title} — {source}")
+            context_parts.append("")
+        return "\n".join(context_parts)
+
+    if intent in ("article_qa", "explain_simple"):
+        if article:
+            context_parts.append("=== CURRENT ARTICLE ===")
+            context_parts.append(f"Title: {article.get('title', 'Untitled')}")
+            source = article.get('source', 'Unknown')
+            if isinstance(source, dict):
+                source = source.get('name', 'Unknown')
+            context_parts.append(f"Source: {source}")
+            context_parts.append(f"Category: {article.get('category', 'general')}")
+            if article.get('content'):
+                context_parts.append(f"Content: {article.get('content')}")
+            elif article.get('description'):
+                context_parts.append(f"Description: {article.get('description')}")
+            if isinstance(article.get('sentiment'), dict):
+                sentiment = article['sentiment']
+                context_parts.append(f"Sentiment: {sentiment.get('label', 'Unknown')}")
+            context_parts.append("")
+        return "\n".join(context_parts)
     
     # Add specific article context if provided
     if article:
@@ -301,9 +350,9 @@ def build_llm_context(
         context_parts.append(f"Source: {source}")
         context_parts.append(f"Category: {article.get('category', 'general')}")
         if article.get('content'):
-            context_parts.append(f"Content: {article.get('content')[:600]}")
+            context_parts.append(f"Content: {article.get('content')}")
         elif article.get('description'):
-            context_parts.append(f"Description: {article.get('description')[:400]}")
+            context_parts.append(f"Description: {article.get('description')}")
         if isinstance(article.get('sentiment'), dict):
             sentiment = article['sentiment']
             context_parts.append(f"Sentiment: {sentiment.get('label', 'Unknown')}")
@@ -351,18 +400,6 @@ def build_llm_context(
             context_parts.append(f"{i}. {title} — {source} ({cat})")
         context_parts.append("")
 
-    # Add cached news feed articles (skip if a specific article is already provided to keep context small)
-    if cached_articles and not article:
-        context_parts.append("=== CURRENT NEWS FEED (Latest Articles) ===")
-        for i, item in enumerate(cached_articles[:8], 1):
-            title = item.get('title', 'Untitled')[:80]
-            source = item.get('source', 'Unknown')
-            if isinstance(source, dict):
-                source = source.get('name', 'Unknown')
-            cat = item.get('category', 'general')
-            context_parts.append(f"{i}. [{cat.upper()}] {title} — {source}")
-        context_parts.append("")
-    
     return "\n".join(context_parts)
 
 
@@ -435,7 +472,7 @@ def generate_daily_briefing(bookmarks: list, read_later: list, analytics: dict) 
 def generate_article_qa_response(article: Optional[dict], question: str) -> str:
     """Answer questions about a specific article."""
     if not article:
-        return "I couldn't find that article in your saved items. Make sure you've bookmarked or saved it to Read Later first."
+        return "I don't have enough information to answer that based on the available articles."
     
     title = article.get("title", "Unknown title")
     source = article.get("source", "Unknown source")
@@ -691,22 +728,37 @@ async def chat_message(
     
     # Article context override
     article_id = context.get("article_id")
+
+    if intent == "article_qa" and not article_id:
+        return ChatMessageResponse(
+            reply=(
+                "Please select an article first. Use the article card's Ask AI option so I can answer about a specific article."
+            ),
+            intent=intent,
+            sources=[],
+        )
     
     # Fetch user data + cached news
-    bookmarks = await get_user_bookmarks(db, user_id)
-    read_later = await get_user_read_later(db, user_id)
-    analytics = await get_user_analytics(db, user_id)
-    cached_articles = await get_cached_news_articles(limit_per_category=3)
+    if intent == "news_feed":
+        bookmarks = []
+        read_later = []
+        analytics = {}
+        cached_articles = await get_cached_news_articles(limit_per_category=3)
+    else:
+        bookmarks = await get_user_bookmarks(db, user_id)
+        read_later = await get_user_read_later(db, user_id)
+        analytics = await get_user_analytics(db, user_id)
+        cached_articles = await get_cached_news_articles(limit_per_category=3)
     
     # Fetch specific article if referenced
     article = None
+    article_from_cache = False
     if article_id:
         # Check user's saved items first, then fall back to cache
         article = await get_article_by_id(db, user_id, article_id)
         if not article:
             article = await find_article_in_cache(article_id)
-    elif intent == "article_qa" and bookmarks:
-        article = bookmarks[0]  # Default to most recent
+            article_from_cache = article is not None
     
     sources = []
     reply = ""
@@ -715,8 +767,10 @@ async def chat_message(
     # Determine data sources based on intent
     if intent in ("summarize_saved", "article_qa", "explain_simple", "compare_articles"):
         sources = ["bookmarks", "read_later", "news_cache"]
-    elif intent in ("daily_briefing", "read_recommendation", "similar_read", "news_feed"):
+    elif intent in ("daily_briefing", "read_recommendation", "similar_read"):
         sources = ["bookmarks", "read_later", "analytics", "news_cache"]
+    elif intent == "news_feed":
+        sources = ["news_cache"]
     elif intent in ("top_topics", "sentiment_insight", "greeting"):
         sources = ["analytics"]
     elif intent == "help":
@@ -810,6 +864,11 @@ async def chat_message(
             if not reply:
                 reply = generate_fallback_response(message)
     
+    if article_from_cache and article:
+        content_complete = is_article_content_complete(article)
+        availability_note = "full" if content_complete else "partial"
+        reply = f"{reply}\n\nCached article text: {availability_note}."
+
     # Optional: Store chat message
     try:
         await db.chat_messages.insert_one({
