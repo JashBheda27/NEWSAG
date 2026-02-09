@@ -18,6 +18,22 @@ MAX_ARTICLES = 20  # HARD CAP
 
 class GNewsService:
     @staticmethod
+    def is_content_complete(content: str) -> bool:
+        """Best-effort check for full article text in GNews content."""
+        if not content or not isinstance(content, str):
+            return False
+        content_stripped = content.strip()
+        if not content_stripped:
+            return False
+        lowered = content_stripped.lower()
+        truncation_markers = ["[+", "read more", "continue reading", "...", "…"]
+        if any(marker in lowered for marker in truncation_markers):
+            return False
+        if content_stripped.endswith(("...", "…")):
+            return False
+        return True
+
+    @staticmethod
     async def fetch_category(category: str) -> List[Dict]:
         if category not in ALLOWED_CATEGORIES:
             category = "general"
@@ -57,11 +73,13 @@ class GNewsService:
                 item["url"].encode()
             ).hexdigest()
 
+            content_value = item.get("content")
             articles.append({
                 "id": article_id,
                 "title": item["title"],
                 "description": item.get("description"),
-                "content": item.get("content"),  # ✅ Added: Full content from GNews
+                "content": content_value,  # ✅ Added: Full content from GNews
+                "content_is_full": GNewsService.is_content_complete(content_value),
                 "image_url": item.get("image"),
                 "source": item.get("source", {}).get("name"),
                 "url": item["url"],
