@@ -72,14 +72,6 @@ button {
   cursor: pointer;
   transition: all 0.25s;
 }
-button:hover {
-  background-color: #4f46e5;
-  color: #ffffff;
-  border-color: #4f46e5;
-}
-button:active {
-  background-color: #4338ca;
-}
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;

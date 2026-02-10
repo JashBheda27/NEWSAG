@@ -153,12 +153,12 @@ export const NewsCard: React.FC<NewsCardProps> = ({
             </div>
             
             <div className="flex gap-2">
-              <Button variant="ghost" size="sm" onClick={handleSummary} className="text-indigo-600 font-bold dark:text-indigo-400 text-xs opacity-70 group-hover/action:opacity-100">
+              <Button variant="ghost" size="sm" onClick={handleSummary} className="text-indigo-600 font-bold dark:text-indigo-400 text-xs opacity-95 group-hover/action:opacity-100 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500 transition-colors">
                 ✨ AI Summary
               </Button>
               <button
                 onClick={() => openChatWithArticle(article.id, article.title)}
-                className="px-2 py-1 text-xs font-bold text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors opacity-70 group-hover/action:opacity-100"
+                className="px-2 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500 rounded-lg transition-colors opacity-95 group-hover/action:opacity-100"
                 title="Ask AI about this article"
               >
                 🤖 Ask AI
@@ -345,12 +345,12 @@ export const NewsCard: React.FC<NewsCardProps> = ({
           </div>
           
           <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={handleSummary} className="text-indigo-600 font-bold dark:text-indigo-400 text-xs opacity-70 group-hover/action:opacity-100">
+            <Button variant="ghost" size="sm" onClick={handleSummary} className="text-indigo-600 font-bold dark:text-indigo-400 text-xs opacity-95 group-hover/action:opacity-100 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500 transition-colors">
               ✨ AI Summary
             </Button>
             <button
               onClick={() => openChatWithArticle(article.id, article.title)}
-              className="px-2 py-1 text-xs font-bold text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors opacity-70 group-hover/action:opacity-100"
+              className="px-2 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500 rounded-lg transition-colors opacity-95 group-hover/action:opacity-100"
               title="Ask AI about this article"
             >
               🤖 Ask AI
