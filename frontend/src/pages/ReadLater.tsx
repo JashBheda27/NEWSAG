@@ -3,6 +3,7 @@ import type { ReadLaterItem } from '../types';
 import { userService } from '../services/user.service';
 import { Skeleton } from '../components/ui/Skeleton';
 import { Button } from '../components/ui/Button';
+import { formatRelativeTime } from '../utils/timeUtils';
 
 export const ReadLater: React.FC = () => {
   const [items, setItems] = useState<ReadLaterItem[]>([]);
@@ -55,7 +56,9 @@ export const ReadLater: React.FC = () => {
                  <h3 className="font-bold text-lg leading-tight group-hover:text-emerald-600 transition-colors">
                    {item.title}
                  </h3>
-                 <span className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-2 block">Added 2 hours ago</span>
+                 <span className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-2 block">
+                   Added {formatRelativeTime(item.created_at)}
+                 </span>
                </div>
                <div className="flex gap-2">
                  <Button size="sm" variant="ghost" onClick={() => window.open(item.url, '_blank')}>Read</Button>
