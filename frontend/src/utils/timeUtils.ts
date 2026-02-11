@@ -5,7 +5,17 @@ export function formatRelativeTime(dateString?: string): string {
   if (!dateString) return 'Recently';
 
   try {
-    const date = new Date(dateString);
+    // Some backend datetimes are ISO strings without timezone (naive UTC),
+    // e.g. "2026-02-11T07:16:52.928000". JavaScript may interpret those
+    // as local time which causes incorrect offsets (shows 5h ago in IST).
+    // If the string has no timezone indicator, treat it as UTC by appending 'Z'.
+    let iso = dateString;
+    if (/^\d{4}-\d{2}-\d{2}T/.test(dateString) && !/[zZ]|[+-]\d{2}:?\d{2}$/.test(dateString)) {
+      // Trim excessive fractional seconds to milliseconds (3 digits) for Date parsing
+      iso = dateString.replace(/(\.\d{3})\d+/, "$1") + 'Z';
+    }
+
+    const date = new Date(iso);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffSecs = Math.floor(diffMs / 1000);
