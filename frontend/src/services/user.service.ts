@@ -71,8 +71,8 @@ export const userService = {
   },
   addToReadLater: async (item: Partial<ReadLaterItem>): Promise<ReadLaterItem> => {
     try {
-      const response = await api.post<{ message: string; id: string }>('/api/read-later/', item);
-      return { ...item, id: response.data.id } as ReadLaterItem;
+      const response = await api.post<{ message: string; id: string; created_at?: string }>('/api/read-later/', item);
+      return { ...item, id: response.data.id, created_at: response.data.created_at } as ReadLaterItem;
     } catch (err) {
       throw new Error(getErrorMessage(err));
     }
