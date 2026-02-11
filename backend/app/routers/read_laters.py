@@ -27,10 +27,20 @@ async def add_read_later(
     data["user_id"] = user_id
 
     result = await db.read_later.insert_one(data)
+    
+    # fetch the inserted document to return created_at
+    inserted = await db.read_later.find_one({"_id": result.inserted_id})
+    if inserted:
+        inserted_id = str(inserted.get("_id"))
+        created_at = inserted.get("created_at")
+    else:
+        inserted_id = str(result.inserted_id)
+        created_at = None
 
     return {
         "message": "Added to Read Later",
-        "id": str(result.inserted_id),
+        "id": inserted_id,
+        "created_at": created_at,
     }
 
 
