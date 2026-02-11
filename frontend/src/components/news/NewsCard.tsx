@@ -74,7 +74,17 @@ export const NewsCard: React.FC<NewsCardProps> = ({
       if (isInReadLater) {
         await userService.removeFromReadLater(article.url);
       } else {
-        await userService.addToReadLater({ article_id: article.id, title: article.title, source: article.source, url: article.url, category: article.category });
+        const sourceValue = typeof article.source === 'string'
+          ? article.source
+          : (article.source && (article.source as any).name) || String(article.source || '');
+
+        await userService.addToReadLater({
+          article_id: article.id,
+          title: article.title,
+          source: sourceValue,
+          url: article.url,
+          category: article.category,
+        });
       }
       setIsInReadLater(!isInReadLater);
     } catch (err: any) {
