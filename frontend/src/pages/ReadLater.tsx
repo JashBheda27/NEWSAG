@@ -66,9 +66,16 @@ export const ReadLater: React.FC = () => {
                   onClick={() => handleRemove(item.id)}
                   className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-full transition-colors"
                 >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
+                  <button
+                    onClick={() => handleRemove(item.id)}
+                    aria-label="Remove from Read Later"
+                    title="Remove"
+                    className="p-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-full transition-colors"
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                      <path d="M9 3a1 1 0 00-1 1v1H4a1 1 0 100 2h16a1 1 0 100-2h-4V4a1 1 0 00-1-1H9zM7 8v11a2 2 0 002 2h6a2 2 0 002-2V8H7zm3 2a1 1 0 012 0v7a1 1 0 11-2 0V10zm4 0a1 1 0 012 0v7a1 1 0 11-2 0V10z" />
+                    </svg>
+                  </button>
                 </button>
                </div>
             </div>
