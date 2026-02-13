@@ -63,6 +63,11 @@ export const Bookmarks: React.FC = () => {
                  <h3 className="font-bold text-lg leading-tight group-hover:text-indigo-600 transition-colors line-clamp-2">
                    {item.title}
                  </h3>
+                 {item.description && (
+                   <p className="text-slate-600 dark:text-slate-400 text-sm line-clamp-2 mb-2">
+                     {item.description}
+                   </p>
+                 )}
                  <div className="flex gap-2">
                    <Button size="sm" variant="ghost" onClick={() => window.open(item.url, '_blank')}>View</Button>
                    <Button size="sm" variant="ghost" className="text-rose-500" onClick={() => handleRemove(item.id)}>Remove</Button>
