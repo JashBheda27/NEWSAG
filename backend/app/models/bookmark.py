@@ -15,4 +15,5 @@ class BookmarkModel(MongoBase):
     category: str | None = None
     url: str
     image_url: str | None = None
+    description: str | None = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
