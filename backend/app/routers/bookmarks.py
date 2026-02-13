@@ -64,6 +64,31 @@ async def get_bookmarks(
     }
 
 
+# --------------------------------------------------
+# REMOVE BOOKMARK BY ARTICLE ID
+# --------------------------------------------------
+@router.delete("/")
+async def delete_bookmark_by_article_id(
+    article_id: str,
+    user=Depends(get_current_user_optional),
+    db=Depends(get_db),
+):
+    user_id = user["user_id"]
+
+    result = await db.bookmarks.delete_one({
+        "user_id": user_id,
+        "article_id": article_id
+    })
+
+    if result.deleted_count == 0:
+        raise HTTPException(
+            status_code=404,
+            detail="Bookmark not found or not authorized"
+        )
+
+    return {"message": "Bookmark removed"}
+
+
 
 # --------------------------------------------------
 # REMOVE BOOKMARK
