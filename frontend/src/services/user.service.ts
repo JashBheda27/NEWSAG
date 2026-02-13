@@ -56,6 +56,13 @@ export const userService = {
       throw new Error(getErrorMessage(err));
     }
   },
+  removeBookmarkByArticleId: async (articleId: string): Promise<void> => {
+    try {
+      await api.delete(`/api/bookmarks/`, { params: { article_id: articleId } });
+    } catch (err) {
+      throw new Error(getErrorMessage(err));
+    }
+  },
 
   // Read Later
   getReadLater: async (): Promise<ReadLaterItem[]> => {
