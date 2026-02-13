@@ -49,6 +49,7 @@ export interface Bookmark {
   article_id: string;
   title: string;
   source: string;
+  description?: string;
   category?: Topic;
   url: string;
   image_url?: string;
