@@ -57,11 +57,23 @@ export const NewsCard: React.FC<NewsCardProps> = ({
 
   const toggleBookmark = async () => {
     try {
+      const articleIdValue = article.url || article.id;
+      const sourceValue = typeof article.source === 'string'
+        ? article.source
+        : (article.source as { name?: string })?.name || String(article.source || '');
+
       if (isBookmarked) {
-        // Assume id is article_url for this example
-        await userService.removeBookmark(article.url);
+        await userService.removeBookmarkByArticleId(articleIdValue);
       } else {
-        await userService.addBookmark({ article_id: article.id, title: article.title, source: article.source, url: article.url, image_url: article.image_url, category: article.category });
+        await userService.addBookmark({
+          article_id: articleIdValue,
+          title: article.title,
+          source: sourceValue,
+          description: article.description,
+          url: article.url,
+          image_url: article.image_url,
+          category: article.category,
+        });
       }
       setIsBookmarked(!isBookmarked);
     } catch (err: any) {
