@@ -3,6 +3,7 @@ import type { ReadLaterItem } from '../types';
 import { userService } from '../services/user.service';
 import { Skeleton } from '../components/ui/Skeleton';
 import { Button } from '../components/ui/Button';
+import { SummaryModal } from '../components/news/SummaryModal';
 import { formatRelativeTime } from '../utils/timeUtils';
 
 export const ReadLater: React.FC = () => {
@@ -34,6 +35,22 @@ export const ReadLater: React.FC = () => {
     }
   };
 
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalUrl, setModalUrl] = useState<string>('');
+  const [modalTitle, setModalTitle] = useState<string | undefined>(undefined);
+  const [modalDescription, setModalDescription] = useState<string | undefined>(undefined);
+  const [modalArticleId, setModalArticleId] = useState<string | undefined>(undefined);
+  const [modalSource, setModalSource] = useState<string | undefined>(undefined);
+
+  const openSummary = (item: ReadLaterItem) => {
+    setModalUrl(item.url);
+    setModalTitle(item.title);
+    setModalDescription(undefined);
+    setModalArticleId(item.article_id || item.id);
+    setModalSource(item.source);
+    setIsModalOpen(true);
+  };
+
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-8 sm:py-12 animate-fade-in">
       <h2 className="text-3xl font-black mb-8 flex items-center gap-4">
@@ -61,7 +78,7 @@ export const ReadLater: React.FC = () => {
                  </span>
                </div>
                <div className="flex gap-2">
-                 <Button size="sm" variant="ghost" onClick={() => window.open(item.url, '_blank')}>Read</Button>
+                 <Button size="sm" variant="ghost" onClick={() => openSummary(item)}>Read</Button>
                  <button 
                   onClick={() => handleRemove(item.id)}
                   className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-full transition-colors"
@@ -85,6 +102,15 @@ export const ReadLater: React.FC = () => {
             <p className="text-slate-400 font-medium">Your queue is empty. Ready for some new stories?</p>
           </div>
         )}
+        <SummaryModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          url={modalUrl}
+          title={modalTitle}
+          description={modalDescription}
+          articleId={modalArticleId}
+          source={modalSource}
+        />
       </div>
     </div>
   );
