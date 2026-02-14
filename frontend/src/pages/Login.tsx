@@ -31,11 +31,64 @@ const CardBackground = ({ activeView }: CardBackgroundProps) => {
 };
 
 const SocialButtons = () => {
+  const { isLoaded, signIn } = useSignIn();
+  const [oauthLoading, setOauthLoading] = useState(false);
+  const [oauthError, setOauthError] = useState('');
+
+  // Added: Handler for Google OAuth login using Clerk's redirect flow
+  const handleGoogle = async () => {
+    if (!isLoaded) return;
+    setOauthError('');
+    setOauthLoading(true);
+    try {
+      await signIn.authenticateWithRedirect({
+        strategy: "oauth_google",
+        redirectUrl: "/",
+        redirectUrlComplete: "/"
+      });
+    } catch (err: any) {
+      setOauthError(err.errors?.[0]?.message || 'Google OAuth failed');
+    } finally {
+      setOauthLoading(false);
+    }
+  };
+
+  // Added: Handler for Facebook OAuth login using Clerk's redirect flow
+  const handleFacebook = async () => {
+    if (!isLoaded) return;
+    setOauthError('');
+    setOauthLoading(true);
+    try {
+      await signIn.authenticateWithRedirect({
+        strategy: "oauth_facebook",
+        redirectUrl: "/",
+        redirectUrlComplete: "/"
+      });
+    } catch (err: any) {
+      setOauthError(err.errors?.[0]?.message || 'Facebook OAuth failed');
+    } finally {
+      setOauthLoading(false);
+    }
+  };
+
   return (
     <div className="sso">
-      <a title="Facebook" className="fa-brands fa-facebook-f" />
-      <a title="Twitter" className="fa-brands fa-twitter" />
-      <a title="LinkedIn" className="fa-brands fa-linkedin-in" />
+      {/* Added: Google OAuth button with click handler */}
+      <a
+        title="Google"
+        className="fa-brands fa-google"
+        onClick={handleGoogle}
+        style={{ cursor: oauthLoading ? 'not-allowed' : 'pointer', opacity: oauthLoading ? 0.5 : 1 }}
+      />
+      {/* Added: Facebook OAuth button with click handler */}
+      <a
+        title="Facebook"
+        className="fa-brands fa-facebook-f"
+        onClick={handleFacebook}
+        style={{ cursor: oauthLoading ? 'not-allowed' : 'pointer', opacity: oauthLoading ? 0.5 : 1 }}
+      />
+      {/* Added: Display OAuth errors if any */}
+      {oauthError && <div style={{ color: '#ef4444', fontSize: '12px', marginTop: '10px' }}>{oauthError}</div>}
     </div>
   );
 };
