@@ -1,0 +1,149 @@
+import React, { useEffect, useState } from 'react';
+import { Modal } from '../ui/Modal';
+import { Button } from '../ui/Button';
+import { newsService } from '../../services/news.service';
+import type { SummaryData } from '../../types';
+import { CommentSection } from './commentSection';
+
+interface Props {
+  isOpen: boolean;
+  onClose: () => void;
+  url: string;
+  title?: string;
+  description?: string;
+  content?: string;
+  articleId?: string;
+  source?: string;
+}
+
+export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, description, content, articleId, source }) => {
+  const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let mounted = true;
+    const fetchSummary = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const res = await newsService.getSummary(url, content, description);
+        if (!mounted) return;
+        setSummaryData(res);
+      } catch (err: any) {
+        if (!mounted) return;
+        setError(err.message || 'Failed to generate summary.');
+      } finally {
+        if (!mounted) return;
+        setIsLoading(false);
+      }
+    };
+    fetchSummary();
+    return () => { mounted = false; };
+  }, [isOpen, url, content, description]);
+
+  return (
+    <>
+    <Modal isOpen={isOpen} onClose={onClose}>
+      {isLoading ? (
+        <div className="py-20 flex flex-col items-center justify-center">
+          <div className="w-12 h-12 border-4 border-slate-900 border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="text-slate-500 font-serif italic animate-pulse">Consulting the archives...</p>
+        </div>
+      ) : error ? (
+        <div className="py-8 text-center font-serif">
+          <h4 className="font-serif text-2xl mb-4">DISPATCH ERROR</h4>
+          <p className="text-slate-600 mb-6">{error}</p>
+          <Button onClick={onClose}>Close Bulletin</Button>
+        </div>
+      ) : (
+        <div
+          className="newspaper-paper border border-black w-full"
+          style={{ outline: '1px solid #000', outlineOffset: '4px' }}
+        >
+          <div className="border p-4 sm:p-6" style={{ borderColor: '#d0d0d0', borderWidth: '1px' }}>
+             <div className="text-center mb-6 pb-3 border-b-4 border-black border-double">
+                <div className="mb-1">
+                  <span className="text-[8px] font-normal uppercase tracking-widest italic">Special AI Edition</span>
+                </div>
+                <h4 className="font-serif text-xl sm:text-2xl font-normal tracking-tight uppercase mb-1">
+                  {source || 'The Artificial Dispatch'}
+                </h4>
+             </div>
+
+             <h2 className="font-serif text-lg sm:text-xl font-normal mb-4 leading-tight text-center italic">
+               "{title}"
+             </h2>
+
+             <div 
+               className="text-sm leading-relaxed text-justify md:columns-2 gap-6 whitespace-pre-wrap" 
+               style={{ 
+                 fontFamily: 'Georgia, "Times New Roman", serif',
+                 fontWeight: '300',
+                 opacity: 0.85,
+                 color: '#333'
+               }}
+             >
+               {summaryData?.summary || 'No summary available.'}
+            </div>
+          
+          <div className="border-t border-black mt-6" ></div>
+          
+          <div className="px-6 py-3" style={{backgroundColor: '#fdfcf0'}}>
+            <div className="flex items-center justify-center gap-4">
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setIsCommentsOpen(true)}
+                  className="p-1.5 hover:opacity-60 transition-opacity"
+                  title="Comments"
+                  style={{color: '#333'}}
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                </button>
+                <button 
+                  onClick={() => setIsLiked(!isLiked)}
+                  className="p-1.5 hover:opacity-60 transition-opacity"
+                  title="Like"
+                  style={{color: '#333'}}
+                >
+                  <svg className="w-5 h-5" fill={isLiked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="h-4 w-px" style={{backgroundColor: '#333', opacity: 0.3}}></div>
+
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={onClose}
+                  className="text-[10px] font-normal uppercase tracking-widest text-slate-700 dark:text-slate-200 px-2 py-1 rounded hover:text-white dark:hover:text-white hover:bg-indigo-600 dark:hover:bg-indigo-500 transition-colors"
+                >
+                  Close
+                </button>
+                <button 
+                  onClick={() => window.open(url, '_blank')}
+                  className="text-[10px] font-normal uppercase tracking-widest border border-slate-800 dark:border-slate-200 px-3 py-1 text-slate-900 dark:text-slate-100 bg-[#fdfcf0] dark:bg-slate-900/80 hover:text-white dark:hover:text-white hover:border-indigo-600 dark:hover:border-indigo-300 hover:bg-indigo-600 dark:hover:bg-indigo-500 transition-colors"
+                >
+                  Read Full Article
+                </button>
+              </div>
+            </div>
+          </div>
+          </div>
+        </div>
+      )}
+    </Modal>
+    {isCommentsOpen && articleId && (
+      <Modal isOpen={isCommentsOpen} onClose={() => setIsCommentsOpen(false)} title="💬 Comments">
+        <CommentSection articleId={articleId} articleTitle={title || ''} />
+      </Modal>
+    )}
+    </>
+  );
+};
