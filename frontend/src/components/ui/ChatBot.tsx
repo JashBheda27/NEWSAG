@@ -16,6 +16,7 @@ export const ChatBot: React.FC<ChatBotProps> = ({ articleContext: initialContext
   const [currentArticleTitle, setCurrentArticleTitle] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   // Listen for global open chatbot events
   useEffect(() => {
@@ -35,12 +36,23 @@ export const ChatBot: React.FC<ChatBotProps> = ({ articleContext: initialContext
 
   // Scroll to bottom when messages change
   const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const el = chatContainerRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+  }, []);
+
+  const isNearBottom = useCallback(() => {
+    const el = chatContainerRef.current;
+    if (!el) return false;
+    const { scrollHeight, scrollTop, clientHeight } = el;
+    return scrollHeight - (scrollTop + clientHeight) <= 100;
   }, []);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
+    if (isNearBottom()) {
+      scrollToBottom();
+    }
+  }, [messages, isNearBottom, scrollToBottom]);
 
   // Load chat history when opening
   useEffect(() => {
@@ -59,6 +71,14 @@ export const ChatBot: React.FC<ChatBotProps> = ({ articleContext: initialContext
       setInput(`Tell me about this article`);
     }
   }, [articleContext, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const timer = setTimeout(() => {
+      scrollToBottom();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [isOpen, scrollToBottom]);
 
   const loadHistory = async () => {
     try {
@@ -244,7 +264,10 @@ export const ChatBot: React.FC<ChatBotProps> = ({ articleContext: initialContext
             )}
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+            <div
+              ref={chatContainerRef}
+              className="flex-1 overflow-y-auto px-4 py-4 space-y-4"
+            >
               {messages.map((msg, idx) => (
                 <div
                   key={idx}
