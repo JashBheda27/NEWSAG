@@ -3,6 +3,7 @@ import type { Bookmark } from '../types';
 import { userService } from '../services/user.service';
 import { Skeleton } from '../components/ui/Skeleton';
 import { Button } from '../components/ui/Button';
+import { SummaryModal } from '../components/news/SummaryModal';
 
 export const Bookmarks: React.FC = () => {
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
@@ -31,6 +32,22 @@ export const Bookmarks: React.FC = () => {
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalUrl, setModalUrl] = useState<string>('');
+  const [modalTitle, setModalTitle] = useState<string | undefined>(undefined);
+  const [modalDescription, setModalDescription] = useState<string | undefined>(undefined);
+  const [modalArticleId, setModalArticleId] = useState<string | undefined>(undefined);
+  const [modalSource, setModalSource] = useState<string | undefined>(undefined);
+
+  const openSummary = (item: Bookmark) => {
+    setModalUrl(item.url);
+    setModalTitle(item.title);
+    setModalDescription(item.description);
+    setModalArticleId(item.article_id || item.id);
+    setModalSource(item.source);
+    setIsModalOpen(true);
   };
 
   return (
@@ -69,7 +86,7 @@ export const Bookmarks: React.FC = () => {
                    </p>
                  )}
                  <div className="flex gap-2">
-                   <Button size="sm" variant="ghost" onClick={() => window.open(item.url, '_blank')}>View</Button>
+                   <Button size="sm" variant="ghost" onClick={() => openSummary(item)}>View</Button>
                    <Button size="sm" variant="ghost" className="text-rose-500" onClick={() => handleRemove(item.id)}>Remove</Button>
                  </div>
                </div>
@@ -80,6 +97,15 @@ export const Bookmarks: React.FC = () => {
             <p className="text-slate-400 font-medium">No bookmarks yet. Save articles you love!</p>
           </div>
         )}
+        <SummaryModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          url={modalUrl}
+          title={modalTitle}
+          description={modalDescription}
+          articleId={modalArticleId}
+          source={modalSource}
+        />
       </div>
     </div>
   );
