@@ -7,6 +7,7 @@ import { newsService } from '../../services/news.service';
 import { userService } from '../../services/user.service';
 import { Modal } from '../ui/Modal';
 import { CommentSection } from './commentSection';
+import { AudioPlayer } from './AudioPlayer';
 import { formatRelativeTime, getReadTimeText } from '../../utils/timeUtils';
 import { openChatWithArticle } from '../../utils/chatEvents';
 
@@ -439,6 +440,20 @@ export const NewsCard: React.FC<NewsCardProps> = ({
                  >
                    {summary}
                 </div>
+
+                {/* Audio Player for TTS */}
+                {summaryData?.audio_available && summaryData?.summary && (
+                  <div className="mt-4 pt-3 border-t border-slate-300 dark:border-slate-600">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-[9px] uppercase tracking-widest text-slate-500">Listen to Summary</span>
+                    </div>
+                    <AudioPlayer 
+                      text={summaryData.summary} 
+                      language={selectedLang}
+                      className="bg-slate-50 dark:bg-slate-800/50 px-3 rounded-lg"
+                    />
+                  </div>
+                )}
               
                 {/* Horizontal Line Separator */}
                 <div className="border-t border-black mt-6"></div>
@@ -730,6 +745,20 @@ export const NewsCard: React.FC<NewsCardProps> = ({
                >
                  {summary}
               </div>
+
+              {/* Audio Player for TTS */}
+              {summaryData?.audio_available && summaryData?.summary && (
+                <div className="mt-4 pt-3 border-t border-slate-300 dark:border-slate-600">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[9px] uppercase tracking-widest text-slate-500">Listen to Summary</span>
+                  </div>
+                  <AudioPlayer 
+                    text={summaryData.summary} 
+                    language={selectedLang}
+                    className="bg-slate-50 dark:bg-slate-800/50 px-3 rounded-lg"
+                  />
+                </div>
+              )}
             
             {/* Horizontal Line Separator */}
             <div className="border-t border-black mt-6" ></div>
