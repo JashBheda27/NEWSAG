@@ -67,7 +67,8 @@ export const newsService = {
   getSummary: async (
     url: string,
     content?: string,
-    description?: string
+    description?: string,
+    lang: string = 'en'
   ): Promise<SummaryData> => {
     try {
       // ✅ Send POST request with JSON payload
@@ -75,6 +76,7 @@ export const newsService = {
         url: url,
         content: content,          // Full article content when available
         description: description,  // GNews description fallback for paywalls
+        lang: lang,                // Target language for translation
       });
       return response.data;
     } catch (err) {
