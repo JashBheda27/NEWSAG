@@ -19,6 +19,7 @@ from app.routers import (
     feedbacks,
     profile,
     chatbot,
+    admin,
 )
 
 # --------------------------------------------------
@@ -71,6 +72,7 @@ app.include_router(read_laters.router, prefix="/api/read-later", tags=["Read Lat
 app.include_router(feedbacks.router, prefix="/api/feedback", tags=["Feedback"])
 app.include_router(profile.router, prefix="/api/profile", tags=["Profile"])
 app.include_router(chatbot.router, prefix="/api/chat", tags=["Chatbot"])
+app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 
 logger = logging.getLogger(__name__)
 
