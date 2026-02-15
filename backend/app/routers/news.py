@@ -2,6 +2,7 @@
 from fastapi import APIRouter, HTTPException
 from app.services.news_service import GNewsService
 from app.services.sentiment_ml import SentimentService  # ✅ Use new ML-based sentiment
+from app.services.credibility_service import analyze_credibility  # ✅ Fake news detection
 from app.core.cache import get_from_cache, set_in_cache, delete_from_cache
 from app.core.gnews_counter import GNewsCounter
 
@@ -201,6 +202,9 @@ async def get_news_by_topic(topic: str):
     # Add sentiment ONCE before caching (includes per-article Redis caching)
     articles = await add_sentiment_to_articles(articles)
     
+    # ✅ Add credibility/fake news detection
+    articles = await analyze_credibility(articles)
+    
     await set_in_cache(cache_key, articles)
     full_count = sum(1 for article in articles if article.get("content_is_full"))
     partial_count = sum(1 for article in articles if article.get("content") and not article.get("content_is_full"))
@@ -271,6 +275,9 @@ async def refresh_category(category: str):
     # Add sentiment BEFORE caching (computed once, cached with articles)
     articles = await add_sentiment_to_articles(articles)
     
+    # ✅ Add credibility/fake news detection
+    articles = await analyze_credibility(articles)
+    
     await set_in_cache(cache_key, articles)
 
     return {
@@ -296,6 +303,8 @@ async def refresh_all():
             articles = await GNewsService.fetch_category(cat)
             # Add sentiment BEFORE caching (computed once, cached with articles)
             articles = await add_sentiment_to_articles(articles)
+            # ✅ Add credibility/fake news detection
+            articles = await analyze_credibility(articles)
             await set_in_cache(f"gnews:{cat}", articles)
             total_articles += len(articles)
         except Exception as e:
@@ -309,4 +318,106 @@ async def refresh_all():
         "categories_refreshed": len(categories),
         "total_articles": total_articles,
         "errors": errors if errors else None,
+    }
+
+
+# -----------------------------
+# SENTIMENT RATING (User Feedback)
+# -----------------------------
+from fastapi import Depends
+from app.core.database import get_db
+from app.core.auth import get_current_user_optional
+from app.models.sentiment_training import SentimentRatingRequest
+from app.models.credibility_training import CredibilityReportRequest
+from app.services.training_data_service import TrainingDataService
+
+
+@router.post("/rate")
+async def rate_article_sentiment(
+    rating: SentimentRatingRequest,
+    user=Depends(get_current_user_optional),
+    db=Depends(get_db),
+):
+    """
+    Submit user's sentiment rating for an article.
+    Used for fine-tuning the sentiment analysis model.
+    
+    Args:
+        rating: User's sentiment correction
+        
+    Returns:
+        Confirmation of feedback submission
+    """
+    user_id = user["user_id"]
+    
+    # Combine title and description for training text
+    text = rating.title
+    if rating.description:
+        text += " " + rating.description
+    
+    result_id = await TrainingDataService.add_sentiment_feedback(
+        db=db,
+        article_id=rating.article_id,
+        text=text,
+        ai_label=rating.ai_label,
+        ai_confidence=rating.ai_confidence,
+        user_id=user_id,
+        source="explicit",
+        user_label=rating.user_label,
+        article_url=rating.article_url,
+    )
+    
+    logger.info(f"[FEEDBACK] Sentiment rating received: article={rating.article_id}, user_label={rating.user_label}")
+    
+    return {
+        "message": "Thank you for your feedback!",
+        "feedback_id": result_id,
+        "ai_label": rating.ai_label,
+        "user_label": rating.user_label,
+    }
+
+
+# -----------------------------
+# REPORT MISLEADING CONTENT
+# -----------------------------
+@router.post("/report")
+async def report_misleading_article(
+    report: CredibilityReportRequest,
+    user=Depends(get_current_user_optional),
+    db=Depends(get_db),
+):
+    """
+    Report an article as potentially misleading.
+    Used for fine-tuning the fake news detection model.
+    
+    Args:
+        report: Article details and user's reason for reporting
+        
+    Returns:
+        Report submission status
+    """
+    user_id = user["user_id"]
+    
+    result = await TrainingDataService.add_credibility_report(
+        db=db,
+        article_id=report.article_id,
+        article_url=report.article_url,
+        title=report.title,
+        ai_label=report.ai_label,
+        ai_score=report.ai_score,
+        ai_source=report.ai_source,
+        user_id=user_id,
+        description=report.description,
+        content=report.content,
+        source_domain=report.source_domain,
+        user_reason=report.reason,
+    )
+    
+    logger.info(f"[FEEDBACK] Misleading report received: article={report.article_id}, status={result['status']}")
+    
+    return {
+        "message": result["message"],
+        "report_id": result["report_id"],
+        "report_count": result.get("report_count", 1),
+        "status": result["status"],
     }
