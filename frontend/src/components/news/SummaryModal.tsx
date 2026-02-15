@@ -16,21 +16,40 @@ interface Props {
   source?: string;
 }
 
+const LANGUAGES = [
+  { code: 'en', name: 'English' },
+  { code: 'es', name: 'Spanish' },
+  { code: 'fr', name: 'French' },
+  { code: 'de', name: 'German' },
+  { code: 'hi', name: 'Hindi' },
+  { code: 'zh-CN', name: 'Chinese' },
+  { code: 'ja', name: 'Japanese' },
+  { code: 'ar', name: 'Arabic' },
+  { code: 'pt', name: 'Portuguese' },
+  { code: 'ru', name: 'Russian' },
+  { code: 'ko', name: 'Korean' },
+  { code: 'it', name: 'Italian' },
+];
+
 export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, description, content, articleId, source }) => {
   const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
+  const [selectedLang, setSelectedLang] = useState('en');
 
+  // Fetch summary (initial load in English)
   useEffect(() => {
     if (!isOpen) return;
+    setSelectedLang('en');
     let mounted = true;
     const fetchSummary = async () => {
       setIsLoading(true);
       setError(null);
       try {
-        const res = await newsService.getSummary(url, content, description);
+        const res = await newsService.getSummary(url, content, description, 'en');
         if (!mounted) return;
         setSummaryData(res);
       } catch (err: any) {
@@ -44,6 +63,22 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
     fetchSummary();
     return () => { mounted = false; };
   }, [isOpen, url, content, description]);
+
+  // Handle language change (translate existing summary)
+  const handleLanguageChange = async (lang: string) => {
+    if (lang === selectedLang) return;
+    setSelectedLang(lang);
+    setIsTranslating(true);
+    setError(null);
+    try {
+      const res = await newsService.getSummary(url, content, description, lang);
+      setSummaryData(res);
+    } catch (err: any) {
+      setError(err.message || 'Translation failed.');
+    } finally {
+      setIsTranslating(false);
+    }
+  };
 
   return (
     <>
@@ -78,12 +113,44 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
                "{title}"
              </h2>
 
+             {/* Language Selector */}
+             <div className="flex items-center justify-center gap-2 mb-4">
+               <label
+                 htmlFor="lang-select"
+                 className="text-[10px] uppercase tracking-widest font-normal"
+                 style={{ color: '#555' }}
+               >
+                 Translate
+               </label>
+               <select
+                 id="lang-select"
+                 value={selectedLang}
+                 onChange={(e) => handleLanguageChange(e.target.value)}
+                 disabled={isTranslating}
+                 className="text-xs border border-slate-400 dark:border-slate-500 rounded px-2 py-1 bg-transparent font-serif focus:outline-none focus:ring-1 focus:ring-indigo-400 disabled:opacity-50 text-slate-800 dark:text-slate-100"
+               >
+                 {LANGUAGES.map((l) => (
+                   <option key={l.code} value={l.code}>
+                     {l.name}
+                   </option>
+                 ))}
+               </select>
+               {isTranslating && (
+                 <div className="w-4 h-4 border-2 border-slate-600 border-t-transparent rounded-full animate-spin"></div>
+               )}
+               {summaryData?.translated && (
+                 <span className="text-[9px] uppercase tracking-wider text-indigo-600 dark:text-indigo-400 font-semibold">
+                   Translated
+                 </span>
+               )}
+             </div>
+
              <div 
-               className="text-sm leading-relaxed text-justify md:columns-2 gap-6 whitespace-pre-wrap" 
+               className={`text-sm leading-relaxed text-justify md:columns-2 gap-6 whitespace-pre-wrap transition-opacity duration-300 ${isTranslating ? 'opacity-40' : ''}`}
                style={{ 
                  fontFamily: 'Georgia, "Times New Roman", serif',
                  fontWeight: '300',
-                 opacity: 0.85,
+                 opacity: isTranslating ? 0.4 : 0.85,
                  color: '#333'
                }}
              >
