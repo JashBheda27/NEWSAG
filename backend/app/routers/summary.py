@@ -3,12 +3,19 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException, Depends
 from app.core.cache import get_from_cache, set_in_cache
 from app.services.summarizer import TextSummarizer
-from app.services.text_utils import extract_article_text
+from app.services.text_utils import extract_article_text, translate_text, get_supported_languages
 from app.core.auth import get_current_user_optional
 from app.core.database import get_db
 
 router = APIRouter()
 summarizer = TextSummarizer()
+
+
+@router.get("/languages")
+async def list_supported_languages():
+    """Return list of supported translation languages."""
+    languages = get_supported_languages()
+    return {"languages": [{"code": k, "name": v} for k, v in languages.items()]}
 
 
 @router.post("/")
@@ -22,16 +29,18 @@ async def generate_summary(
     - News card → description (frontend)
     - AI summary → NLP ONLY
     - Paywall / failure → fallback to same description
+    - Optional: translate summary to target language
     """
 
     article_url = payload.get("url")
     gnews_content = payload.get("content")
     gnews_description = payload.get("description")
+    target_lang = payload.get("lang", "en")
 
     if not article_url:
         raise HTTPException(status_code=400, detail="Article URL is required")
 
-    cache_key = "summary:" + hashlib.md5(article_url.encode()).hexdigest()
+    cache_key = "summary:" + hashlib.md5((article_url + ":" + target_lang).encode()).hexdigest()
 
     cached = await get_from_cache(cache_key)
     if cached:
@@ -94,10 +103,20 @@ async def generate_summary(
         )
         source = "placeholder"
 
+    # --------------------------------------------------
+    # 6️⃣ TRANSLATE if target language is not English
+    # --------------------------------------------------
+    translated = False
+    if target_lang and target_lang != "en" and summary:
+        summary = translate_text(summary, target_lang)
+        translated = True
+
     response = {
         "summary": summary,
         "source": source,
         "is_fallback": source != "generated",
+        "language": target_lang,
+        "translated": translated,
     }
 
     try:
