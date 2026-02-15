@@ -1,6 +1,51 @@
 import httpx
 import re
+import logging
 from bs4 import BeautifulSoup
+from deep_translator import GoogleTranslator
+
+logger = logging.getLogger(__name__)
+
+# Supported languages for summary translation
+SUPPORTED_LANGUAGES = {
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "de": "German",
+    "hi": "Hindi",
+    "zh-CN": "Chinese (Simplified)",
+    "ja": "Japanese",
+    "ar": "Arabic",
+    "pt": "Portuguese",
+    "ru": "Russian",
+    "ko": "Korean",
+    "it": "Italian",
+}
+
+
+def translate_text(text: str, target_lang: str) -> str:
+    """
+    Translate text to the target language using Google Translate.
+    Returns original text if translation fails or target is English.
+    """
+    if not text or target_lang == "en":
+        return text
+
+    if target_lang not in SUPPORTED_LANGUAGES:
+        logger.warning("[TRANSLATE] Unsupported language: %s", target_lang)
+        return text
+
+    try:
+        translated = GoogleTranslator(source="en", target=target_lang).translate(text)
+        return translated or text
+    except Exception as e:
+        logger.error("[TRANSLATE] Translation failed for lang=%s: %s", target_lang, e)
+        return text
+
+
+def get_supported_languages() -> dict:
+    """Return the dictionary of supported language codes and names."""
+    return SUPPORTED_LANGUAGES
 
 
 async def extract_article_text(url: str) -> str:
