@@ -19,6 +19,7 @@ export interface Article {
   published_at?: string;
   category?: Topic;
   sentiment?: SentimentData;
+  credibility?: CredibilityData;  // ✅ Added: Fake news detection score
 }
 
 
@@ -26,6 +27,12 @@ export interface SentimentData {
   label: 'Positive' | 'Neutral' | 'Negative';
   confidence: number;  // ✅ Changed: 0-1 confidence score (not percentage)
   model: string;       // ✅ Added: Model identifier (e.g., "roberta-news")
+}
+
+export interface CredibilityData {
+  score: number;       // 0.0 to 1.0
+  label: string;       // "Trusted Source", "Reliable", "Uncertain", "Potentially Misleading"
+  source: 'heuristic' | 'ml_model' | 'fallback' | 'error';
 }
 
 export interface SummaryData {
