@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { Article } from '../../types';
 import { SentimentBadge } from './SentimentBadge';
+import { CredibilityBadge } from './CredibilityBadge';
 import { Button } from '../ui/Button';
 import { newsService } from '../../services/news.service';
 import { userService } from '../../services/user.service';
@@ -23,6 +24,8 @@ const LANGUAGES = [
   { code: 'ko', name: 'Korean' },
   { code: 'it', name: 'Italian' },
 ];
+
+const SENTIMENT_OPTIONS = ['Positive', 'Neutral', 'Negative'];
 
 interface NewsCardProps {
   article: Article;
@@ -50,6 +53,66 @@ export const NewsCard: React.FC<NewsCardProps> = ({
   const [isLiked, setIsLiked] = useState(false);
   const [selectedLang, setSelectedLang] = useState('en');
   const [summaryData, setSummaryData] = useState<any>(null);
+  
+  // ✅ ML Feedback State
+  const [showFeedbackMenu, setShowFeedbackMenu] = useState(false);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState<string | null>(null);
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [reportSubmitted, setReportSubmitted] = useState(false);
+
+  // ✅ Handle Sentiment Feedback
+  const handleSentimentFeedback = async (userLabel: string) => {
+    setIsSubmittingFeedback(true);
+    try {
+      await newsService.rateSentiment({
+        article_id: article.id || article.url,
+        article_url: article.url,
+        title: article.title,
+        description: article.description,
+        ai_label: article.sentiment?.label || 'Neutral',
+        ai_confidence: article.sentiment?.confidence || 0.5,
+        user_label: userLabel,
+      });
+      setFeedbackSubmitted(userLabel);
+      setShowFeedbackMenu(false);
+    } catch (err: any) {
+      onError?.(err.message || 'Failed to submit feedback');
+    } finally {
+      setIsSubmittingFeedback(false);
+    }
+  };
+
+  // ✅ Handle Report Misleading
+  const handleReportMisleading = async () => {
+    setIsSubmittingFeedback(true);
+    try {
+      const sourceValue = typeof article.source === 'string'
+        ? article.source
+        : (article.source as { name?: string })?.name || '';
+      
+      await newsService.reportMisleading({
+        article_id: article.id || article.url,
+        article_url: article.url,
+        title: article.title,
+        description: article.description,
+        content: article.content,
+        source_domain: sourceValue,
+        ai_label: article.credibility?.label || 'Unknown',
+        ai_score: article.credibility?.score || 0.5,
+        ai_source: article.credibility?.source || 'unknown',
+        reason: reportReason,
+      });
+      setReportSubmitted(true);
+      setShowReportModal(false);
+      setReportReason('');
+    } catch (err: any) {
+      onError?.(err.message || 'Failed to submit report');
+    } finally {
+      setIsSubmittingFeedback(false);
+    }
+  };
 
   const handleSummary = async () => {
     setIsModalOpen(true);
@@ -160,6 +223,9 @@ export const NewsCard: React.FC<NewsCardProps> = ({
           <div className="absolute top-2 left-2">
             <SentimentBadge sentiment={article.sentiment} />
           </div>
+          <div className="absolute top-2 right-2">
+            <CredibilityBadge credibility={article.credibility} />
+          </div>
         </div>
 
         {/* Content Section */}
@@ -186,10 +252,9 @@ export const NewsCard: React.FC<NewsCardProps> = ({
 
           <div className="mt-auto flex items-center justify-between">
             <div className="flex gap-1 group/action relative">
-              <div className="absolute inset-0 rounded-xl bg-black/10 dark:bg-white/10 opacity-0 group-hover/action:opacity-100 transition-opacity duration-300 pointer-events-none" />
               <button 
                 onClick={toggleBookmark}
-                className={`p-2 rounded-full transition-all opacity-70 group-hover/action:opacity-100 ${isBookmarked ? 'text-white bg-indigo-600 hover:bg-indigo-700' : 'text-slate-700 bg-white hover:bg-indigo-600 hover:text-white border border-slate-200 dark:border-slate-600'}`}
+                className={`p-2 rounded-full transition-all ${isBookmarked ? 'text-white bg-indigo-600 hover:bg-indigo-700' : 'text-slate-700 bg-white hover:bg-indigo-600 hover:text-white border border-slate-200 dark:border-slate-600'}`}
                 title="Bookmark"
               >
                 <svg className="w-4 h-4" fill={isBookmarked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
@@ -198,7 +263,7 @@ export const NewsCard: React.FC<NewsCardProps> = ({
               </button>
               <button 
                 onClick={toggleReadLater}
-                className={`p-2 rounded-full transition-all opacity-70 group-hover/action:opacity-100 ${isInReadLater ? 'text-white bg-indigo-600 hover:bg-indigo-700' : 'text-slate-700 bg-white hover:bg-indigo-600 hover:text-white border border-slate-200 dark:border-slate-600'}`}
+                className={`p-2 rounded-full transition-all ${isInReadLater ? 'text-white bg-indigo-600 hover:bg-indigo-700' : 'text-slate-700 bg-white hover:bg-indigo-600 hover:text-white border border-slate-200 dark:border-slate-600'}`}
                 title="Read Later"
               >
                 <svg className="w-4 h-4" fill={isInReadLater ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
@@ -207,22 +272,86 @@ export const NewsCard: React.FC<NewsCardProps> = ({
               </button>
               <button 
                 onClick={() => setIsCommentsOpen(true)}
-                className="p-2 rounded-full transition-all opacity-70 group-hover/action:opacity-100 text-slate-700 bg-white hover:bg-indigo-600 hover:text-white border border-slate-200 dark:border-slate-600"
+                className="p-2 rounded-full transition-all text-slate-700 bg-white hover:bg-indigo-600 hover:text-white border border-slate-200 dark:border-slate-600"
                 title="Comments"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
               </button>
+              
+              {/* ✅ ML Feedback Button (List View) */}
+              <div className="relative">
+                <button 
+                  onClick={() => setShowFeedbackMenu(!showFeedbackMenu)}
+                  className={`p-2 rounded-full transition-all ${
+                    feedbackSubmitted 
+                      ? 'text-white bg-green-600' 
+                      : 'text-slate-700 bg-white hover:bg-indigo-600 hover:text-white border border-slate-200 dark:border-slate-600'
+                  }`}
+                  title={feedbackSubmitted ? `Rated: ${feedbackSubmitted}` : "Rate Sentiment"}
+                >
+                  {feedbackSubmitted ? (
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                    </svg>
+                  )}
+                </button>
+                
+                {showFeedbackMenu && !feedbackSubmitted && (
+                  <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-600 py-1 z-50 min-w-[120px]">
+                    <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">
+                      Rate Sentiment
+                    </div>
+                    {SENTIMENT_OPTIONS.map((option) => (
+                      <button
+                        key={option}
+                        onClick={() => handleSentimentFeedback(option)}
+                        disabled={isSubmittingFeedback}
+                        className={`w-full text-left px-3 py-1.5 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center gap-2 ${
+                          article.sentiment?.label === option ? 'text-indigo-600 font-semibold' : 'text-slate-700 dark:text-slate-300'
+                        }`}
+                      >
+                        <span className={`w-2 h-2 rounded-full ${
+                          option === 'Positive' ? 'bg-green-500' : 
+                          option === 'Negative' ? 'bg-red-500' : 'bg-slate-400'
+                        }`}></span>
+                        {option}
+                        {article.sentiment?.label === option && <span className="text-[9px] opacity-60">(AI)</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              {/* ✅ Report Button (List View) */}
+              <button 
+                onClick={() => setShowReportModal(true)}
+                className={`p-2 rounded-full transition-all ${
+                  reportSubmitted 
+                    ? 'text-white bg-orange-600' 
+                    : 'text-slate-700 bg-white hover:bg-red-600 hover:text-white border border-slate-200 dark:border-slate-600'
+                }`}
+                title={reportSubmitted ? "Report Submitted" : "Report Misleading"}
+                disabled={reportSubmitted}
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </button>
             </div>
             
             <div className="flex gap-2">
-              <Button variant="ghost" size="sm" onClick={handleSummary} className="text-indigo-600 font-bold dark:text-indigo-400 text-xs opacity-95 group-hover/action:opacity-100 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500 transition-colors">
+              <Button variant="ghost" size="sm" onClick={handleSummary} className="text-indigo-600 font-bold dark:text-indigo-400 text-xs hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500 transition-colors">
                 ✨ AI Summary
               </Button>
               <button
                 onClick={() => openChatWithArticle(article.id, article.title)}
-                className="px-2 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500 rounded-lg transition-colors opacity-95 group-hover/action:opacity-100"
+                className="px-2 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500 rounded-lg transition-colors"
                 title="Ask AI about this article"
               >
                 🤖 Ask AI
@@ -381,6 +510,9 @@ export const NewsCard: React.FC<NewsCardProps> = ({
         <div className="absolute top-2 left-2 flex gap-2">
           <SentimentBadge sentiment={article.sentiment} />
         </div>
+        <div className="absolute top-2 right-2">
+          <CredibilityBadge credibility={article.credibility} />
+        </div>
       </div>
 
       {/* Content Section */}
@@ -410,10 +542,9 @@ export const NewsCard: React.FC<NewsCardProps> = ({
 
         <div className="mt-auto pt-3 flex items-center justify-between border-t border-slate-50 dark:border-slate-700">
           <div className="flex gap-1 group/action relative">
-            <div className="absolute inset-0 rounded-xl bg-black/10 dark:bg-white/10 opacity-0 group-hover/action:opacity-100 transition-opacity duration-300 pointer-events-none" />
             <button 
               onClick={toggleBookmark}
-              className={`p-2 rounded-full transition-all opacity-70 group-hover/action:opacity-100 ${isBookmarked ? 'text-white bg-indigo-600 hover:bg-indigo-700' : 'text-slate-700 bg-white hover:bg-indigo-600 hover:text-white border border-slate-200 dark:border-slate-600'}`}
+              className={`p-2 rounded-full transition-all ${isBookmarked ? 'text-white bg-indigo-600 hover:bg-indigo-700' : 'text-slate-700 bg-white hover:bg-indigo-600 hover:text-white border border-slate-200 dark:border-slate-600'}`}
               title="Bookmark"
             >
               <svg className="w-4 h-4" fill={isBookmarked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
@@ -422,7 +553,7 @@ export const NewsCard: React.FC<NewsCardProps> = ({
             </button>
             <button 
               onClick={toggleReadLater}
-              className={`p-2 rounded-full transition-all opacity-70 group-hover/action:opacity-100 ${isInReadLater ? 'text-white bg-indigo-600 hover:bg-indigo-700' : 'text-slate-700 bg-white hover:bg-indigo-600 hover:text-white border border-slate-200 dark:border-slate-600'}`}
+              className={`p-2 rounded-full transition-all ${isInReadLater ? 'text-white bg-indigo-600 hover:bg-indigo-700' : 'text-slate-700 bg-white hover:bg-indigo-600 hover:text-white border border-slate-200 dark:border-slate-600'}`}
               title="Read Later"
             >
               <svg className="w-4 h-4" fill={isInReadLater ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
@@ -431,22 +562,87 @@ export const NewsCard: React.FC<NewsCardProps> = ({
             </button>
             <button 
               onClick={() => setIsCommentsOpen(true)}
-              className="p-2 rounded-full transition-all opacity-70 group-hover/action:opacity-100 text-slate-700 bg-white hover:bg-indigo-600 hover:text-white border border-slate-200 dark:border-slate-600"
+              className="p-2 rounded-full transition-all text-slate-700 bg-white hover:bg-indigo-600 hover:text-white border border-slate-200 dark:border-slate-600"
               title="Comments"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
             </button>
+            
+            {/* ✅ ML Feedback Dropdown */}
+            <div className="relative">
+              <button 
+                onClick={() => setShowFeedbackMenu(!showFeedbackMenu)}
+                className={`p-2 rounded-full transition-all ${
+                  feedbackSubmitted 
+                    ? 'text-white bg-green-600' 
+                    : 'text-slate-700 bg-white hover:bg-indigo-600 hover:text-white border border-slate-200 dark:border-slate-600'
+                }`}
+                title={feedbackSubmitted ? `Rated: ${feedbackSubmitted}` : "Rate Sentiment"}
+              >
+                {feedbackSubmitted ? (
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                  </svg>
+                )}
+              </button>
+              
+              {/* Feedback Dropdown Menu */}
+              {showFeedbackMenu && !feedbackSubmitted && (
+                <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-600 py-1 z-50 min-w-[120px]">
+                  <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">
+                    Rate Sentiment
+                  </div>
+                  {SENTIMENT_OPTIONS.map((option) => (
+                    <button
+                      key={option}
+                      onClick={() => handleSentimentFeedback(option)}
+                      disabled={isSubmittingFeedback}
+                      className={`w-full text-left px-3 py-1.5 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center gap-2 ${
+                        article.sentiment?.label === option ? 'text-indigo-600 font-semibold' : 'text-slate-700 dark:text-slate-300'
+                      }`}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${
+                        option === 'Positive' ? 'bg-green-500' : 
+                        option === 'Negative' ? 'bg-red-500' : 'bg-slate-400'
+                      }`}></span>
+                      {option}
+                      {article.sentiment?.label === option && <span className="text-[9px] opacity-60">(AI)</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            {/* ✅ Report Misleading Button */}
+            <button 
+              onClick={() => setShowReportModal(true)}
+              className={`p-2 rounded-full transition-all ${
+                reportSubmitted 
+                  ? 'text-white bg-orange-600' 
+                  : 'text-slate-700 bg-white hover:bg-red-600 hover:text-white border border-slate-200 dark:border-slate-600'
+              }`}
+              title={reportSubmitted ? "Report Submitted" : "Report Misleading"}
+              disabled={reportSubmitted}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </button>
           </div>
           
           <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={handleSummary} className="text-indigo-600 font-bold dark:text-indigo-400 text-xs opacity-95 group-hover/action:opacity-100 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500 transition-colors">
+            <Button variant="ghost" size="sm" onClick={handleSummary} className="text-indigo-600 font-bold dark:text-indigo-400 text-xs hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500 transition-colors">
               ✨ AI Summary
             </Button>
             <button
               onClick={() => openChatWithArticle(article.id, article.title)}
-              className="px-2 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500 rounded-lg transition-colors opacity-95 group-hover/action:opacity-100"
+              className="px-2 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500 rounded-lg transition-colors"
               title="Ask AI about this article"
             >
               🤖 Ask AI
@@ -591,6 +787,38 @@ export const NewsCard: React.FC<NewsCardProps> = ({
 
       <Modal isOpen={isCommentsOpen} onClose={() => setIsCommentsOpen(false)} title="💬 Comments">
         <CommentSection articleId={article.id} articleTitle={article.title} />
+      </Modal>
+
+      {/* ✅ Report Misleading Modal */}
+      <Modal isOpen={showReportModal} onClose={() => setShowReportModal(false)} title="⚠️ Report Misleading Content">
+        <div className="p-4">
+          <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">
+            Help improve our AI by reporting potentially misleading or inaccurate content.
+          </p>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">Why do you think this is misleading?</label>
+            <textarea
+              value={reportReason}
+              onChange={(e) => setReportReason(e.target.value)}
+              placeholder="Optional: Describe the issue..."
+              className="w-full p-3 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              rows={3}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setShowReportModal(false)}>
+              Cancel
+            </Button>
+            <Button 
+              size="sm" 
+              onClick={handleReportMisleading}
+              disabled={isSubmittingFeedback}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isSubmittingFeedback ? 'Submitting...' : 'Submit Report'}
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );
