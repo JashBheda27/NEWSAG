@@ -130,4 +130,57 @@ export const newsService = {
       throw new Error(getErrorMessage(err));
     }
   },
+
+  // --------------------------------------------------
+  // SENTIMENT RATING (ML Fine-tuning Feedback)
+  // --------------------------------------------------
+  rateSentiment: async (data: {
+    article_id: string;
+    article_url?: string;
+    title: string;
+    description?: string;
+    ai_label: string;
+    ai_confidence: number;
+    user_label: string;
+  }): Promise<{ message: string; feedback_id: string }> => {
+    try {
+      const response = await api.post<{
+        message: string;
+        feedback_id: string;
+        ai_label: string;
+        user_label: string;
+      }>(`/api/news/rate`, data);
+      return response.data;
+    } catch (err) {
+      throw new Error(getErrorMessage(err));
+    }
+  },
+
+  // --------------------------------------------------
+  // REPORT MISLEADING CONTENT (Fake News Feedback)
+  // --------------------------------------------------
+  reportMisleading: async (data: {
+    article_id: string;
+    article_url: string;
+    title: string;
+    description?: string;
+    content?: string;
+    source_domain?: string;
+    ai_label: string;
+    ai_score: number;
+    ai_source: string;
+    reason?: string;
+  }): Promise<{ message: string; report_id: string; report_count: number }> => {
+    try {
+      const response = await api.post<{
+        message: string;
+        report_id: string;
+        report_count: number;
+        status: string;
+      }>(`/api/news/report`, data);
+      return response.data;
+    } catch (err) {
+      throw new Error(getErrorMessage(err));
+    }
+  },
 };
