@@ -3,9 +3,11 @@ from app.core.database import get_db
 from app.models.bookmark import BookmarkModel
 from bson import ObjectId
 from app.core.auth import get_current_user_optional
-
+from app.services.training_data_service import TrainingDataService
+import logging
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 # --------------------------------------------------
@@ -31,6 +33,47 @@ async def add_bookmark(
     data["user_id"] = user_id
 
     result = await db.bookmarks.insert_one(data)
+    
+    # ✅ Collect implicit sentiment feedback (bookmark = positive signal)
+    # User bookmarking indicates they found the article valuable with its current sentiment
+    try:
+        # Combine title and description for training text
+        text = bookmark.title
+        if bookmark.description:
+            text += " " + bookmark.description
+        
+        # Get sentiment from article if available in cache, otherwise use neutral
+        from app.core.cache import get_from_cache
+        cache_key = f"gnews:{bookmark.category}" if bookmark.category else None
+        
+        ai_label = "Neutral"
+        ai_confidence = 0.5
+        
+        if cache_key:
+            cached_articles = await get_from_cache(cache_key)
+            if cached_articles:
+                for article in cached_articles:
+                    if article.get("id") == bookmark.article_id or article.get("url") == bookmark.url:
+                        sentiment = article.get("sentiment", {})
+                        ai_label = sentiment.get("label", "Neutral")
+                        ai_confidence = sentiment.get("confidence", 0.5)
+                        break
+        
+        await TrainingDataService.add_sentiment_feedback(
+            db=db,
+            article_id=bookmark.article_id,
+            text=text,
+            ai_label=ai_label,
+            ai_confidence=ai_confidence,
+            user_id=user_id,
+            source="implicit_bookmark",
+            user_label=None,  # Implicit - no explicit correction
+            article_url=bookmark.url,
+        )
+        logger.info(f"[IMPLICIT] Bookmark feedback collected for article={bookmark.article_id}")
+    except Exception as e:
+        # Don't fail the bookmark if feedback collection fails
+        logger.warning(f"[IMPLICIT] Failed to collect bookmark feedback: {str(e)}")
 
     return {
         "message": "Bookmark added",
