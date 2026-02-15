@@ -51,7 +51,7 @@ export const Bookmarks: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-8 sm:py-12 animate-fade-in">
+    <div className="w-full max-w-[96%] mx-auto px-2 sm:px-3 md:px-4 py-8 sm:py-12 animate-fade-in">
       <h2 className="text-3xl font-black mb-8 flex items-center gap-4">
         🔖 Saved Stories
         <span className="text-sm font-bold bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full text-slate-500">{bookmarks.length}</span>
