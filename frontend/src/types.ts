@@ -32,6 +32,8 @@ export interface SummaryData {
   source: 'cache' | 'generated' | 'description' | 'placeholder';
   summary: string;
   original_url?: string;
+  language?: string;
+  translated?: boolean;
 }
 
 export interface Comment {
