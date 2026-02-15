@@ -9,6 +9,21 @@ import { CommentSection } from './commentSection';
 import { formatRelativeTime, getReadTimeText } from '../../utils/timeUtils';
 import { openChatWithArticle } from '../../utils/chatEvents';
 
+const LANGUAGES = [
+  { code: 'en', name: 'English' },
+  { code: 'es', name: 'Spanish' },
+  { code: 'fr', name: 'French' },
+  { code: 'de', name: 'German' },
+  { code: 'hi', name: 'Hindi' },
+  { code: 'zh-CN', name: 'Chinese' },
+  { code: 'ja', name: 'Japanese' },
+  { code: 'ar', name: 'Arabic' },
+  { code: 'pt', name: 'Portuguese' },
+  { code: 'ru', name: 'Russian' },
+  { code: 'ko', name: 'Korean' },
+  { code: 'it', name: 'Italian' },
+];
+
 interface NewsCardProps {
   article: Article;
   viewType?: 'grid' | 'list';
@@ -29,12 +44,16 @@ export const NewsCard: React.FC<NewsCardProps> = ({
   const [summary, setSummary] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
+  const [selectedLang, setSelectedLang] = useState('en');
+  const [summaryData, setSummaryData] = useState<any>(null);
 
   const handleSummary = async () => {
     setIsModalOpen(true);
+    setSelectedLang('en');
     if (!summary) {
       setIsLoadingSummary(true);
       setSummaryError(null);
@@ -43,15 +62,38 @@ export const NewsCard: React.FC<NewsCardProps> = ({
         const res = await newsService.getSummary(
           article.url,
           article.content,
-          article.description
+          article.description,
+          'en'
         );
         setSummary(res.summary);
+        setSummaryData(res);
       } catch (err: any) {
         console.error("Summary failed", err);
         setSummaryError(err.message || "Failed to generate summary.");
       } finally {
         setIsLoadingSummary(false);
       }
+    }
+  };
+
+  const handleLanguageChange = async (lang: string) => {
+    if (lang === selectedLang) return;
+    setSelectedLang(lang);
+    setIsTranslating(true);
+    setSummaryError(null);
+    try {
+      const res = await newsService.getSummary(
+        article.url,
+        article.content,
+        article.description,
+        lang
+      );
+      setSummary(res.summary);
+      setSummaryData(res);
+    } catch (err: any) {
+      setSummaryError(err.message || 'Translation failed.');
+    } finally {
+      setIsTranslating(false);
     }
   };
 
@@ -224,13 +266,45 @@ export const NewsCard: React.FC<NewsCardProps> = ({
                    "{article.title}"
                  </h2>
 
+                 {/* Language Selector */}
+                 <div className="flex items-center justify-center gap-2 mb-4">
+                   <label
+                     htmlFor="lang-select-list"
+                     className="text-[10px] uppercase tracking-widest font-normal"
+                     style={{ color: '#555' }}
+                   >
+                     Translate
+                   </label>
+                   <select
+                     id="lang-select-list"
+                     value={selectedLang}
+                     onChange={(e) => handleLanguageChange(e.target.value)}
+                     disabled={isTranslating}
+                     className="text-xs border border-slate-400 dark:border-slate-500 rounded px-2 py-1 bg-transparent font-serif focus:outline-none focus:ring-1 focus:ring-indigo-400 disabled:opacity-50 text-slate-800 dark:text-slate-100"
+                   >
+                     {LANGUAGES.map((l) => (
+                       <option key={l.code} value={l.code}>
+                         {l.name}
+                       </option>
+                     ))}
+                   </select>
+                   {isTranslating && (
+                     <div className="w-4 h-4 border-2 border-slate-600 border-t-transparent rounded-full animate-spin"></div>
+                   )}
+                   {summaryData?.translated && (
+                     <span className="text-[9px] uppercase tracking-wider text-indigo-600 dark:text-indigo-400 font-semibold">
+                       Translated
+                     </span>
+                   )}
+                 </div>
+
                  {/* 2-Column Text Body */}
                  <div 
-                   className="text-sm leading-relaxed text-justify md:columns-2 gap-6 whitespace-pre-wrap" 
+                   className={`text-sm leading-relaxed text-justify md:columns-2 gap-6 whitespace-pre-wrap transition-opacity duration-300 ${isTranslating ? 'opacity-40' : ''}`}
                    style={{ 
                      fontFamily: 'Georgia, "Times New Roman", serif',
                      fontWeight: '300',
-                     opacity: 0.85,
+                     opacity: isTranslating ? 0.4 : 0.85,
                      color: '#333'
                    }}
                  >
@@ -416,13 +490,45 @@ export const NewsCard: React.FC<NewsCardProps> = ({
                  "{article.title}"
                </h2>
 
+               {/* Language Selector */}
+               <div className="flex items-center justify-center gap-2 mb-4">
+                 <label
+                   htmlFor="lang-select-grid"
+                   className="text-[10px] uppercase tracking-widest font-normal"
+                   style={{ color: '#555' }}
+                 >
+                   Translate
+                 </label>
+                 <select
+                   id="lang-select-grid"
+                   value={selectedLang}
+                   onChange={(e) => handleLanguageChange(e.target.value)}
+                   disabled={isTranslating}
+                   className="text-xs border border-slate-400 dark:border-slate-500 rounded px-2 py-1 bg-transparent font-serif focus:outline-none focus:ring-1 focus:ring-indigo-400 disabled:opacity-50 text-slate-800 dark:text-slate-100"
+                 >
+                   {LANGUAGES.map((l) => (
+                     <option key={l.code} value={l.code}>
+                       {l.name}
+                     </option>
+                   ))}
+                 </select>
+                 {isTranslating && (
+                   <div className="w-4 h-4 border-2 border-slate-600 border-t-transparent rounded-full animate-spin"></div>
+                 )}
+                 {summaryData?.translated && (
+                   <span className="text-[9px] uppercase tracking-wider text-indigo-600 dark:text-indigo-400 font-semibold">
+                     Translated
+                   </span>
+                 )}
+               </div>
+
                {/* 2-Column Text Body */}
                <div 
-                 className="text-sm leading-relaxed text-justify md:columns-2 gap-6 whitespace-pre-wrap" 
+                 className={`text-sm leading-relaxed text-justify md:columns-2 gap-6 whitespace-pre-wrap transition-opacity duration-300 ${isTranslating ? 'opacity-40' : ''}`}
                  style={{ 
                    fontFamily: 'Georgia, "Times New Roman", serif',
                    fontWeight: '300',
-                   opacity: 0.85,
+                   opacity: isTranslating ? 0.4 : 0.85,
                    color: '#333'
                  }}
                >
