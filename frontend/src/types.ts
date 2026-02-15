@@ -41,6 +41,8 @@ export interface SummaryData {
   original_url?: string;
   language?: string;
   translated?: boolean;
+  audio_available?: boolean;
+  tts_voice?: string;
 }
 
 export interface Comment {

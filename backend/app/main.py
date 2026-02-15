@@ -20,6 +20,7 @@ from app.routers import (
     profile,
     chatbot,
     admin,
+    tts,
 )
 
 # --------------------------------------------------
@@ -73,6 +74,7 @@ app.include_router(feedbacks.router, prefix="/api/feedback", tags=["Feedback"])
 app.include_router(profile.router, prefix="/api/profile", tags=["Profile"])
 app.include_router(chatbot.router, prefix="/api/chat", tags=["Chatbot"])
 app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
+app.include_router(tts.router, prefix="/api/tts", tags=["TTS"])
 
 logger = logging.getLogger(__name__)
 

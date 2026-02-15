@@ -6,6 +6,7 @@ from app.services.summarizer import TextSummarizer
 from app.services.text_utils import extract_article_text, translate_text, get_supported_languages
 from app.core.auth import get_current_user_optional
 from app.core.database import get_db
+from app.core.tts_config import is_language_supported as is_tts_supported, get_voice_for_language
 
 router = APIRouter()
 summarizer = TextSummarizer()
@@ -111,12 +112,20 @@ async def generate_summary(
         summary = translate_text(summary, target_lang)
         translated = True
 
+    # --------------------------------------------------
+    # 7️⃣ TTS availability check
+    # --------------------------------------------------
+    audio_available = is_tts_supported(target_lang)
+    voice_config = get_voice_for_language(target_lang) if audio_available else None
+
     response = {
         "summary": summary,
         "source": source,
         "is_fallback": source != "generated",
         "language": target_lang,
         "translated": translated,
+        "audio_available": audio_available,
+        "tts_voice": voice_config["voice_id"] if voice_config else None,
     }
 
     try:

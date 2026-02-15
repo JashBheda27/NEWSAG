@@ -4,6 +4,7 @@ import { Button } from '../ui/Button';
 import { newsService } from '../../services/news.service';
 import type { SummaryData } from '../../types';
 import { CommentSection } from './commentSection';
+import { AudioPlayer } from './AudioPlayer';
 
 interface Props {
   isOpen: boolean;
@@ -156,6 +157,20 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
              >
                {summaryData?.summary || 'No summary available.'}
             </div>
+
+            {/* Audio Player for TTS */}
+            {summaryData?.audio_available && summaryData?.summary && (
+              <div className="mt-4 pt-3 border-t border-slate-300 dark:border-slate-600">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[9px] uppercase tracking-widest text-slate-500">Listen to Summary</span>
+                </div>
+                <AudioPlayer 
+                  text={summaryData.summary} 
+                  language={selectedLang}
+                  className="bg-slate-50 dark:bg-slate-800/50 px-3 rounded-lg"
+                />
+              </div>
+            )}
           
           <div className="border-t border-black mt-6" ></div>
           

@@ -13,3 +13,4 @@ pyjwt[crypto]
 deep-translator
 datasets
 accelerate
+boto3
