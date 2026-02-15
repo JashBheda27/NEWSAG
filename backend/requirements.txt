@@ -11,3 +11,5 @@ torch
 numpy<2
 pyjwt[crypto]
 deep-translator
+datasets
+accelerate
