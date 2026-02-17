@@ -248,11 +248,3 @@ async def analyze_credibility(articles: List[Dict]) -> List[Dict]:
     
     return articles
 
-
-# Pre-load model on import (background, non-blocking intent)
-def preload_model():
-    """Call this at startup to pre-load the model."""
-    try:
-        _load_model()
-    except Exception as e:
-        logger.warning(f"Credibility model preload failed: {e}")
