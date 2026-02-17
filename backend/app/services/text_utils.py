@@ -3,24 +3,9 @@ import re
 import logging
 from bs4 import BeautifulSoup
 from deep_translator import GoogleTranslator
+from app.core.constants import SUPPORTED_LANGUAGES
 
 logger = logging.getLogger(__name__)
-
-# Supported languages for summary translation
-SUPPORTED_LANGUAGES = {
-    "en": "English",
-    "es": "Spanish",
-    "fr": "French",
-    "de": "German",
-    "hi": "Hindi",
-    "zh-CN": "Chinese (Simplified)",
-    "ja": "Japanese",
-    "ar": "Arabic",
-    "pt": "Portuguese",
-    "ru": "Russian",
-    "ko": "Korean",
-    "it": "Italian",
-}
 
 
 def translate_text(text: str, target_lang: str) -> str:
@@ -41,11 +26,6 @@ def translate_text(text: str, target_lang: str) -> str:
     except Exception as e:
         logger.error("[TRANSLATE] Translation failed for lang=%s: %s", target_lang, e)
         return text
-
-
-def get_supported_languages() -> dict:
-    """Return the dictionary of supported language codes and names."""
-    return SUPPORTED_LANGUAGES
 
 
 async def extract_article_text(url: str) -> str:
