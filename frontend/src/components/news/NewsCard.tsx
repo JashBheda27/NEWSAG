@@ -10,23 +10,12 @@ import { CommentSection } from './commentSection';
 import { AudioPlayer } from './AudioPlayer';
 import { formatRelativeTime, getReadTimeText } from '../../utils/timeUtils';
 import { openChatWithArticle } from '../../utils/chatEvents';
-
-const LANGUAGES = [
-  { code: 'en', name: 'English' },
-  { code: 'es', name: 'Spanish' },
-  { code: 'fr', name: 'French' },
-  { code: 'de', name: 'German' },
-  { code: 'hi', name: 'Hindi' },
-  { code: 'zh-CN', name: 'Chinese' },
-  { code: 'ja', name: 'Japanese' },
-  { code: 'ar', name: 'Arabic' },
-  { code: 'pt', name: 'Portuguese' },
-  { code: 'ru', name: 'Russian' },
-  { code: 'ko', name: 'Korean' },
-  { code: 'it', name: 'Italian' },
-];
+import { SUPPORTED_LANGUAGES } from '../../utils/constants';
 
 const SENTIMENT_OPTIONS = ['Positive', 'Neutral', 'Negative'];
+
+// Alias for backward compatibility
+const LANGUAGES = SUPPORTED_LANGUAGES;
 
 interface NewsCardProps {
   article: Article;
@@ -62,8 +51,6 @@ export const NewsCard: React.FC<NewsCardProps> = ({
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const [reportSubmitted, setReportSubmitted] = useState(false);
-
-  // ✅ Handle Sentiment Feedback
   const handleSentimentFeedback = async (userLabel: string) => {
     setIsSubmittingFeedback(true);
     try {
