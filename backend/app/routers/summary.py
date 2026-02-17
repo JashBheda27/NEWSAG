@@ -2,8 +2,9 @@ import hashlib
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, Depends
 from app.core.cache import get_from_cache, set_in_cache
+from app.core.constants import SUPPORTED_LANGUAGES
 from app.services.summarizer import TextSummarizer
-from app.services.text_utils import extract_article_text, translate_text, get_supported_languages
+from app.services.text_utils import extract_article_text, translate_text
 from app.core.auth import get_current_user_optional
 from app.core.database import get_db
 from app.core.tts_config import is_language_supported as is_tts_supported, get_voice_for_language
@@ -15,8 +16,7 @@ summarizer = TextSummarizer()
 @router.get("/languages")
 async def list_supported_languages():
     """Return list of supported translation languages."""
-    languages = get_supported_languages()
-    return {"languages": [{"code": k, "name": v} for k, v in languages.items()]}
+    return {"languages": [{"code": k, "name": v} for k, v in SUPPORTED_LANGUAGES.items()]}
 
 
 @router.post("/")
