@@ -5,6 +5,10 @@ import { newsService } from '../../services/news.service';
 import type { SummaryData } from '../../types';
 import { CommentSection } from './commentSection';
 import { AudioPlayer } from './AudioPlayer';
+import { SUPPORTED_LANGUAGES } from '../../utils/constants';
+
+// Alias for backward compatibility
+const LANGUAGES = SUPPORTED_LANGUAGES;
 
 interface Props {
   isOpen: boolean;
@@ -16,21 +20,6 @@ interface Props {
   articleId?: string;
   source?: string;
 }
-
-const LANGUAGES = [
-  { code: 'en', name: 'English' },
-  { code: 'es', name: 'Spanish' },
-  { code: 'fr', name: 'French' },
-  { code: 'de', name: 'German' },
-  { code: 'hi', name: 'Hindi' },
-  { code: 'zh-CN', name: 'Chinese' },
-  { code: 'ja', name: 'Japanese' },
-  { code: 'ar', name: 'Arabic' },
-  { code: 'pt', name: 'Portuguese' },
-  { code: 'ru', name: 'Russian' },
-  { code: 'ko', name: 'Korean' },
-  { code: 'it', name: 'Italian' },
-];
 
 export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, description, content, articleId, source }) => {
   const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
