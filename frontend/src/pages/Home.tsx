@@ -110,7 +110,7 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
 
   return (
     <motion.div 
-      className="w-full max-w-[96%] mx-auto px-2 sm:px-3 md:px-4 py-8 sm:py-12"
+      className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4 }}
@@ -125,26 +125,28 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
       </motion.div>
 
       <motion.header 
-        className="mb-6 mt-8"
+        className="mb-8 mt-10"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.2 }}
       >
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div>
-            <h2 className="text-4xl font-black mb-2 flex items-center gap-3">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          {/* Section Header with accent bar */}
+          <div className="relative pl-4 border-l-4 border-gradient-to-b from-indigo-500 to-purple-600" style={{ borderImage: 'linear-gradient(180deg, #6366f1 0%, #8b5cf6 100%) 1' }}>
+            <h2 className="text-3xl sm:text-4xl font-black mb-1 flex items-center gap-4 text-slate-900 dark:text-white">
               {queryFromUrl.length >= 2 ? 'Search Results' : `${categories.find(c => c.id === category)?.label.split(' ')[1]} Feed`}
               <motion.span 
-                className="inline-flex items-center justify-center px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg text-xs font-black"
+                className="inline-flex items-center justify-center px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full text-sm font-bold"
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
-                transition={{ type: "spring", stiffness: 400 }}
+                transition={{ type: "spring", stiffness: 400, delay: 0.3 }}
               >
-                {articles.length}
+                {articles.length} articles
               </motion.span>
             </h2>
-            
-            
+            <p className="text-slate-500 dark:text-slate-400 text-sm">
+              {queryFromUrl.length >= 2 ? `Results for "${queryFromUrl}"` : 'Latest AI-powered news coverage'}
+            </p>
           </div>
           
           <motion.div 
@@ -153,39 +155,51 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
           >
-            {/* ✅ Pure UI Toggle - NO API calls */}
-            <div className="flex items-center gap-1 bg-white dark:bg-slate-800 rounded-xl p-1 border border-slate-200 dark:border-slate-700 shadow-sm">
+            {/* ✅ Pill Style Segmented Control - NO API calls */}
+            <div className="flex items-center bg-slate-100/80 dark:bg-slate-800/80 rounded-full p-1 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50 shadow-inner">
               <motion.button
                 onClick={() => setViewType('grid')}
-                className={`px-3 py-1.5 rounded-lg transition-all font-bold text-xs flex items-center gap-1.5 ${
+                className={`relative px-4 py-2 rounded-full transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${
                   viewType === 'grid'
-                    ? 'bg-indigo-600 text-white shadow-sm'
+                    ? 'text-white'
                     : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
                 }`}
                 title="Grid View"
-                whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                {viewType === 'grid' && (
+                  <motion.div
+                    layoutId="viewToggle"
+                    className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full shadow-lg shadow-indigo-500/30"
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  />
+                )}
+                <svg className="w-4 h-4 relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
                 </svg>
-                <span className="hidden sm:inline">Grid</span>
+                <span className="hidden sm:inline relative z-10">Grid</span>
               </motion.button>
               <motion.button
                 onClick={() => setViewType('list')}
-                className={`px-3 py-1.5 rounded-lg transition-all font-bold text-xs flex items-center gap-1.5 ${
+                className={`relative px-4 py-2 rounded-full transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${
                   viewType === 'list'
-                    ? 'bg-indigo-600 text-white shadow-sm'
+                    ? 'text-white'
                     : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
                 }`}
                 title="List View"
-                whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                {viewType === 'list' && (
+                  <motion.div
+                    layoutId="viewToggle"
+                    className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full shadow-lg shadow-indigo-500/30"
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  />
+                )}
+                <svg className="w-4 h-4 relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
-                <span className="hidden sm:inline">List</span>
+                <span className="hidden sm:inline relative z-10">List</span>
               </motion.button>
             </div>
           </motion.div>
