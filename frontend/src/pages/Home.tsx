@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
+import { motion } from 'framer-motion';
 import type { Topic, Article } from '../types';
 import { NewsGrid } from '../components/news/NewsGrid';
 import { TrendingBulletin } from '../components/news/TrendingBulletin';
@@ -108,27 +109,53 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
   }, [category, isLoaded, isSignedIn, queryFromUrl]);
 
   return (
-    <div className="w-full max-w-[96%] mx-auto px-2 sm:px-3 md:px-4 py-8 sm:py-12 animate-fade-in">
+    <motion.div 
+      className="w-full max-w-[96%] mx-auto px-2 sm:px-3 md:px-4 py-8 sm:py-12"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+    >
       {/* 🔥 Live Trending Headlines Bulletin */}
-      <TrendingBulletin onError={(msg) => showNotification(msg, 'error')} />
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+      >
+        <TrendingBulletin onError={(msg) => showNotification(msg, 'error')} />
+      </motion.div>
 
-      <header className="mb-12 mt-8 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+      <motion.header 
+        className="mb-12 mt-8"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.2 }}
+      >
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <h2 className="text-4xl font-black mb-2 flex items-center gap-3">
               {queryFromUrl.length >= 2 ? 'Search Results' : `${categories.find(c => c.id === category)?.label.split(' ')[1]} Feed`}
-              <span className="inline-flex items-center justify-center px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg text-xs font-black">
+              <motion.span 
+                className="inline-flex items-center justify-center px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg text-xs font-black"
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 400 }}
+              >
                 {articles.length}
-              </span>
+              </motion.span>
             </h2>
             
             
           </div>
           
-          <div className="flex items-center gap-4">
+          <motion.div 
+            className="flex items-center gap-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+          >
             {/* ✅ Pure UI Toggle - NO API calls */}
             <div className="flex items-center gap-1 bg-white dark:bg-slate-800 rounded-xl p-1 border border-slate-200 dark:border-slate-700 shadow-sm">
-              <button
+              <motion.button
                 onClick={() => setViewType('grid')}
                 className={`px-3 py-1.5 rounded-lg transition-all font-bold text-xs flex items-center gap-1.5 ${
                   viewType === 'grid'
@@ -136,13 +163,15 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
                     : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
                 }`}
                 title="Grid View"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
                 </svg>
                 <span className="hidden sm:inline">Grid</span>
-              </button>
-              <button
+              </motion.button>
+              <motion.button
                 onClick={() => setViewType('list')}
                 className={`px-3 py-1.5 rounded-lg transition-all font-bold text-xs flex items-center gap-1.5 ${
                   viewType === 'list'
@@ -150,42 +179,64 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
                     : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
                 }`}
                 title="List View"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
                 <span className="hidden sm:inline">List</span>
-              </button>
+              </motion.button>
             </div>
-          </div>
+          </motion.div>
         </div>
-      </header>
+      </motion.header>
 
       {isFirstLoad && isLoading ? (
-        <div className="max-w-xl mx-auto py-20 px-8 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-[2.5rem] shadow-2xl border border-blue-100 dark:border-indigo-800 text-center animate-slide-up">
+        <motion.div 
+          className="max-w-xl mx-auto py-20 px-8 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-[2.5rem] shadow-2xl border border-blue-100 dark:border-indigo-800 text-center"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4 }}
+        >
           <div className="mb-6 flex justify-center">
-            <div className="relative w-16 h-16">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-600 rounded-full animate-spin" style={{maskImage: 'conic-gradient(transparent 25%, black 75%)'}}></div>
+            <motion.div 
+              className="relative w-16 h-16"
+              animate={{ rotate: 360 }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-600 rounded-full" style={{maskImage: 'conic-gradient(transparent 25%, black 75%)'}}></div>
               <div className="absolute inset-2 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-full"></div>
-            </div>
+            </motion.div>
           </div>
           <h3 className="text-2xl font-black mb-2 text-slate-900 dark:text-white">Warming up AI Engine</h3>
           <p className="text-slate-600 dark:text-slate-300 mb-2 text-sm">First load may take a few seconds while the model initializes...</p>
           <p className="text-xs text-slate-500 dark:text-slate-400">Thank you for your patience</p>
-        </div>
+        </motion.div>
       ) : error ? (
-        <div className="max-w-xl mx-auto py-20 px-8 bg-white dark:bg-slate-800 rounded-[2.5rem] shadow-2xl border border-rose-100 dark:border-rose-900/20 text-center animate-slide-up">
+        <motion.div 
+          className="max-w-xl mx-auto py-20 px-8 bg-white dark:bg-slate-800 rounded-[2.5rem] shadow-2xl border border-rose-100 dark:border-rose-900/20 text-center"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4 }}
+        >
           <h3 className="text-2xl font-black mb-4">Feed Unavailable</h3>
           <p className="text-slate-500 dark:text-slate-400 mb-8">{error}</p>
           <Button size="lg" onClick={() => fetchNews(category)}>Try Again</Button>
-        </div>
+        </motion.div>
       ) : (
-        <NewsGrid 
-          articles={articles} 
-          isLoading={isLoading} 
-          viewType={viewType}
-          onError={(msg) => showNotification(msg, 'error')} 
-        />
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
+        >
+          <NewsGrid 
+            articles={articles} 
+            isLoading={isLoading} 
+            viewType={viewType}
+            onError={(msg) => showNotification(msg, 'error')} 
+          />
+        </motion.div>
       )}
 
       <LoginRequiredModal
@@ -193,6 +244,6 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
         onClose={() => setShowLoginModal(false)}
         categoryName={selectedCategoryName}
       />
-    </div>
+    </motion.div>
   );
 };
