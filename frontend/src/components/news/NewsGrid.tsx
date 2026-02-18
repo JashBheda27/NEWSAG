@@ -1,5 +1,4 @@
-import React, { useMemo } from 'react';
-import { motion } from 'framer-motion';
+import React, { useMemo, useCallback } from 'react';
 import type { Article } from '../../types';
 import { NewsCard } from './NewsCard';
 import { NewsSkeleton } from './NewsSkeleton';
@@ -12,6 +11,25 @@ interface NewsGridProps {
   onError: (msg: string) => void;
 }
 
+// Optimized loading skeleton without heavy animations
+const LoadingSkeleton = React.memo<{ viewType: string }>(({ viewType }) => {
+  const gridClassName = viewType === 'grid' 
+    ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+    : "space-y-4";
+    
+  return (
+    <div className={`${gridClassName} animate-fade-in`}>
+      {[...Array(6)].map((_, i) => (
+        <div key={i} className="animate-fade-in" style={{ animationDelay: `${i * 50}ms` }}>
+          <NewsSkeleton />
+        </div>
+      ))}
+    </div>
+  );
+});
+
+LoadingSkeleton.displayName = 'LoadingSkeleton';
+
 // Memoized component to prevent unnecessary re-renders
 export const NewsGrid: React.FC<NewsGridProps> = React.memo(({ articles, isLoading, viewType = 'grid', onError }) => {
   // Memoize the grid className
@@ -21,26 +39,13 @@ export const NewsGrid: React.FC<NewsGridProps> = React.memo(({ articles, isLoadi
       : "space-y-4"
   , [viewType]);
 
+  // Memoize error handler to prevent re-renders
+  const handleError = useCallback((msg: string) => {
+    onError(msg);
+  }, [onError]);
+
   if (isLoading) {
-    return (
-      <motion.div 
-        className={gridClassName}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.3 }}
-      >
-        {[...Array(6)].map((_, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1, duration: 0.4 }}
-          >
-            <NewsSkeleton />
-          </motion.div>
-        ))}
-      </motion.div>
-    );
+    return <LoadingSkeleton viewType={viewType} />;
   }
 
   if (articles.length === 0) {
@@ -57,33 +62,21 @@ export const NewsGrid: React.FC<NewsGridProps> = React.memo(({ articles, isLoadi
   }
 
   return (
-    <motion.div 
-      className={gridClassName}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
-    >
+    <div className={`${gridClassName} animate-fade-in`}>
       {articles.map((article, idx) => (
-        <motion.div
+        <div
           key={article.id || article.url}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ 
-            delay: Math.min(idx * 0.05, 0.3),
-            duration: 0.4,
-            type: "spring",
-            stiffness: 300,
-            damping: 30
-          }}
+          className="animate-fade-in transform-gpu"
+          style={{ animationDelay: `${Math.min(idx * 30, 200)}ms` }}
         >
           <NewsCard 
             article={article}
             viewType={viewType}
-            onError={onError}
+            onError={handleError}
           />
-        </motion.div>
+        </div>
       ))}
-    </motion.div>
+    </div>
   );
 });
 
