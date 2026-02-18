@@ -11,11 +11,11 @@ interface NewsGridProps {
   onError: (msg: string) => void;
 }
 
-// Optimized loading skeleton without heavy animations
+// Optimized loading skeleton
 const LoadingSkeleton = React.memo<{ viewType: string }>(({ viewType }) => {
   const gridClassName = viewType === 'grid' 
-    ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-    : "space-y-4";
+    ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8"
+    : "flex flex-col gap-6";
     
   return (
     <div className={`${gridClassName} animate-fade-in`}>
@@ -32,11 +32,11 @@ LoadingSkeleton.displayName = 'LoadingSkeleton';
 
 // Memoized component to prevent unnecessary re-renders
 export const NewsGrid: React.FC<NewsGridProps> = React.memo(({ articles, isLoading, viewType = 'grid', onError }) => {
-  // Memoize the grid className
+  // Memoize the grid className with improved gap spacing
   const gridClassName = useMemo(() => 
     viewType === 'grid' 
-      ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-      : "space-y-4"
+      ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8"
+      : "flex flex-col gap-6"
   , [viewType]);
 
   // Memoize error handler to prevent re-renders
@@ -50,7 +50,7 @@ export const NewsGrid: React.FC<NewsGridProps> = React.memo(({ articles, isLoadi
 
   if (articles.length === 0) {
     return (
-      <div className="flex justify-center">
+      <div className="flex justify-center py-12">
         <EmptyState
           title="No Articles Found"
           description="Explore different categories or try a new search to discover great reads."
@@ -62,12 +62,12 @@ export const NewsGrid: React.FC<NewsGridProps> = React.memo(({ articles, isLoadi
   }
 
   return (
-    <div className={`${gridClassName} animate-fade-in`}>
+    <div className={`${gridClassName} page-transition`}>
       {articles.map((article, idx) => (
         <div
           key={article.id || article.url}
           className="animate-fade-in transform-gpu"
-          style={{ animationDelay: `${Math.min(idx * 30, 200)}ms` }}
+          style={{ animationDelay: `${Math.min(idx * 40, 300)}ms` }}
         >
           <NewsCard 
             article={article}
