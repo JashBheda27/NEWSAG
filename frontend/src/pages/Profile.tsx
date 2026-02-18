@@ -6,12 +6,24 @@ import { Button } from '../components/ui/Button.tsx';
 import { userService } from '../services/user.service';
 import type { ProfileAnalyticsResponse } from '../services/user.service';
 
-const StatCard: React.FC<{ label: string; value: React.ReactNode; icon?: React.ReactNode }> = ({ label, value, icon }) => {
+const StatCard: React.FC<{ label: string; value: React.ReactNode; icon?: React.ReactNode; highlight?: boolean }> = ({ label, value, icon, highlight }) => {
   return (
-    <div className="relative rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-      {icon ? <div className="absolute right-3 top-3 text-slate-300 dark:text-slate-500">{icon}</div> : null}
-      <span className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1 dark:text-slate-500">{label}</span>
-      <div className="text-xl font-bold text-slate-900 dark:text-slate-100">{value}</div>
+    <div className={`relative rounded-2xl p-[1px] card-lift transition-all duration-300 ${
+      highlight 
+        ? 'bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 shadow-lg shadow-indigo-500/20' 
+        : 'bg-gradient-to-br from-slate-200 via-slate-100 to-slate-200 dark:from-slate-700 dark:via-slate-600 dark:to-slate-700'
+    }`}>
+      <div className="relative rounded-[15px] bg-white px-5 py-4 dark:bg-slate-800 h-full">
+        {icon ? (
+          <div className={`absolute right-4 top-4 ${
+            highlight ? 'text-indigo-400 dark:text-indigo-300' : 'text-slate-300 dark:text-slate-500'
+          }`}>{icon}</div>
+        ) : null}
+        <span className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2 dark:text-slate-500">{label}</span>
+        <div className={`text-2xl font-black ${
+          highlight ? 'text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400' : 'text-slate-900 dark:text-slate-100'
+        } animated-counter`}>{value}</div>
+      </div>
     </div>
   );
 };
@@ -62,33 +74,33 @@ export const Profile: React.FC = () => {
   const valueOr = (value: React.ReactNode) => (isLoadingStats ? placeholder : value);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 page-transition">
       <div className="max-w-5xl mx-auto px-4 py-12">
-        <div className="rounded-[2.5rem] bg-white border border-slate-200 shadow-lg px-8 py-10 md:px-12 md:py-12 dark:bg-slate-800 dark:border-slate-700">
+        <div className="rounded-[2.5rem] bg-white/95 backdrop-blur-lg border border-slate-200/80 shadow-2xl shadow-slate-200/50 px-8 py-10 md:px-12 md:py-14 dark:bg-slate-800/95 dark:border-slate-700/80 dark:shadow-slate-900/50">
           <div className="flex flex-col md:flex-row items-start gap-8">
-            <div className="w-28 h-28 md:w-32 md:h-32 rounded-[1.75rem] overflow-hidden border border-slate-100 shadow-sm flex-shrink-0 dark:border-slate-700">
-              <img src={userData.avatar} alt={userData.name} className="w-full h-full object-cover" />
+            <div className="w-28 h-28 md:w-36 md:h-36 rounded-[2rem] overflow-hidden shadow-xl shadow-indigo-500/10 flex-shrink-0 p-[3px] bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
+              <img src={userData.avatar} alt={userData.name} className="w-full h-full object-cover rounded-[1.75rem]" />
             </div>
             <div className="flex-1">
               <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                 <div>
-                  <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{userData.name}</h2>
-                  <p className="text-indigo-600 font-semibold dark:text-indigo-400">{userData.handle}</p>
-                  <p className="text-sm text-slate-400 mt-1 dark:text-slate-500">{userData.email}</p>
-                  <p className="text-slate-500 mt-4 max-w-xl dark:text-slate-400">{userData.bio}</p>
+                  <h2 className="text-3xl font-black text-slate-900 dark:text-slate-100">{userData.name}</h2>
+                  <p className="text-indigo-600 font-bold text-lg dark:text-indigo-400">{userData.handle}</p>
+                  <p className="text-sm text-slate-400 mt-1.5 dark:text-slate-500">{userData.email}</p>
+                  <p className="text-slate-600 mt-4 max-w-xl leading-relaxed dark:text-slate-400">{userData.bio}</p>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm">Edit Profile</Button>
+                <div className="flex gap-3">
+                  <Button variant="outline" size="sm" className="!rounded-xl !px-5">Edit Profile</Button>
                   <button
                     onClick={handleLogout}
-                    className="px-4 py-2 rounded-xl text-sm font-bold text-red-600 hover:bg-red-50 border border-red-200 transition-all dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/20"
+                    className="px-5 py-2.5 rounded-xl text-sm font-bold text-red-500 hover:text-white hover:bg-red-500 border-2 border-red-200 hover:border-red-500 transition-all duration-300 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-600 dark:hover:border-red-600"
                   >
                     Logout
                   </button>
                 </div>
               </div>
 
-              <div className="mt-8 grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="mt-10 grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard
                   label="Articles Read"
                   value={valueOr(analytics?.tier1.articles_read ?? '—')}
@@ -121,6 +133,7 @@ export const Profile: React.FC = () => {
                   label="Engagement"
                   value={valueOr(<span className="text-sm font-bold">{analytics?.tier3.engagement_label ?? '—'}</span>)}
                   icon={<svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M3 12h3v8H3zM9 8h3v12H9zM15 4h3v16h-3z" /></svg>}
+                  highlight={true}
                 />
                 <StatCard
                   label="Last Active"
@@ -130,14 +143,33 @@ export const Profile: React.FC = () => {
               </div>
 
               {!isLoadingStats && analytics?.tier2.weekly_activity?.length ? (
-                <div className="mt-6">
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3 dark:text-slate-500">Weekly Activity</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {analytics.tier2.weekly_activity.map((item) => (
-                      <div key={item.day} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-200">
-                        {item.day} <span className="ml-1 text-slate-400 dark:text-slate-400">{item.count}</span>
-                      </div>
-                    ))}
+                <div className="mt-8">
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4 dark:text-slate-500 flex items-center gap-2">
+                    <span className="w-1 h-4 bg-gradient-to-b from-indigo-500 to-purple-500 rounded-full"></span>
+                    Weekly Activity
+                  </h3>
+                  <div className="grid grid-cols-7 gap-2">
+                    {analytics.tier2.weekly_activity.map((item, index) => {
+                      const maxCount = Math.max(...analytics.tier2.weekly_activity.map(a => a.count), 1);
+                      const heightPercent = (item.count / maxCount) * 100;
+                      return (
+                        <div key={item.day} className="flex flex-col items-center gap-2">
+                          <div className="h-24 w-full flex items-end justify-center">
+                            <div 
+                              className="w-full max-w-[32px] rounded-t-lg bg-gradient-to-t from-indigo-500 to-purple-500 animate-bar transition-all duration-500"
+                              style={{ 
+                                height: `${Math.max(heightPercent, 8)}%`,
+                                animationDelay: `${index * 100}ms`
+                              }}
+                            />
+                          </div>
+                          <div className="text-center">
+                            <span className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">{item.day}</span>
+                            <span className="block text-xs font-bold text-slate-600 dark:text-slate-300">{item.count}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ) : null}
