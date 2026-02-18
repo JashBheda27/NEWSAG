@@ -6,13 +6,13 @@ import { chatService, type ChatMessage, type ChatContext } from '../../services/
 const MessageBubble = memo<{ msg: ChatMessage; formatContent: (content: string) => string }>(
   ({ msg, formatContent }) => (
     <div
-      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}
+      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-up`}
     >
       <div
-        className={`max-w-[85%] px-4 py-3 rounded-2xl transform-gpu transition-transform duration-200 hover:scale-[1.02] ${
+        className={`max-w-[85%] px-4 py-3 transform-gpu transition-all duration-200 hover:scale-[1.01] ${
           msg.role === 'user'
-            ? 'bg-indigo-600 text-white rounded-br-md'
-            : 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-bl-md'
+            ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-2xl rounded-br-md shadow-lg shadow-indigo-500/20'
+            : 'bg-slate-100/80 dark:bg-slate-700/80 backdrop-blur-sm text-slate-800 dark:text-slate-200 rounded-2xl rounded-bl-md border border-slate-200/50 dark:border-slate-600/50'
         }`}
       >
         <div 
@@ -20,8 +20,8 @@ const MessageBubble = memo<{ msg: ChatMessage; formatContent: (content: string) 
           dangerouslySetInnerHTML={{ __html: formatContent(msg.content) }}
         />
         {msg.intent && msg.role === 'assistant' && (
-          <div className="mt-2 pt-2 border-t border-slate-200/50 dark:border-slate-600/50">
-            <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+          <div className="mt-2 pt-2 border-t border-slate-200/30 dark:border-slate-600/30">
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-medium">
               {msg.intent.replace('_', ' ')}
             </span>
           </div>
@@ -249,27 +249,27 @@ export const ChatBot: React.FC<ChatBotProps> = ({ articleContext: initialContext
             
             {/* Chat Window */}
             <motion.div 
-              className="relative w-full max-w-md h-[600px] max-h-[85vh] bg-white dark:bg-slate-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden"
-              initial={{ opacity: 0, y: 50, scale: 0.95 }}
+              className="relative w-full max-w-md h-[600px] max-h-[85vh] bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-t-[2rem] rounded-b-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-200/50 dark:border-slate-700/50"
+              initial={{ opacity: 0, y: 100, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 50, scale: 0.95 }}
+              exit={{ opacity: 0, y: 100, scale: 0.9 }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
             >
               {/* Header */}
-              <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+              <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 text-white rounded-t-[2rem]">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center font-bold">
+                  <div className="w-11 h-11 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center font-black text-lg shadow-inner">
                     NA
                   </div>
                   <div>
-                    <h3 className="font-semibold">NewsAura AI</h3>
-                    <p className="text-xs text-indigo-200">Your Personal News Assistant</p>
+                    <h3 className="font-bold text-base">NewsAura AI</h3>
+                    <p className="text-xs text-indigo-200/80">Your Personal News Assistant</p>
                   </div>
                 </div>
                 <motion.button 
                   onClick={() => setIsOpen(false)}
-                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-                  whileHover={{ scale: 1.1 }}
+                  className="p-2.5 hover:bg-white/20 rounded-xl transition-colors"
+                  whileHover={{ scale: 1.1, rotate: 90 }}
                   whileTap={{ scale: 0.9 }}
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -388,8 +388,8 @@ export const ChatBot: React.FC<ChatBotProps> = ({ articleContext: initialContext
               </div>
 
               {/* Input */}
-              <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-                <div className="flex items-center gap-2">
+              <div className="px-4 py-4 border-t border-slate-200/50 dark:border-slate-700/50 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                <div className="flex items-center gap-3">
                   <input
                     ref={inputRef}
                     type="text"
@@ -397,14 +397,14 @@ export const ChatBot: React.FC<ChatBotProps> = ({ articleContext: initialContext
                     onChange={(e) => setInput(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder="Ask me anything about your news..."
-                    className="flex-1 px-4 py-2.5 bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl border-none focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm transition-all"
+                    className="flex-1 px-5 py-3 bg-slate-100/80 dark:bg-slate-700/80 backdrop-blur-sm text-slate-800 dark:text-slate-200 rounded-full border-none focus:ring-2 focus:ring-indigo-500/50 focus:outline-none text-sm transition-all shadow-inner placeholder:text-slate-400 dark:placeholder:text-slate-500"
                     disabled={isLoading}
                   />
                   <motion.button
                     id="chatbot-send-btn"
                     onClick={handleSend}
                     disabled={!input.trim() || isLoading}
-                    className="p-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-xl transition-colors"
+                    className="p-3 bg-gradient-to-br from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 disabled:from-slate-300 disabled:to-slate-400 disabled:cursor-not-allowed text-white rounded-full transition-all shadow-lg shadow-indigo-500/30 disabled:shadow-none"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.9 }}
                   >
@@ -413,7 +413,7 @@ export const ChatBot: React.FC<ChatBotProps> = ({ articleContext: initialContext
                     </svg>
                   </motion.button>
                 </div>
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 text-center mt-2">
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 text-center mt-3">
                   I only use your saved articles — no external lookups
                 </p>
               </div>
