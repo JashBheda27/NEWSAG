@@ -121,3 +121,117 @@ button:focus-visible {
     animation-duration: 10s;
   }
 }
+
+/* ===============================
+   Performance Optimizations
+   =============================== */
+
+/* GPU-accelerated fade-in animation */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out forwards;
+}
+
+/* Smooth card hover with GPU acceleration */
+.card-hover {
+  transition: transform 200ms ease-out, box-shadow 200ms ease-out;
+  will-change: transform;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px) scale(1.01);
+}
+
+/* Optimized scrolling containers */
+.smooth-scroll {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Hide scrollbar but keep functionality */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* GPU-optimized transitions */
+.transform-gpu {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  .animate-scroll-x {
+    animation: none;
+  }
+}
+
+/* Optimized image loading */
+img {
+  content-visibility: auto;
+}
+
+/* Smooth button interactions */
+.btn-smooth {
+  transition: all 150ms ease-out;
+  will-change: transform, background-color;
+}
+
+.btn-smooth:hover {
+  transform: scale(1.02);
+}
+
+.btn-smooth:active {
+  transform: scale(0.98);
+}
+
+/* Performance-optimized skeleton loader */
+@keyframes skeleton-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.skeleton-pulse {
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+/* Optimized loading states */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-smooth {
+  animation: spin 1s linear infinite;
+  will-change: transform;
+}
