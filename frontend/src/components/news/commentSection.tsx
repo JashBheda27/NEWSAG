@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import type { Comment } from '../../types.ts';
 import { userService } from '../../services/user.service.ts';
 import { Skeleton } from '../ui/Skeleton.tsx';
@@ -9,7 +9,30 @@ interface CommentSectionProps {
   articleTitle: string;
 }
 
-export const CommentSection: React.FC<CommentSectionProps> = ({ articleId, articleTitle }) => {
+// Memoized comment item component
+const CommentItem = memo<{ comment: Comment }>(({ comment }) => (
+  <div className="flex gap-4 animate-fade-in">
+    <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center font-bold text-indigo-600 flex-shrink-0">
+      {comment.username && comment.username.length > 0 ? comment.username[0] : 'U'}
+    </div>
+    <div className="flex-1 min-w-0">
+      <div className="flex items-center gap-2 mb-1">
+        <span className="font-bold text-sm truncate">{comment.username || 'Anonymous'}</span>
+        <span className="text-[10px] text-slate-400 flex-shrink-0">
+          {new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </span>
+      </div>
+      <p className="text-sm text-slate-600 dark:text-slate-400">
+        {comment.text}
+      </p>
+    </div>
+  </div>
+));
+
+CommentItem.displayName = 'CommentItem';
+
+// Optimized CommentSection with memo
+export const CommentSection = memo<CommentSectionProps>(({ articleId, articleTitle }) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [newComment, setNewComment] = useState('');
@@ -33,7 +56,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ articleId, artic
     fetchComments();
   }, [articleId]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newComment.trim()) return;
 
@@ -45,14 +68,18 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ articleId, artic
         article_title: articleTitle,
         text: newComment 
       });
-      setComments([comment, ...comments]);
+      setComments(prev => [comment, ...prev]);
       setNewComment('');
     } catch (err: any) {
       setError(err.message || 'Failed to post comment');
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [articleId, articleTitle, newComment]);
+
+  const handleCommentChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setNewComment(e.target.value);
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -64,9 +91,9 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ articleId, artic
         )}
         <textarea
           value={newComment}
-          onChange={(e) => setNewComment(e.target.value)}
+          onChange={handleCommentChange}
           placeholder="What do you think?"
-          className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none h-24 text-sm"
+          className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none h-24 text-sm transition-shadow"
           disabled={isSubmitting}
         />
         <div className="flex justify-end">
@@ -98,22 +125,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ articleId, artic
           </div>
         ) : comments.length > 0 ? (
           comments.map((comment) => (
-            <div key={comment.id} className="flex gap-4 animate-fade-in">
-              <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center font-bold text-indigo-600">
-                {comment.username && comment.username.length > 0 ? comment.username[0] : 'U'}
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-bold text-sm">{comment.username || 'Anonymous'}</span>
-                  <span className="text-[10px] text-slate-400">
-                    {new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                </div>
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  {comment.text}
-                </p>
-              </div>
-            </div>
+            <CommentItem key={comment.id} comment={comment} />
           ))
         ) : (
           <p className="text-center text-slate-400 py-4 text-sm italic">No comments yet.</p>
@@ -121,4 +133,6 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ articleId, artic
       </div>
     </div>
   );
-};
+});
+
+CommentSection.displayName = 'CommentSection';
