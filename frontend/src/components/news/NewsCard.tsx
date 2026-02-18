@@ -204,50 +204,50 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
   // ✅ List View Layout (Horizontal)
   if (viewType === 'list') {
     return (
-      <div className="group relative bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col sm:flex-row">
+      <div className="group relative bg-white dark:bg-slate-800/90 rounded-3xl overflow-hidden border border-slate-100/80 dark:border-slate-700/50 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.08)] hover:shadow-[0_16px_32px_-8px_rgba(0,0,0,0.12)] transition-all duration-300 flex flex-col sm:flex-row hover:-translate-y-1 backdrop-blur-sm">
         {/* Image Section - Adaptive for small screens */}
-        <div className="relative w-full sm:w-48 h-48 sm:h-40 overflow-hidden flex-shrink-0">
+        <div className="relative w-full sm:w-52 h-48 sm:h-44 overflow-hidden flex-shrink-0">
           <img 
             src={imageUrl} 
             alt={article.title}
             loading="lazy"
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 will-change-transform"
           />
-          <div className="absolute top-2 left-2">
+          <div className="absolute top-3 left-3">
             <SentimentBadge sentiment={article.sentiment} />
           </div>
-          <div className="absolute bottom-2 right-2">
+          <div className="absolute bottom-3 right-3">
             <CredibilityBadge credibility={article.credibility} />
           </div>
         </div>
 
         {/* Content Section */}
-        <div className="p-4 sm:p-5 flex-grow flex flex-col">
+        <div className="p-5 flex-grow flex flex-col">
           <div className="flex justify-between items-start mb-2">
-            <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
               {article.source}
             </span>
-            <div className="flex items-center gap-3 text-xs text-slate-400">
+            <div className="flex items-center gap-3 text-[11px] text-slate-400 dark:text-slate-500">
               <span>{formatRelativeTime(article.published_at)}</span>
               {(article.description || article.content) && (
-                <span className="text-slate-500">• {getReadTimeText(article.description || article.content)}</span>
+                <span className="text-slate-300 dark:text-slate-600">• {getReadTimeText(article.description || article.content)}</span>
               )}
             </div>
           </div>
           
-          <h3 className="text-lg font-bold leading-tight mb-2 line-clamp-2 hover:text-indigo-600 transition-colors">
+          <h3 className="text-lg font-bold leading-snug mb-2 line-clamp-2 text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-200">
             <a href={article.url} target="_blank" rel="noopener noreferrer">{article.title}</a>
           </h3>
           
-          <p className="text-slate-600 dark:text-slate-400 text-sm line-clamp-2 mb-3">
+          <p className="text-slate-500 dark:text-slate-400 text-sm line-clamp-2 mb-4 leading-relaxed">
             {article.description}
           </p>
 
           <div className="mt-auto flex items-center justify-between">
-            <div className="flex gap-1 group/action relative">
+            <div className="flex gap-1.5">
               <button 
                 onClick={toggleBookmark}
-                className={`p-2 rounded-full transition-all ${isBookmarked ? 'text-white bg-indigo-600 hover:bg-indigo-700' : 'text-slate-700 bg-white hover:bg-indigo-600 hover:text-white border border-slate-200 dark:border-slate-600'}`}
+                className={`p-2.5 rounded-xl transition-all duration-200 ${isBookmarked ? 'text-white bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25' : 'text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-110'}`}
                 title="Bookmark"
               >
                 <svg className="w-4 h-4" fill={isBookmarked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
@@ -256,7 +256,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
               </button>
               <button 
                 onClick={toggleReadLater}
-                className={`p-2 rounded-full transition-all ${isInReadLater ? 'text-white bg-indigo-600 hover:bg-indigo-700' : 'text-slate-700 bg-white hover:bg-indigo-600 hover:text-white border border-slate-200 dark:border-slate-600'}`}
+                className={`p-2.5 rounded-xl transition-all duration-200 ${isInReadLater ? 'text-white bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25' : 'text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-110'}`}
                 title="Read Later"
               >
                 <svg className="w-4 h-4" fill={isInReadLater ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
@@ -265,7 +265,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
               </button>
               <button 
                 onClick={() => setIsCommentsOpen(true)}
-                className="p-2 rounded-full transition-all text-slate-700 bg-white hover:bg-indigo-600 hover:text-white border border-slate-200 dark:border-slate-600"
+                className="p-2.5 rounded-xl transition-all duration-200 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-110"
                 title="Comments"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -277,10 +277,10 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
               <div className="relative">
                 <button 
                   onClick={() => setShowFeedbackMenu(!showFeedbackMenu)}
-                  className={`p-2 rounded-full transition-all ${
+                  className={`p-2.5 rounded-xl transition-all duration-200 ${
                     feedbackSubmitted 
-                      ? 'text-white bg-green-600' 
-                      : 'text-slate-700 bg-white hover:bg-indigo-600 hover:text-white border border-slate-200 dark:border-slate-600'
+                      ? 'text-white bg-gradient-to-br from-emerald-500 to-green-600 shadow-lg shadow-emerald-500/25' 
+                      : 'text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-110'
                   }`}
                   title={feedbackSubmitted ? `Rated: ${feedbackSubmitted}` : "Rate Sentiment"}
                 >
@@ -296,8 +296,8 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
                 </button>
                 
                 {showFeedbackMenu && !feedbackSubmitted && (
-                  <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-600 py-1 z-50 min-w-[120px]">
-                    <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">
+                  <div className="absolute bottom-full left-0 mb-2 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-xl shadow-xl border border-slate-200/50 dark:border-slate-600/50 py-2 z-50 min-w-[140px] animate-slide-up">
+                    <div className="px-3 py-1.5 text-[9px] uppercase tracking-widest text-slate-400 dark:text-slate-500 font-bold">
                       Rate Sentiment
                     </div>
                     {SENTIMENT_OPTIONS.map((option) => (
@@ -305,16 +305,16 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
                         key={option}
                         onClick={() => handleSentimentFeedback(option)}
                         disabled={isSubmittingFeedback}
-                        className={`w-full text-left px-3 py-1.5 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center gap-2 ${
-                          article.sentiment?.label === option ? 'text-indigo-600 font-semibold' : 'text-slate-700 dark:text-slate-300'
+                        className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all flex items-center gap-2.5 ${
+                          article.sentiment?.label === option ? 'text-indigo-600 font-semibold' : 'text-slate-600 dark:text-slate-300'
                         }`}
                       >
                         <span className={`w-2 h-2 rounded-full ${
-                          option === 'Positive' ? 'bg-green-500' : 
-                          option === 'Negative' ? 'bg-red-500' : 'bg-slate-400'
+                          option === 'Positive' ? 'bg-emerald-500' : 
+                          option === 'Negative' ? 'bg-rose-500' : 'bg-slate-400'
                         }`}></span>
                         {option}
-                        {article.sentiment?.label === option && <span className="text-[9px] opacity-60">(AI)</span>}
+                        {article.sentiment?.label === option && <span className="text-[9px] opacity-50 ml-auto">(AI)</span>}
                       </button>
                     ))}
                   </div>
@@ -324,10 +324,10 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
               {/* ✅ Report Button (List View) */}
               <button 
                 onClick={() => setShowReportModal(true)}
-                className={`p-2 rounded-full transition-all ${
+                className={`p-2.5 rounded-xl transition-all duration-200 ${
                   reportSubmitted 
-                    ? 'text-white bg-orange-600' 
-                    : 'text-slate-700 bg-white hover:bg-red-600 hover:text-white border border-slate-200 dark:border-slate-600'
+                    ? 'text-white bg-gradient-to-br from-orange-500 to-amber-600 shadow-lg shadow-orange-500/25' 
+                    : 'text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50 hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-600 dark:hover:text-rose-400 hover:scale-110'
                 }`}
                 title={reportSubmitted ? "Report Submitted" : "Report Misleading"}
                 disabled={reportSubmitted}
@@ -338,16 +338,16 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
               </button>
             </div>
             
-            <div className="flex gap-2">
-              <Button variant="ghost" size="sm" onClick={handleSummary} className="text-indigo-600 font-bold dark:text-indigo-400 text-xs hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500 transition-colors">
-                ✨ AI Summary
+            <div className="flex gap-1.5">
+              <Button variant="ghost" size="sm" onClick={handleSummary} className="text-indigo-600 dark:text-indigo-400 font-bold text-[11px] px-3 py-1.5 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-all hover:scale-105">
+                ✨ Summary
               </Button>
               <button
                 onClick={() => openChatWithArticle(article.id, article.title)}
-                className="px-2 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500 rounded-lg transition-colors"
+                className="px-3 py-1.5 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-all hover:scale-105"
                 title="Ask AI about this article"
               >
-                🤖 Ask AI
+                🤖 Ask
               </button>
             </div>
           </div>
@@ -508,53 +508,55 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
 
   // ✅ Grid View Layout (Vertical - Default)
   return (
-    <div className="group relative bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col">
+    <div className="group relative bg-white dark:bg-slate-800/90 rounded-3xl overflow-hidden border border-slate-100/80 dark:border-slate-700/50 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.08)] hover:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.15)] transition-all duration-300 flex flex-col hover:-translate-y-1.5 backdrop-blur-sm">
       {/* Image Section */}
-      <div className="relative h-56 overflow-hidden">
+      <div className="relative h-52 overflow-hidden">
         <img 
           src={imageUrl} 
           alt={article.title}
           loading="lazy"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 will-change-transform"
         />
-        <div className="absolute top-2 left-2 flex gap-2">
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        <div className="absolute top-3 left-3 flex gap-2">
           <SentimentBadge sentiment={article.sentiment} />
         </div>
-        <div className="absolute top-2 right-2">
+        <div className="absolute top-3 right-3">
           <CredibilityBadge credibility={article.credibility} />
         </div>
       </div>
 
       {/* Content Section */}
-      <div className="p-4 flex-grow flex flex-col">
-        <div className="flex justify-between items-start mb-2">
-          <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+      <div className="p-5 flex-grow flex flex-col">
+        <div className="flex justify-between items-start mb-3">
+          <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
             {article.source}
           </span>
-          <div className="flex items-center gap-2 text-xs text-slate-400">
+          <div className="flex items-center gap-2 text-[11px] text-slate-400 dark:text-slate-500">
             <span>{formatRelativeTime(article.published_at)}</span>
             {(article.description || article.content) && (
               <>
-                <span>•</span>
+                <span className="text-slate-300 dark:text-slate-600">•</span>
                 <span>{getReadTimeText(article.description || article.content)}</span>
               </>
             )}
           </div>
         </div>
         
-        <h3 className="text-base font-bold leading-tight mb-2 line-clamp-2 hover:text-indigo-600 transition-colors">
+        <h3 className="text-base font-bold leading-snug mb-3 line-clamp-2 text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-200">
           <a href={article.url} target="_blank" rel="noopener noreferrer">{article.title}</a>
         </h3>
         
-        <p className="text-slate-600 dark:text-slate-400 text-xs line-clamp-2 mb-3">
+        <p className="text-slate-500 dark:text-slate-400 text-sm line-clamp-2 mb-4 leading-relaxed">
           {article.description}
         </p>
 
-        <div className="mt-auto pt-3 flex items-center justify-between border-t border-slate-50 dark:border-slate-700">
-          <div className="flex gap-1 group/action relative">
+        <div className="mt-auto pt-4 flex items-center justify-between border-t border-slate-100 dark:border-slate-700/50">
+          <div className="flex gap-1.5">
             <button 
               onClick={toggleBookmark}
-              className={`p-2 rounded-full transition-all ${isBookmarked ? 'text-white bg-indigo-600 hover:bg-indigo-700' : 'text-slate-700 bg-white hover:bg-indigo-600 hover:text-white border border-slate-200 dark:border-slate-600'}`}
+              className={`p-2.5 rounded-xl transition-all duration-200 ${isBookmarked ? 'text-white bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25' : 'text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-110'}`}
               title="Bookmark"
             >
               <svg className="w-4 h-4" fill={isBookmarked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
@@ -563,7 +565,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
             </button>
             <button 
               onClick={toggleReadLater}
-              className={`p-2 rounded-full transition-all ${isInReadLater ? 'text-white bg-indigo-600 hover:bg-indigo-700' : 'text-slate-700 bg-white hover:bg-indigo-600 hover:text-white border border-slate-200 dark:border-slate-600'}`}
+              className={`p-2.5 rounded-xl transition-all duration-200 ${isInReadLater ? 'text-white bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25' : 'text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-110'}`}
               title="Read Later"
             >
               <svg className="w-4 h-4" fill={isInReadLater ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
@@ -572,7 +574,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
             </button>
             <button 
               onClick={() => setIsCommentsOpen(true)}
-              className="p-2 rounded-full transition-all text-slate-700 bg-white hover:bg-indigo-600 hover:text-white border border-slate-200 dark:border-slate-600"
+              className="p-2.5 rounded-xl transition-all duration-200 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-110"
               title="Comments"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -584,10 +586,10 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
             <div className="relative">
               <button 
                 onClick={() => setShowFeedbackMenu(!showFeedbackMenu)}
-                className={`p-2 rounded-full transition-all ${
+                className={`p-2.5 rounded-xl transition-all duration-200 ${
                   feedbackSubmitted 
-                    ? 'text-white bg-green-600' 
-                    : 'text-slate-700 bg-white hover:bg-indigo-600 hover:text-white border border-slate-200 dark:border-slate-600'
+                    ? 'text-white bg-gradient-to-br from-emerald-500 to-green-600 shadow-lg shadow-emerald-500/25' 
+                    : 'text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-110'
                 }`}
                 title={feedbackSubmitted ? `Rated: ${feedbackSubmitted}` : "Rate Sentiment"}
               >
@@ -604,8 +606,8 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
               
               {/* Feedback Dropdown Menu */}
               {showFeedbackMenu && !feedbackSubmitted && (
-                <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-600 py-1 z-50 min-w-[120px]">
-                  <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">
+                <div className="absolute bottom-full left-0 mb-2 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-xl shadow-xl border border-slate-200/50 dark:border-slate-600/50 py-2 z-50 min-w-[140px] animate-slide-up">
+                  <div className="px-3 py-1.5 text-[9px] uppercase tracking-widest text-slate-400 dark:text-slate-500 font-bold">
                     Rate Sentiment
                   </div>
                   {SENTIMENT_OPTIONS.map((option) => (
@@ -613,16 +615,16 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
                       key={option}
                       onClick={() => handleSentimentFeedback(option)}
                       disabled={isSubmittingFeedback}
-                      className={`w-full text-left px-3 py-1.5 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center gap-2 ${
-                        article.sentiment?.label === option ? 'text-indigo-600 font-semibold' : 'text-slate-700 dark:text-slate-300'
+                      className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all flex items-center gap-2.5 ${
+                        article.sentiment?.label === option ? 'text-indigo-600 font-semibold' : 'text-slate-600 dark:text-slate-300'
                       }`}
                     >
                       <span className={`w-2 h-2 rounded-full ${
-                        option === 'Positive' ? 'bg-green-500' : 
-                        option === 'Negative' ? 'bg-red-500' : 'bg-slate-400'
+                        option === 'Positive' ? 'bg-emerald-500' : 
+                        option === 'Negative' ? 'bg-rose-500' : 'bg-slate-400'
                       }`}></span>
                       {option}
-                      {article.sentiment?.label === option && <span className="text-[9px] opacity-60">(AI)</span>}
+                      {article.sentiment?.label === option && <span className="text-[9px] opacity-50 ml-auto">(AI)</span>}
                     </button>
                   ))}
                 </div>
@@ -632,10 +634,10 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
             {/* ✅ Report Misleading Button */}
             <button 
               onClick={() => setShowReportModal(true)}
-              className={`p-2 rounded-full transition-all ${
+              className={`p-2.5 rounded-xl transition-all duration-200 ${
                 reportSubmitted 
-                  ? 'text-white bg-orange-600' 
-                  : 'text-slate-700 bg-white hover:bg-red-600 hover:text-white border border-slate-200 dark:border-slate-600'
+                  ? 'text-white bg-gradient-to-br from-orange-500 to-amber-600 shadow-lg shadow-orange-500/25' 
+                  : 'text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50 hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-600 dark:hover:text-rose-400 hover:scale-110'
               }`}
               title={reportSubmitted ? "Report Submitted" : "Report Misleading"}
               disabled={reportSubmitted}
@@ -646,16 +648,16 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
             </button>
           </div>
           
-          <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={handleSummary} className="text-indigo-600 font-bold dark:text-indigo-400 text-xs hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500 transition-colors">
-              ✨ AI Summary
+          <div className="flex gap-1.5">
+            <Button variant="ghost" size="sm" onClick={handleSummary} className="text-indigo-600 dark:text-indigo-400 font-bold text-[11px] px-3 py-1.5 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-all hover:scale-105">
+              ✨ Summary
             </Button>
             <button
               onClick={() => openChatWithArticle(article.id, article.title)}
-              className="px-2 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500 rounded-lg transition-colors"
+              className="px-3 py-1.5 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-all hover:scale-105"
               title="Ask AI about this article"
             >
-              🤖 Ask AI
+              🤖 Ask
             </button>
           </div>
         </div>
