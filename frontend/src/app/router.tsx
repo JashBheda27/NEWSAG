@@ -1,11 +1,32 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Home } from '../pages/Home';
-import { Profile } from '../pages/Profile';
-import { Bookmarks } from '../pages/Bookmarks';
-import { ReadLater } from '../pages/ReadLater';
 import { Login } from '../pages/Login';
 import { ProtectedRoute } from '../components/ProtectedRoute';
+
+// Lazy load non-critical pages for better initial load
+const Profile = lazy(() => import('../pages/Profile').then(m => ({ default: m.Profile })));
+const Bookmarks = lazy(() => import('../pages/Bookmarks').then(m => ({ default: m.Bookmarks })));
+const ReadLater = lazy(() => import('../pages/ReadLater').then(m => ({ default: m.ReadLater })));
+
+// Skeleton loader for lazy-loaded pages
+const PageSkeleton = () => (
+  <div className="w-full max-w-[96%] mx-auto px-4 py-12 animate-pulse">
+    <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded-lg w-64 mb-8"></div>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {[...Array(6)].map((_, i) => (
+        <div key={i} className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-700">
+          <div className="h-48 bg-slate-200 dark:bg-slate-700"></div>
+          <div className="p-4 space-y-3">
+            <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-20"></div>
+            <div className="h-5 bg-slate-200 dark:bg-slate-700 rounded w-full"></div>
+            <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4"></div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
 
 interface AppRouterProps {
   showNotification: (msg: string, type?: 'error' | 'success') => void;
@@ -18,12 +39,14 @@ export const AppRouter: React.FC<AppRouterProps> = ({ showNotification }) => {
       <Route path="/" element={<Home showNotification={showNotification} />} />
       <Route path="/login" element={<Login />} />
 
-      {/* Protected Routes */}
+      {/* Protected Routes - Lazy Loaded with Suspense */}
       <Route
         path="/profile"
         element={
           <ProtectedRoute requiredCategory="Profile">
-            <Profile />
+            <Suspense fallback={<PageSkeleton />}>
+              <Profile />
+            </Suspense>
           </ProtectedRoute>
         }
       />
@@ -32,7 +55,9 @@ export const AppRouter: React.FC<AppRouterProps> = ({ showNotification }) => {
         path="/bookmarks"
         element={
           <ProtectedRoute requiredCategory="Bookmarks">
-            <Bookmarks />
+            <Suspense fallback={<PageSkeleton />}>
+              <Bookmarks />
+            </Suspense>
           </ProtectedRoute>
         }
       />
@@ -41,7 +66,9 @@ export const AppRouter: React.FC<AppRouterProps> = ({ showNotification }) => {
         path="/read-later"
         element={
           <ProtectedRoute requiredCategory="Read Later">
-            <ReadLater />
+            <Suspense fallback={<PageSkeleton />}>
+              <ReadLater />
+            </Suspense>
           </ProtectedRoute>
         }
       />
