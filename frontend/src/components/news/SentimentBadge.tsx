@@ -5,29 +5,26 @@ interface SentimentBadgeProps {
   sentiment?: SentimentData;
 }
 
-// Optimized SentimentBadge with memoization and reduced animations
+// Optimized SentimentBadge with modern pastel design
 export const SentimentBadge = memo<SentimentBadgeProps>(({ sentiment }) => {
   if (!sentiment) return null;
 
-  // Memoize config lookup
-  const { bg, text, icon, label, confidencePercent } = useMemo(() => {
-    const config: Record<'Positive' | 'Neutral' | 'Negative', { bg: string; text: string; icon: string; label: string }> = {
+  // Memoize config lookup - softer pastel colors
+  const { bg, text, label, confidencePercent } = useMemo(() => {
+    const config: Record<'Positive' | 'Neutral' | 'Negative', { bg: string; text: string; label: string }> = {
       Positive: {
-        bg: 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800',
-        text: 'text-emerald-700 dark:text-emerald-400',
-        icon: '😊',
+        bg: 'bg-emerald-50/90 dark:bg-emerald-500/15',
+        text: 'text-emerald-600 dark:text-emerald-400',
         label: 'Positive'
       },
       Neutral: {
-        bg: 'bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700',
-        text: 'text-slate-700 dark:text-slate-400',
-        icon: '😐',
+        bg: 'bg-slate-100/90 dark:bg-slate-500/15',
+        text: 'text-slate-500 dark:text-slate-400',
         label: 'Neutral'
       },
       Negative: {
-        bg: 'bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800',
-        text: 'text-rose-700 dark:text-rose-400',
-        icon: '😔',
+        bg: 'bg-rose-50/90 dark:bg-rose-500/15',
+        text: 'text-rose-500 dark:text-rose-400',
         label: 'Negative'
       }
     };
@@ -43,12 +40,20 @@ export const SentimentBadge = memo<SentimentBadgeProps>(({ sentiment }) => {
 
   return (
     <span 
-      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold ${bg} ${text} transform-gpu transition-transform duration-200 hover:scale-105`}
+      className={`
+        inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wide
+        ${bg} ${text}
+        backdrop-blur-sm
+        transition-all duration-200
+        hover:scale-105
+      `}
       title={`Confidence: ${confidenceText} (${confidencePercent}%)`}
     >
-      <span>{icon}</span>
+      <span className={`w-1.5 h-1.5 rounded-full ${
+        sentiment.label === 'Positive' ? 'bg-emerald-500' :
+        sentiment.label === 'Negative' ? 'bg-rose-500' : 'bg-slate-400'
+      }`} />
       <span>{label}</span>
-      <span className="text-xs opacity-75">{confidencePercent}%</span>
     </span>
   );
 });
