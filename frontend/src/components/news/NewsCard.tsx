@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo, memo, lazy, Suspense } from 'react';
 import type { Article } from '../../types';
 import { SentimentBadge } from './SentimentBadge';
 import { CredibilityBadge } from './CredibilityBadge';
@@ -6,13 +6,15 @@ import { Button } from '../ui/Button';
 import { newsService } from '../../services/news.service';
 import { userService } from '../../services/user.service';
 import { Modal } from '../ui/Modal';
-import { CommentSection } from './commentSection';
-import { AudioPlayer } from './AudioPlayer';
 import { formatRelativeTime, getReadTimeText } from '../../utils/timeUtils';
 import { openChatWithArticle } from '../../utils/chatEvents';
 import { SUPPORTED_LANGUAGES } from '../../utils/constants';
 
-const SENTIMENT_OPTIONS = ['Positive', 'Neutral', 'Negative'];
+// Lazy load heavy components
+const CommentSection = lazy(() => import('./commentSection').then(m => ({ default: m.CommentSection })));
+const AudioPlayer = lazy(() => import('./AudioPlayer').then(m => ({ default: m.AudioPlayer })));
+
+const SENTIMENT_OPTIONS = ['Positive', 'Neutral', 'Negative'] as const;
 
 // Alias for backward compatibility
 const LANGUAGES = SUPPORTED_LANGUAGES;
@@ -25,7 +27,8 @@ interface NewsCardProps {
   onError?: (message: string) => void;
 }
 
-export const NewsCard: React.FC<NewsCardProps> = ({ 
+// Memoized NewsCard to prevent unnecessary re-renders
+export const NewsCard: React.FC<NewsCardProps> = memo(({ 
   article, 
   viewType = 'grid',
   isBookmarked: initialIsBookmarked, 
@@ -51,11 +54,23 @@ export const NewsCard: React.FC<NewsCardProps> = ({
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const [reportSubmitted, setReportSubmitted] = useState(false);
-  const handleSentimentFeedback = async (userLabel: string) => {
+  // Memoize computed values
+  const articleId = useMemo(() => article.id || article.url, [article.id, article.url]);
+  const sourceValue = useMemo(() => {
+    return typeof article.source === 'string'
+      ? article.source
+      : (article.source as { name?: string })?.name || '';
+  }, [article.source]);
+  
+  const imageUrl = useMemo(() => {
+    return article.image_url || `https://picsum.photos/seed/${article.title.length}/600/400`;
+  }, [article.image_url, article.title.length]);
+
+  const handleSentimentFeedback = useCallback(async (userLabel: string) => {
     setIsSubmittingFeedback(true);
     try {
       await newsService.rateSentiment({
-        article_id: article.id || article.url,
+        article_id: articleId,
         article_url: article.url,
         title: article.title,
         description: article.description,
@@ -70,18 +85,14 @@ export const NewsCard: React.FC<NewsCardProps> = ({
     } finally {
       setIsSubmittingFeedback(false);
     }
-  };
+  }, [articleId, article.url, article.title, article.description, article.sentiment, onError]);
 
   // ✅ Handle Report Misleading
-  const handleReportMisleading = async () => {
+  const handleReportMisleading = useCallback(async () => {
     setIsSubmittingFeedback(true);
     try {
-      const sourceValue = typeof article.source === 'string'
-        ? article.source
-        : (article.source as { name?: string })?.name || '';
-      
       await newsService.reportMisleading({
-        article_id: article.id || article.url,
+        article_id: articleId,
         article_url: article.url,
         title: article.title,
         description: article.description,
@@ -100,9 +111,9 @@ export const NewsCard: React.FC<NewsCardProps> = ({
     } finally {
       setIsSubmittingFeedback(false);
     }
-  };
+  }, [articleId, article.url, article.title, article.description, article.content, sourceValue, article.credibility, reportReason, onError]);
 
-  const handleSummary = async () => {
+  const handleSummary = useCallback(async () => {
     setIsModalOpen(true);
     setSelectedLang('en');
     if (!summary) {
@@ -125,9 +136,9 @@ export const NewsCard: React.FC<NewsCardProps> = ({
         setIsLoadingSummary(false);
       }
     }
-  };
+  }, [article.url, article.content, article.description, summary]);
 
-  const handleLanguageChange = async (lang: string) => {
+  const handleLanguageChange = useCallback(async (lang: string) => {
     if (lang === selectedLang) return;
     setSelectedLang(lang);
     setIsTranslating(true);
@@ -146,14 +157,11 @@ export const NewsCard: React.FC<NewsCardProps> = ({
     } finally {
       setIsTranslating(false);
     }
-  };
+  }, [article.url, article.content, article.description, selectedLang]);
 
-  const toggleBookmark = async () => {
+  const toggleBookmark = useCallback(async () => {
     try {
       const articleIdValue = article.url || article.id;
-      const sourceValue = typeof article.source === 'string'
-        ? article.source
-        : (article.source as { name?: string })?.name || String(article.source || '');
 
       if (isBookmarked) {
         await userService.removeBookmarkByArticleId(articleIdValue);
@@ -172,17 +180,13 @@ export const NewsCard: React.FC<NewsCardProps> = ({
     } catch (err: any) {
       onError?.(err.message || "Action failed. Check your connection.");
     }
-  };
+  }, [article.url, article.id, article.title, article.description, article.image_url, article.category, sourceValue, isBookmarked, onError]);
 
-  const toggleReadLater = async () => {
+  const toggleReadLater = useCallback(async () => {
     try {
       if (isInReadLater) {
         await userService.removeFromReadLater(article.url);
       } else {
-        const sourceValue = typeof article.source === 'string'
-          ? article.source
-          : (article.source && (article.source as any).name) || String(article.source || '');
-
         await userService.addToReadLater({
           article_id: article.id,
           title: article.title,
@@ -195,7 +199,7 @@ export const NewsCard: React.FC<NewsCardProps> = ({
     } catch (err: any) {
       onError?.(err.message || "Action failed. Check your connection.");
     }
-  };
+  }, [article.url, article.id, article.title, article.category, sourceValue, isInReadLater, onError]);
 
   // ✅ List View Layout (Horizontal)
   if (viewType === 'list') {
@@ -204,14 +208,15 @@ export const NewsCard: React.FC<NewsCardProps> = ({
         {/* Image Section - Adaptive for small screens */}
         <div className="relative w-full sm:w-48 h-48 sm:h-40 overflow-hidden flex-shrink-0">
           <img 
-            src={article.image_url || `https://picsum.photos/seed/${article.title.length}/600/400`} 
+            src={imageUrl} 
             alt={article.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            loading="lazy"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 will-change-transform"
           />
           <div className="absolute top-2 left-2">
             <SentimentBadge sentiment={article.sentiment} />
           </div>
-          <div className="absolute top-2 right-2">
+          <div className="absolute bottom-2 right-2">
             <CredibilityBadge credibility={article.credibility} />
           </div>
         </div>
@@ -434,11 +439,13 @@ export const NewsCard: React.FC<NewsCardProps> = ({
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-[9px] uppercase tracking-widest text-slate-500">Listen to Summary</span>
                     </div>
-                    <AudioPlayer 
-                      text={summaryData.summary} 
-                      language={selectedLang}
-                      className="bg-slate-50 dark:bg-slate-800/50 px-3 rounded-lg"
-                    />
+                    <Suspense fallback={<div className="h-10 bg-slate-100 dark:bg-slate-700 rounded-lg animate-pulse"></div>}>
+                      <AudioPlayer 
+                        text={summaryData.summary} 
+                        language={selectedLang}
+                        className="bg-slate-50 dark:bg-slate-800/50 px-3 rounded-lg"
+                      />
+                    </Suspense>
                   </div>
                 )}
               
@@ -505,9 +512,10 @@ export const NewsCard: React.FC<NewsCardProps> = ({
       {/* Image Section */}
       <div className="relative h-56 overflow-hidden">
         <img 
-          src={article.image_url || `https://picsum.photos/seed/${article.title.length}/600/400`} 
+          src={imageUrl} 
           alt={article.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          loading="lazy"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 will-change-transform"
         />
         <div className="absolute top-2 left-2 flex gap-2">
           <SentimentBadge sentiment={article.sentiment} />
@@ -739,11 +747,13 @@ export const NewsCard: React.FC<NewsCardProps> = ({
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-[9px] uppercase tracking-widest text-slate-500">Listen to Summary</span>
                   </div>
-                  <AudioPlayer 
-                    text={summaryData.summary} 
-                    language={selectedLang}
-                    className="bg-slate-50 dark:bg-slate-800/50 px-3 rounded-lg"
-                  />
+                  <Suspense fallback={<div className="h-10 bg-slate-100 dark:bg-slate-700 rounded-lg animate-pulse"></div>}>
+                    <AudioPlayer 
+                      text={summaryData.summary} 
+                      language={selectedLang}
+                      className="bg-slate-50 dark:bg-slate-800/50 px-3 rounded-lg"
+                    />
+                  </Suspense>
                 </div>
               )}
             
@@ -802,7 +812,9 @@ export const NewsCard: React.FC<NewsCardProps> = ({
       </Modal>
 
       <Modal isOpen={isCommentsOpen} onClose={() => setIsCommentsOpen(false)} title="💬 Comments">
-        <CommentSection articleId={article.id} articleTitle={article.title} />
+        <Suspense fallback={<div className="py-8 flex items-center justify-center"><div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>}>
+          <CommentSection articleId={article.id} articleTitle={article.title} />
+        </Suspense>
       </Modal>
 
       {/* ✅ Report Misleading Modal */}
@@ -838,4 +850,7 @@ export const NewsCard: React.FC<NewsCardProps> = ({
       </Modal>
     </div>
   );
-};
+});
+
+// Display name for React DevTools
+NewsCard.displayName = 'NewsCard';
