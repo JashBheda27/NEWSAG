@@ -125,7 +125,7 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
       </motion.div>
 
       <motion.header 
-        className="mb-12 mt-8"
+        className="mb-6 mt-8"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.2 }}
