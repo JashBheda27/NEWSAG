@@ -12,6 +12,7 @@
   "dependencies": {
     "@clerk/clerk-react": "^5.60.0",
     "axios": "^1.13.2",
+    "framer-motion": "^11.18.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.0"
