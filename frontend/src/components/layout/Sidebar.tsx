@@ -195,21 +195,33 @@ export const Sidebar: React.FC = () => {
           bottom: 28px;
           display: flex;
           width: 80px;
-          background: white;
-          border-radius: 18px;
-          transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          background: rgba(255, 255, 255, 0.85);
+          backdrop-filter: blur(20px) saturate(180%);
+          -webkit-backdrop-filter: blur(20px) saturate(180%);
+          border-radius: 24px;
+          transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
           overflow: hidden;
           z-index: 40;
-          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+          box-shadow: 
+            0 8px 32px -8px rgba(0, 0, 0, 0.12),
+            0 2px 8px -2px rgba(0, 0, 0, 0.08),
+            inset 0 1px 1px rgba(255, 255, 255, 0.8);
+          border: 1px solid rgba(255, 255, 255, 0.5);
         }
 
         .dark .sidebar-container {
-          background: rgb(15, 23, 42);
-          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+          background: rgba(15, 23, 42, 0.85);
+          backdrop-filter: blur(20px) saturate(180%);
+          -webkit-backdrop-filter: blur(20px) saturate(180%);
+          box-shadow: 
+            0 8px 32px -8px rgba(0, 0, 0, 0.5),
+            0 2px 8px -2px rgba(0, 0, 0, 0.3),
+            inset 0 1px 1px rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .sidebar-container:hover {
-          width: 260px;
+          width: 280px;
         }
 
         /* Left Icon Rail */
@@ -218,23 +230,23 @@ export const Sidebar: React.FC = () => {
           display: flex;
           flex-direction: column;
           align-items: center;
-          padding-top: 20px;
-          background: white;
+          padding-top: 24px;
+          background: transparent;
           z-index: 2;
         }
 
         .dark .sidebar-left {
-          background: rgb(15, 23, 42);
+          background: transparent;
         }
 
         .sidebar-logo {
-          margin-bottom: 24px;
+          margin-bottom: 28px;
         }
 
         .sidebar-nav-icons {
           display: flex;
           flex-direction: column;
-          gap: 6px;
+          gap: 8px;
           width: 100%;
           align-items: center;
         }
@@ -247,15 +259,21 @@ export const Sidebar: React.FC = () => {
         }
 
         .sidebar-icon-btn {
-          width: 48px;
-          height: 48px;
+          width: 52px;
+          height: 52px;
           display: flex;
           align-items: center;
           justify-content: center;
-          border-radius: 12px;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          border-radius: 16px;
+          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
           color: rgb(100, 116, 139);
           position: relative;
+        }
+
+        .sidebar-icon-btn svg {
+          width: 22px;
+          height: 22px;
+          transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
         .dark .sidebar-icon-btn {
@@ -263,100 +281,128 @@ export const Sidebar: React.FC = () => {
         }
 
         .sidebar-icon-btn:hover {
-          background: linear-gradient(135deg, rgb(238, 242, 255) 0%, rgb(224, 231, 255) 100%);
+          background: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(139, 92, 246, 0.12) 100%);
           color: rgb(79, 70, 229);
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);
+          transform: translateY(-3px);
+          box-shadow: 
+            0 8px 20px -6px rgba(99, 102, 241, 0.3),
+            0 0 0 1px rgba(99, 102, 241, 0.1);
+        }
+
+        .sidebar-icon-btn:hover svg {
+          transform: scale(1.1);
         }
 
         .dark .sidebar-icon-btn:hover {
-          background: linear-gradient(135deg, rgb(49, 46, 129) 0%, rgb(67, 56, 202) 100%);
+          background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%);
           color: rgb(165, 180, 252);
+          box-shadow: 
+            0 8px 20px -6px rgba(99, 102, 241, 0.4),
+            0 0 0 1px rgba(99, 102, 241, 0.2);
         }
 
         .sidebar-icon-btn.active {
-          background: linear-gradient(135deg, rgb(79, 70, 229) 0%, rgb(99, 102, 241) 100%);
+          background: linear-gradient(135deg, rgb(79, 70, 229) 0%, rgb(124, 58, 237) 100%);
           color: white;
-          box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+          box-shadow: 
+            0 8px 24px -6px rgba(79, 70, 229, 0.5),
+            0 0 0 1px rgba(255, 255, 255, 0.2),
+            inset 0 1px 1px rgba(255, 255, 255, 0.2);
         }
 
         .dark .sidebar-icon-btn.active {
-          background: linear-gradient(135deg, rgb(79, 70, 229) 0%, rgb(129, 140, 248) 100%);
+          background: linear-gradient(135deg, rgb(79, 70, 229) 0%, rgb(139, 92, 246) 100%);
           color: white;
+          box-shadow: 
+            0 8px 24px -6px rgba(99, 102, 241, 0.5),
+            0 0 24px -4px rgba(99, 102, 241, 0.3);
         }
 
         .sidebar-category-btn {
-          width: 44px;
-          height: 44px;
+          width: 48px;
+          height: 48px;
         }
 
         .sidebar-divider {
           width: 40px;
           height: 2px;
-          background: rgb(226, 232, 240);
-          margin: 8px 0;
+          background: linear-gradient(90deg, transparent, rgb(203, 213, 225), transparent);
+          margin: 12px 0;
           border-radius: 2px;
         }
 
         .dark .sidebar-divider {
-          background: rgb(51, 65, 85);
+          background: linear-gradient(90deg, transparent, rgb(51, 65, 85), transparent);
         }
 
         .sidebar-active-indicator {
           position: absolute;
-          top: -4px;
-          right: -4px;
-          font-size: 14px;
-          background: rgb(248, 250, 252); /* subtle off-white for contrast */
-          border: 1px solid rgba(15,23,42,0.06);
+          top: -6px;
+          right: -6px;
+          font-size: 12px;
+          background: white;
+          border: 2px solid rgb(79, 70, 229);
           border-radius: 50%;
-          width: 20px;
-          height: 20px;
+          width: 22px;
+          height: 22px;
           display: flex;
           align-items: center;
           justify-content: center;
-          color: rgb(15,23,42); /* make emoji/text inside indicator dark in light mode */
           font-weight: 700;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+          box-shadow: 0 4px 12px -2px rgba(79, 70, 229, 0.3);
+          animation: pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes pop-in {
+          from {
+            transform: scale(0);
+            opacity: 0;
+          }
+          to {
+            transform: scale(1);
+            opacity: 1;
+          }
         }
 
         .dark .sidebar-active-indicator {
           background: rgb(30, 41, 59);
-          border-color: rgba(255,255,255,0.06);
-          color: white; /* keep white text in dark mode */
+          border-color: rgb(129, 140, 248);
+          color: white;
         }
 
         /* Tooltip */
         .sidebar-tooltip {
           position: absolute;
-          left: 70px;
+          left: 74px;
           top: 50%;
-          transform: translateY(-50%);
-          background: rgb(30, 41, 59);
+          transform: translateY(-50%) translateX(-8px);
+          background: linear-gradient(135deg, rgb(30, 41, 59) 0%, rgb(15, 23, 42) 100%);
           color: white;
-          padding: 6px 12px;
-          border-radius: 8px;
+          padding: 8px 14px;
+          border-radius: 12px;
           font-size: 13px;
           font-weight: 600;
           white-space: nowrap;
           opacity: 0;
           pointer-events: none;
-          transition: opacity 0.2s, transform 0.2s;
+          transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
           z-index: 100;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+          box-shadow: 
+            0 8px 24px -6px rgba(0, 0, 0, 0.3),
+            0 0 0 1px rgba(255, 255, 255, 0.1);
         }
 
         .dark .sidebar-tooltip {
-          background: rgb(51, 65, 85);
+          background: linear-gradient(135deg, rgb(51, 65, 85) 0%, rgb(30, 41, 59) 100%);
         }
 
         .sidebar-tooltip::before {
           content: '';
           position: absolute;
-          left: -4px;
+          left: -6px;
           top: 50%;
           transform: translateY(-50%);
-          border: 4px solid transparent;
+          border: 6px solid transparent;
           border-right-color: rgb(30, 41, 59);
         }
 
@@ -366,34 +412,37 @@ export const Sidebar: React.FC = () => {
 
         .sidebar-container:not(:hover) .sidebar-icon-wrapper:hover .sidebar-tooltip {
           opacity: 1;
-          transform: translateY(-50%) translateX(4px);
+          transform: translateY(-50%) translateX(0);
         }
 
         /* Right Expandable Sidebar */
         .sidebar-right {
           position: relative;
           width: 0;
-          transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+          overflow: hidden;
         }
 
         .sidebar-container:hover .sidebar-right {
-          width: 180px;
+          width: 200px;
         }
 
         .sidebar-right-inner {
           position: absolute;
-          top: 8px;
-          bottom: 8px;
+          top: 12px;
+          bottom: 12px;
           left: 8px;
-          right: 8px;
-          background: linear-gradient(135deg, rgb(248, 250, 252) 0%, rgb(241, 245, 249) 100%);
-          border-radius: 14px;
-          padding-bottom: 8px;
+          right: 12px;
+          background: linear-gradient(135deg, rgba(248, 250, 252, 0.8) 0%, rgba(241, 245, 249, 0.8) 100%);
+          border-radius: 18px;
+          padding-bottom: 12px;
           overflow-y: auto;
+          border: 1px solid rgba(226, 232, 240, 0.5);
         }
 
         .dark .sidebar-right-inner {
-          background: linear-gradient(135deg, rgb(30, 41, 59) 0%, rgb(15, 23, 42) 100%);
+          background: linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.6) 100%);
+          border-color: rgba(51, 65, 85, 0.5);
         }
 
         .sidebar-header {
@@ -409,21 +458,21 @@ export const Sidebar: React.FC = () => {
         }
 
         .sidebar-nav-items {
-          padding: 8px;
+          padding: 12px;
           display: flex;
           flex-direction: column;
-          gap: 2px;
+          gap: 4px;
         }
 
         .sidebar-nav-btn {
           width: 100%;
-          height: 40px;
+          height: 44px;
           display: flex;
           align-items: center;
-          gap: 10px;
-          padding: 0 10px;
-          border-radius: 10px;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          gap: 12px;
+          padding: 0 12px;
+          border-radius: 12px;
+          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
           color: rgb(71, 85, 105);
           font-weight: 600;
           font-size: 13px;
@@ -434,25 +483,32 @@ export const Sidebar: React.FC = () => {
         }
 
         .sidebar-nav-btn:hover {
-          background: linear-gradient(135deg, rgb(238, 242, 255) 0%, rgb(224, 231, 255) 100%);
+          background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
           color: rgb(79, 70, 229);
-          transform: translateX(2px);
+          transform: translateX(4px);
+          box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.1);
         }
 
         .dark .sidebar-nav-btn:hover {
-          background: linear-gradient(135deg, rgb(49, 46, 129) 0%, rgb(67, 56, 202) 100%);
+          background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
           color: rgb(165, 180, 252);
+          box-shadow: 0 0 20px -6px rgba(99, 102, 241, 0.3);
         }
 
         .sidebar-nav-btn.active {
-          background: linear-gradient(135deg, rgb(79, 70, 229) 0%, rgb(99, 102, 241) 100%);
+          background: linear-gradient(135deg, rgb(79, 70, 229) 0%, rgb(124, 58, 237) 100%);
           color: white;
-          box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+          box-shadow: 
+            0 4px 16px -4px rgba(79, 70, 229, 0.4),
+            inset 0 1px 1px rgba(255, 255, 255, 0.2);
         }
 
         .dark .sidebar-nav-btn.active {
-          background: linear-gradient(135deg, rgb(79, 70, 229) 0%, rgb(129, 140, 248) 100%);
+          background: linear-gradient(135deg, rgb(79, 70, 229) 0%, rgb(139, 92, 246) 100%);
           color: white;
+          box-shadow: 
+            0 4px 20px -4px rgba(99, 102, 241, 0.5),
+            0 0 24px -6px rgba(99, 102, 241, 0.3);
         }
 
         .sidebar-nav-icon {
