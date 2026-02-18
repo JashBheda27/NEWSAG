@@ -7,6 +7,7 @@ import { Sidebar } from '../components/layout/Sidebar';
 import { Footer } from '../components/layout/Footer';
 import { Toast } from '../components/ui/Toast';
 import { ChatBot } from '../components/ui/ChatBot';
+import { ScrollToTop } from '../components/ui/ScrollToTop';
 import { useTheme } from '../hooks/useTheme';
 import { useNotification } from '../hooks/useNotification';
 import { setAuthToken } from '../services/api';
@@ -46,6 +47,9 @@ const AppLayout: React.FC<{ showNotification: (msg: string, type?: 'error' | 'su
       </main>
 
       <Footer />
+      
+      {/* Scroll to top button */}
+      <ScrollToTop />
       
       <ChatBot 
         onError={(msg) => showNotification(msg, 'error')}
