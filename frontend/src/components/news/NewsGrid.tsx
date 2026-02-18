@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { motion } from 'framer-motion';
 import type { Article } from '../../types';
 import { NewsCard } from './NewsCard';
 import { NewsSkeleton } from './NewsSkeleton';
+import { EmptyState } from '../ui/EmptyState';
 
 interface NewsGridProps {
   articles: Article[];
@@ -10,46 +12,79 @@ interface NewsGridProps {
   onError: (msg: string) => void;
 }
 
-export const NewsGrid: React.FC<NewsGridProps> = ({ articles, isLoading, viewType = 'grid', onError }) => {
+// Memoized component to prevent unnecessary re-renders
+export const NewsGrid: React.FC<NewsGridProps> = React.memo(({ articles, isLoading, viewType = 'grid', onError }) => {
+  // Memoize the grid className
+  const gridClassName = useMemo(() => 
+    viewType === 'grid' 
+      ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+      : "space-y-4"
+  , [viewType]);
+
   if (isLoading) {
     return (
-      <div className={viewType === 'grid' 
-        ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in"
-        : "space-y-4 animate-fade-in"
-      }>
+      <motion.div 
+        className={gridClassName}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+      >
         {[...Array(6)].map((_, i) => (
-          <NewsSkeleton key={i} />
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.1, duration: 0.4 }}
+          >
+            <NewsSkeleton />
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
     );
   }
 
   if (articles.length === 0) {
     return (
-      <div className="text-center py-20 animate-fade-in">
-        <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-10 h-10 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-          </svg>
-        </div>
-        <p className="text-slate-400 text-lg font-medium">No articles found in this feed.</p>
+      <div className="flex justify-center">
+        <EmptyState
+          title="No Articles Found"
+          description="Explore different categories or try a new search to discover great reads."
+          action={{ label: 'Browse Categories', href: '/' }}
+          illustration="search"
+        />
       </div>
     );
   }
 
   return (
-    <div className={viewType === 'grid'
-      ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in"
-      : "space-y-4 animate-fade-in"
-    }>
-      {articles.map((article) => (
-        <NewsCard 
-          key={article.id || article.url} 
-          article={article}
-          viewType={viewType}
-          onError={onError}
-        />
+    <motion.div 
+      className={gridClassName}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
+      {articles.map((article, idx) => (
+        <motion.div
+          key={article.id || article.url}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ 
+            delay: Math.min(idx * 0.05, 0.3),
+            duration: 0.4,
+            type: "spring",
+            stiffness: 300,
+            damping: 30
+          }}
+        >
+          <NewsCard 
+            article={article}
+            viewType={viewType}
+            onError={onError}
+          />
+        </motion.div>
       ))}
-    </div>
+    </motion.div>
   );
-};
+});
+
+NewsGrid.displayName = 'NewsGrid';
