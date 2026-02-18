@@ -1,6 +1,37 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, memo, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { chatService, type ChatMessage, type ChatContext } from '../../services/chat.service';
+
+// Memoized message bubble component to prevent re-renders
+const MessageBubble = memo<{ msg: ChatMessage; formatContent: (content: string) => string }>(
+  ({ msg, formatContent }) => (
+    <div
+      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}
+    >
+      <div
+        className={`max-w-[85%] px-4 py-3 rounded-2xl transform-gpu transition-transform duration-200 hover:scale-[1.02] ${
+          msg.role === 'user'
+            ? 'bg-indigo-600 text-white rounded-br-md'
+            : 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-bl-md'
+        }`}
+      >
+        <div 
+          className="text-sm leading-relaxed"
+          dangerouslySetInnerHTML={{ __html: formatContent(msg.content) }}
+        />
+        {msg.intent && msg.role === 'assistant' && (
+          <div className="mt-2 pt-2 border-t border-slate-200/50 dark:border-slate-600/50">
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              {msg.intent.replace('_', ' ')}
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+);
+
+MessageBubble.displayName = 'MessageBubble';
 
 interface ChatBotProps {
   articleContext?: ChatContext;
@@ -104,7 +135,7 @@ export const ChatBot: React.FC<ChatBotProps> = ({ articleContext: initialContext
     }
   };
 
-  const handleSend = async () => {
+  const handleSend = useCallback(async () => {
     const trimmedInput = input.trim();
     if (!trimmedInput || isLoading) return;
 
@@ -138,38 +169,39 @@ export const ChatBot: React.FC<ChatBotProps> = ({ articleContext: initialContext
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [input, isLoading, articleContext, onError]);
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
-  };
+  }, [handleSend]);
 
-  const quickActions = [
+  // Memoize quick actions to prevent recreation
+  const quickActions = useMemo(() => [
     { label: '📰 Daily Briefing', action: "Give me today's briefing" },
     { label: '📚 Summarize Saved', action: 'Summarize my saved articles' },
     { label: '📊 Reading Patterns', action: 'What topics do I read the most?' },
     { label: '📖 What to Read', action: 'What should I read first?' },
-  ];
+  ], []);
 
-  const handleQuickAction = (action: string) => {
+  const handleQuickAction = useCallback((action: string) => {
     setInput(action);
     // Auto-send
     setTimeout(() => {
       const btn = document.getElementById('chatbot-send-btn');
       btn?.click();
     }, 100);
-  };
+  }, []);
 
-  // Format message content (basic markdown)
-  const formatContent = (content: string) => {
+  // Format message content (basic markdown) - memoized
+  const formatContent = useCallback((content: string) => {
     return content
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/_(.*?)_/g, '<em>$1</em>')
       .replace(/\n/g, '<br />');
-  };
+  }, []);
 
   return (
     <>
@@ -306,41 +338,16 @@ export const ChatBot: React.FC<ChatBotProps> = ({ articleContext: initialContext
               {/* Messages */}
               <div
                 ref={chatContainerRef}
-                className="flex-1 overflow-y-auto px-4 py-4 space-y-4"
+                className="flex-1 overflow-y-auto px-4 py-4 space-y-4 will-change-scroll"
+                style={{ scrollBehavior: 'smooth' }}
               >
-                <AnimatePresence>
-                  {messages.map((msg, idx) => (
-                    <motion.div
-                      key={idx}
-                      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ type: "spring", stiffness: 200 }}
-                    >
-                      <motion.div
-                        className={`max-w-[85%] px-4 py-3 rounded-2xl ${
-                          msg.role === 'user'
-                            ? 'bg-indigo-600 text-white rounded-br-md'
-                            : 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-bl-md'
-                        }`}
-                        whileHover={{ scale: 1.02 }}
-                      >
-                        <div 
-                          className="text-sm leading-relaxed"
-                          dangerouslySetInnerHTML={{ __html: formatContent(msg.content) }}
-                        />
-                        {msg.intent && msg.role === 'assistant' && (
-                          <div className="mt-2 pt-2 border-t border-slate-200/50 dark:border-slate-600/50">
-                            <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                              {msg.intent.replace('_', ' ')}
-                            </span>
-                          </div>
-                        )}
-                      </motion.div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
+                {messages.map((msg, idx) => (
+                  <MessageBubble 
+                    key={`msg-${idx}-${msg.role}`} 
+                    msg={msg} 
+                    formatContent={formatContent} 
+                  />
+                ))}
                 
                 {/* Loading indicator - AI typing */}
                 <AnimatePresence>
