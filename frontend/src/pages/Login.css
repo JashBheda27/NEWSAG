@@ -11,6 +11,7 @@
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
   overflow: hidden;
   margin: 0 auto;
+  min-height: 500px;
 }
 
 .dark .card {
@@ -182,6 +183,10 @@
   color: #1f2937;
   font-size: 14px;
   transition: all 0.3s ease;
+  min-height: 44px;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .dark .form input {
@@ -215,6 +220,10 @@
   transition: all 0.3s ease;
   text-transform: uppercase;
   letter-spacing: 1px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .form button:hover {
@@ -246,6 +255,7 @@
   justify-content: center;
   gap: 15px;
   margin: 15px 0;
+  flex-wrap: wrap;
 }
 
 .sso a {
@@ -261,6 +271,8 @@
   cursor: pointer;
   transition: all 0.3s ease;
   border: none;
+  min-width: 40px;
+  min-height: 40px;
 }
 
 .sso a:hover {
@@ -268,17 +280,106 @@
   transform: translateY(-3px);
 }
 
+.sso a:active {
+  transform: translateY(0);
+}
+
 .dark .sso a {
   background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Ensure touch-friendly sizes on mobile */
+@media (max-width: 768px) {
+  .sso a {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 
 /* ========================================
    Responsive Design
 ======================================== */
+
+/* Tablet (iPad) - 768px to 1024px */
+@media (max-width: 1024px) {
+  .card {
+    height: auto;
+    min-height: 480px;
+    max-width: 75vw;
+    border-radius: 16px;
+  }
+
+  .card-bg {
+    width: 50%;
+    height: 100%;
+  }
+
+  .hero,
+  .form {
+    width: 50%;
+    padding: 30px 18px;
+  }
+
+  .form h2 {
+    font-size: 21px;
+    margin-bottom: 8px;
+  }
+
+  .form span {
+    font-size: 11px;
+  }
+
+  .hero h2 {
+    font-size: 24px;
+  }
+
+  .form input {
+    padding: 10px 12px;
+    font-size: 13px;
+    margin: 6px 0;
+  }
+
+  .form button {
+    padding: 10px;
+    font-size: 12px;
+    margin-top: 12px;
+  }
+
+  .sso {
+    gap: 12px;
+    margin: 12px 0;
+  }
+
+  .sso a {
+    width: 35px;
+    height: 35px;
+    font-size: 16px;
+  }
+
+  .hero p {
+    font-size: 13px;
+  }
+
+  .hero button {
+    display: none;
+  }
+
+  .clerk-captcha {
+    min-height: 40px;
+    margin: 6px 0 10px;
+  }
+}
+
+/* Mobile - max 768px */
 @media (max-width: 768px) {
   .card {
     height: auto;
-    max-width: 100%;
+    max-width: 95vw;
+    min-height: auto;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    padding-bottom: 70px;
+    position: relative;
   }
 
   .card-bg {
@@ -290,23 +391,144 @@
   .form {
     width: 100%;
     position: relative;
-    opacity: 1;
-    pointer-events: all;
+    z-index: 10;
+    padding: 28px 20px;
   }
 
   .hero {
     display: none;
+    opacity: 0;
+    pointer-events: none;
   }
 
-  .hero.active,
+  .hero.active {
+    display: flex;
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .form {
+    display: none;
+    opacity: 0;
+    pointer-events: none;
+  }
+
   .form.active {
     display: flex;
+    opacity: 1;
+    pointer-events: all;
   }
 
   .form.login,
   .form.register {
     left: 0;
     right: 0;
+  }
+
+  .form h2 {
+    font-size: 20px;
+    margin-bottom: 8px;
+    font-weight: 800;
+  }
+
+  .form span {
+    font-size: 11px;
+    margin: 10px 0;
+  }
+
+  .form input {
+    padding: 10px 12px;
+    margin: 6px 0;
+    font-size: 13px;
+    border-radius: 10px;
+  }
+
+  .form button {
+    padding: 10px;
+    margin-top: 10px;
+    font-size: 12px;
+  }
+
+  .sso {
+    gap: 10px;
+    margin: 10px 0;
+  }
+
+  .sso a {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+
+  .hero h2 {
+    font-size: 22px;
+    margin-bottom: 12px;
+  }
+
+  .hero p {
+    font-size: 12px;
+    margin-bottom: 15px;
+  }
+
+  .hero button {
+    display: none;
+  }
+
+  .clerk-captcha {
+    min-height: 40px;
+    margin: 6px 0 10px;
+  }
+}
+
+/* Small phones - max 480px */
+@media (max-width: 480px) {
+  .card {
+    max-width: 100%;
+    border-radius: 12px;
+    margin: 10px;
+    padding-bottom: 65px;
+  }
+
+  .form h2 {
+    font-size: 18px;
+  }
+
+  .form span {
+    font-size: 10px;
+  }
+
+  .form input {
+    padding: 9px 10px;
+    font-size: 12px;
+    margin: 5px 0;
+  }
+
+  .form button {
+    padding: 9px;
+    font-size: 11px;
+    margin-top: 8px;
+  }
+
+  .sso a {
+    width: 30px;
+    height: 30px;
+    font-size: 13px;
+  }
+
+  .hero h2 {
+    font-size: 20px;
+  }
+
+  .hero p {
+    font-size: 11px;
+  }
+
+  .form {
+    padding: 20px 16px;
+  }
+
+  .hero button {
+    display: none;
   }
 }
 
@@ -326,6 +548,73 @@
 
 .card {
   animation: slideUp 0.5s ease-out;
+}
+
+/* ========================================
+   Toggle Footer
+======================================== */
+.toggle-footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 20px;
+  text-align: center;
+  background: linear-gradient(180deg, transparent 0%, rgba(255, 255, 255, 0.1) 100%);
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  z-index: 5;
+}
+
+.dark .toggle-footer {
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.2) 100%);
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+.toggle-footer p {
+  margin: 0;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.dark .toggle-footer p {
+  color: #9ca3af;
+}
+
+.toggle-button {
+  background: none;
+  border: none;
+  color: #667eea;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  display: inline;
+}
+
+.toggle-button:hover {
+  color: #764ba2;
+  text-decoration: underline;
+}
+
+.toggle-button:active {
+  transform: scale(0.98);
+}
+
+.dark .toggle-button {
+  color: #a78bfa;
+}
+
+.dark .toggle-button:hover {
+  color: #c4b5fd;
+}
+
+/* Hide toggle on desktop where hero panels are visible */
+@media (min-width: 769px) {
+  .toggle-footer {
+    display: none;
+  }
 }
 
 /* ========================================
