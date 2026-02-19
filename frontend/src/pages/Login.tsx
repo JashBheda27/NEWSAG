@@ -365,7 +365,16 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+    <div style={{ 
+      minHeight: '100vh', 
+      display: 'flex', 
+      alignItems: 'center', 
+      justifyContent: 'center', 
+      padding: '10px',
+      width: '100%',
+      boxSizing: 'border-box',
+      backgroundColor: '#f5f5f5'
+    }}>
       <div className="card">
         <CardBackground activeView={activeView} />
 
@@ -390,6 +399,19 @@ export const Login: React.FC = () => {
         />
 
         <LoginForm activeView={activeView} />
+
+        <div className="toggle-footer">
+          <p>
+            {activeView === 'login' ? "Don't have an account? " : 'Already have an account? '}
+            <button 
+              type="button" 
+              onClick={toggleView}
+              className="toggle-button"
+            >
+              {activeView === 'login' ? 'Sign Up' : 'Sign In'}
+            </button>
+          </p>
+        </div>
       </div>
     </div>
   );
