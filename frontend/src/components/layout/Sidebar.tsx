@@ -547,7 +547,87 @@ export const Sidebar: React.FC = () => {
         /* Hide on smaller screens */
         @media (max-width: 1023px) {
           .sidebar-container {
+            position: fixed;
+            left: 0;
+            right: 0;
+            top: auto;
+            bottom: 0;
+            width: 100%;
+            height: 80px;
+            border-radius: 24px 24px 0 0;
+            display: flex;
+            flex-direction: row;
+            padding: 0 12px;
+            justify-content: flex-start;
+            overflow-x: auto;
+            overflow-y: hidden;
+          }
+
+          .sidebar-left {
+            width: 100%;
+            flex-direction: row;
+            padding-top: 0;
+            padding: 12px 0;
+            gap: 8px;
+          }
+
+          .sidebar-logo {
+            margin-bottom: 0;
+            margin-right: 12px;
+          }
+
+          .sidebar-nav-icons {
+            flex-direction: row;
+            justify-content: flex-start;
+            gap: 4px;
+            width: auto;
+          }
+
+          .sidebar-icon-btn {
+            width: 48px;
+            height: 48px;
+            flex-shrink: 0;
+          }
+
+          .sidebar-category-btn {
+            width: 44px;
+            height: 44px;
+          }
+
+          .sidebar-right {
             display: none;
+          }
+
+          .sidebar-divider {
+            display: none;
+          }
+
+          .sidebar-tooltip {
+            display: none;
+          }
+
+          .sidebar-container:hover {
+            width: 100%;
+          }
+        }
+
+        /* Tablet - Show sidebar but make it more compact */
+        @media (max-width: 1279px) and (min-width: 768px) {
+          .sidebar-container {
+            width: 70px;
+            left: 12px;
+          }
+
+          .sidebar-container:hover {
+            width: 240px;
+          }
+
+          .sidebar-right {
+            width: 0;
+          }
+
+          .sidebar-container:hover .sidebar-right {
+            width: 160px;
           }
         }
 
