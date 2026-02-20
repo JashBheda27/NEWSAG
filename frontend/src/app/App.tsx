@@ -42,7 +42,7 @@ const AppLayout: React.FC<{ showNotification: (msg: string, type?: 'error' | 'su
 
       {!isAuthPage && <Sidebar />}
 
-      <main className={`flex-grow overflow-x-hidden ${isAuthPage ? '' : 'lg:pl-28'}`}>
+      <main className={`flex-grow overflow-x-hidden ${isAuthPage ? '' : 'lg:pl-28 max-sm:pb-24'}`}>
         <AppRouter showNotification={showNotification} />
       </main>
 
