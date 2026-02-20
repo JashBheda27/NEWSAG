@@ -205,11 +205,24 @@ export const ChatBot: React.FC<ChatBotProps> = ({ articleContext: initialContext
 
   return (
     <>
+      <style>{`
+        @media (max-width: 1023px) {
+          .chatbot-fab {
+            bottom: calc(80px + 24px) !important;
+          }
+        }
+        
+        @media (min-width: 1024px) {
+          .chatbot-fab {
+            bottom: 24px !important;
+          }
+        }
+      `}</style>
       {/* Floating Button */}
       <motion.button
         aria-label="Ask NewsAura AI"
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:shadow-2xl transition-shadow z-40 group"
+        className="chatbot-fab fixed right-6 w-14 h-14 bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:shadow-2xl transition-shadow z-40 group"
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.95 }}
         animate={{ y: [0, -8, 0] }}
