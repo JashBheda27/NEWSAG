@@ -131,6 +131,7 @@ INTENT_PATTERNS = {
 }
 
 
+
 def detect_intent(message: str) -> str:
     """Detect user intent from message using keyword patterns."""
     message_lower = message.lower().strip()
@@ -192,14 +193,21 @@ async def get_cached_news_articles(limit_per_category: int = 10) -> list:
 
 async def find_article_in_cache(article_id: str) -> Optional[dict]:
     """Find a specific article in the Redis news cache."""
+    logger.info("[CHATBOT] Searching cache for article_id=%s", article_id)
     for category in NEWS_CATEGORIES:
         cache_key = f"gnews:{category}"
         cached = await get_from_cache(cache_key)
         if not cached:
             continue
+        logger.debug("[CHATBOT] Searching category %s (has %d articles)", category, len(cached))
         for article in cached:
-            if article.get("id") == article_id or article.get("url") == article_id:
+            article_lookup_id = article.get("id")
+            article_lookup_url = article.get("url")
+            if article_lookup_id == article_id or article_lookup_url == article_id:
+                logger.info("[CHATBOT] ✓ Found article in cache: id=%s title=%s", 
+                           article_id, article.get('title', 'N/A')[:50])
                 return article
+    logger.warning("[CHATBOT] ✗ Article not found in any cache category: id=%s", article_id)
     return None
 
 
@@ -330,10 +338,22 @@ def build_llm_context(
                 source = source.get('name', 'Unknown')
             context_parts.append(f"Source: {source}")
             context_parts.append(f"Category: {article.get('category', 'general')}")
-            if article.get('content'):
-                context_parts.append(f"Content: {article.get('content')}")
-            elif article.get('description'):
-                context_parts.append(f"Description: {article.get('description')}")
+            
+            # Include content with fallback to description
+            content = article.get('content')
+            description = article.get('description')
+            
+            if content and content.strip():
+                context_parts.append(f"Content: {content}")
+            elif description and description.strip():
+                context_parts.append(f"Description: {description}")
+            else:
+                # If no content or description, include URL as fallback
+                url = article.get('url', '')
+                if url:
+                    context_parts.append(f"URL: {url}")
+                    context_parts.append(f"Description: [Article details available at source]")
+            
             if isinstance(article.get('sentiment'), dict):
                 sentiment = article['sentiment']
                 context_parts.append(f"Sentiment: {sentiment.get('label', 'Unknown')}")
@@ -728,6 +748,8 @@ async def chat_message(
     
     # Article context override
     article_id = context.get("article_id")
+    
+    logger.info("[CHATBOT] Processing request: intent=%s article_id=%s", intent, article_id)
 
     if intent == "article_qa" and not article_id:
         return ChatMessageResponse(
@@ -756,9 +778,17 @@ async def chat_message(
     if article_id:
         # Check user's saved items first, then fall back to cache
         article = await get_article_by_id(db, user_id, article_id)
-        if not article:
+        if article:
+            logger.info("[CHATBOT] Article found in user saved items - id=%s title=%s", 
+                       article_id, article.get('title', 'N/A')[:50])
+        else:
             article = await find_article_in_cache(article_id)
-            article_from_cache = article is not None
+            if article:
+                article_from_cache = True
+                logger.info("[CHATBOT] Article found in cache - id=%s title=%s", 
+                           article_id, article.get('title', 'N/A')[:50])
+            else:
+                logger.warning("[CHATBOT] Article NOT found - id=%s (not in saved items or cache)", article_id)
     
     sources = []
     reply = ""
@@ -788,81 +818,29 @@ async def chat_message(
         cached_articles=cached_articles,
     )
     
-    # Try LLM first (for non-trivial intents)
-    if intent not in ("greeting", "help"):
-        llm_response = await chat_llm.send_prompt(
-            context=llm_context,
-            user_message=message,
-            intent=intent
-        )
-        
-        if llm_response:
-            reply = llm_response
-            used_llm = True
-            logger.info("[CHATBOT] Using LLM response for intent=%s", intent)
+    # Debug: log the context being sent to LLM
+    has_article_section = "=== CURRENT ARTICLE ===" in llm_context
+    llm_context_preview = llm_context[:300] + ("..." if len(llm_context) > 300 else "")
+    logger.info("[CHATBOT] LLM Context has ARTICLE: %s | context_len=%d | preview=%s", 
+               has_article_section, len(llm_context), llm_context_preview.replace('\n', ' ')[:100])
     
-    # Fallback to rule-based generators
-    if not reply:
-        logger.info("[CHATBOT] Using fallback generator for intent=%s", intent)
-        
-        if intent == "summarize_saved":
-            reply = generate_summarize_saved_response(bookmarks, read_later)
-        
-        elif intent == "daily_briefing":
-            reply = generate_daily_briefing(bookmarks, read_later, analytics)
-        
-        elif intent == "article_qa" or article_id:
-            reply = generate_article_qa_response(article, message)
-        
-        elif intent == "top_topics":
-            reply = generate_top_topics_response(analytics)
-        
-        elif intent == "sentiment_insight":
-            reply = generate_sentiment_insight(analytics)
-        
-        elif intent == "read_recommendation":
-            reply = generate_read_recommendation(bookmarks, read_later, analytics)
-        
-        elif intent == "explain_simple":
-            # Try LLM for ELI5 if article available
-            if article and not used_llm:
-                eli5_response = await chat_llm.explain_like_five(
-                    article_title=article.get("title", ""),
-                    article_content=article.get("description", "") or article.get("content", "")
-                )
-                if eli5_response:
-                    reply = f"🧒 **Simple Explanation**\n\n{eli5_response}"
-                    used_llm = True
-            
-            if not reply:
-                reply = generate_explain_simple(article)
-        
-        elif intent == "compare_articles":
-            reply = generate_compare_articles(bookmarks, read_later)
-        
-        elif intent == "similar_read":
-            reply = generate_similar_read(bookmarks, read_later, analytics)
-        
-        elif intent == "greeting":
-            reply = generate_greeting_response(analytics)
-        
-        elif intent == "help":
-            reply = generate_help_response()
-        
-        else:
-            # General query - try LLM one more time with context
-            if not used_llm:
-                llm_response = await chat_llm.send_prompt(
-                    context=llm_context,
-                    user_message=message,
-                    intent="general_query"
-                )
-                if llm_response:
-                    reply = llm_response
-                    used_llm = True
-            
-            if not reply:
-                reply = generate_fallback_response(message)
+    # Safety check: if article_qa intent but no context, log warning
+    if intent == "article_qa" and (not llm_context or llm_context.strip() == ""):
+        logger.warning("[CHATBOT] article_qa intent but empty context - article_id=%s, article=%s", 
+                      article_id, "found" if article else "not_found")
+    
+    llm_response = await chat_llm.send_prompt(
+        context=llm_context,
+        user_message=message,
+        intent=intent
+    )
+
+    if llm_response:
+        reply = llm_response
+        used_llm = True
+        logger.info("[CHATBOT] Using LLM response for intent=%s", intent)
+    else:
+        reply = get_fallback_message()
     
     if article_from_cache and article:
         content_complete = is_article_content_complete(article)
