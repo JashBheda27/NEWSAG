@@ -1,7 +1,12 @@
+import asyncio
 import re
 import numpy as np
+from concurrent.futures import ThreadPoolExecutor
 from typing import List
 from sklearn.feature_extraction.text import TfidfVectorizer
+
+# Thread pool for CPU-bound summarization
+_SUMMARIZE_EXECUTOR = ThreadPoolExecutor(max_workers=4)
 
 
 class TextSummarizer:
@@ -99,3 +104,25 @@ class TextSummarizer:
         scores *= lead_bias
 
         return scores
+    async def summarize_async(
+        self,
+        text: str,
+        *,
+        min_words: int = 100,
+        max_words: int = 120,
+        max_sentences: int = 10,
+    ) -> str:
+        """
+        Async wrapper for CPU-bound summarization.
+        Runs in thread pool to avoid blocking event loop.
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            _SUMMARIZE_EXECUTOR,
+            lambda: self.summarize(
+                text,
+                min_words=min_words,
+                max_words=max_words,
+                max_sentences=max_sentences
+            )
+        )
