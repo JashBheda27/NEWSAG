@@ -6,21 +6,21 @@ Uses a hybrid approach:
 2. ML Model (BERT-tiny for unknown sources)
 
 Model: mrm8488/bert-tiny-finetuned-fake-news-detection (~67MB)
+
+OPTIMIZED: Uses centralized ModelManager with thread pool execution
+to avoid blocking the async event loop during inference.
 """
 
+import asyncio
 import logging
 import hashlib
 from typing import List, Dict, Optional
-from threading import Lock
 from urllib.parse import urlparse
 
 from app.core.cache import get_from_cache, set_in_cache
+from app.services.model_manager import model_manager, ML_EXECUTOR
 
 logger = logging.getLogger(__name__)
-
-# Singleton lock for thread-safe model loading
-_model_lock = Lock()
-_credibility_pipeline = None
 
 # Trusted domains whitelist (bypass ML inference)
 TRUSTED_DOMAINS = {
@@ -66,38 +66,6 @@ def _extract_domain(url: str) -> str:
         return ""
 
 
-def _load_model():
-    """
-    Load the fake news detection model once at startup.
-    Uses singleton pattern to avoid reloading.
-    """
-    global _credibility_pipeline
-
-    if _credibility_pipeline is not None:
-        return _credibility_pipeline
-
-    with _model_lock:
-        # Double-check pattern to avoid race conditions
-        if _credibility_pipeline is not None:
-            return _credibility_pipeline
-
-        try:
-            from transformers import pipeline
-
-            logger.info("Loading credibility model: mrm8488/bert-tiny-finetuned-fake-news-detection")
-            _credibility_pipeline = pipeline(
-                "text-classification",
-                model="mrm8488/bert-tiny-finetuned-fake-news-detection",
-                tokenizer="mrm8488/bert-tiny-finetuned-fake-news-detection",
-                device=-1  # CPU only
-            )
-            logger.info("Credibility model loaded successfully")
-            return _credibility_pipeline
-        except Exception as e:
-            logger.error(f"Failed to load credibility model: {e}")
-            return None
-
-
 def _check_domain_trust(source_name: str, source_url: str, article_url: str) -> Optional[Dict]:
     """
     Check if the article source is in the trusted or suspect domains list.
@@ -133,8 +101,11 @@ def _check_domain_trust(source_name: str, source_url: str, article_url: str) -> 
 async def analyze_article_credibility(title: str, description: str) -> Dict:
     """
     Analyze credibility of a single article using ML model.
+    
+    OPTIMIZED: ML inference runs in thread pool to avoid blocking event loop.
     """
-    pipeline = _load_model()
+    # Get model from centralized manager (lazy loading)
+    pipeline = await model_manager.get_credibility_model()
     
     if not pipeline:
         return {
@@ -154,8 +125,12 @@ async def analyze_article_credibility(title: str, description: str) -> Dict:
                 "source": "fallback",
             }
         
-        # Run inference
-        result = pipeline(text)[0]
+        # ✅ Run inference in thread pool (CPU-bound, would block event loop)
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            ML_EXECUTOR,
+            lambda: pipeline(text)[0]
+        )
         
         # Model output: LABEL_0 = Fake, LABEL_1 = Real
         # Alternatively some models use: 'FAKE' / 'REAL'
@@ -192,59 +167,76 @@ async def analyze_article_credibility(title: str, description: str) -> Dict:
         }
 
 
+async def _analyze_single_article_credibility(article: Dict) -> Dict:
+    """
+    Analyze credibility for a single article.
+    Separated for parallel execution.
+    """
+    try:
+        # Extract source info
+        source_obj = article.get("source", {})
+        if isinstance(source_obj, dict):
+            source_name = source_obj.get("name", "")
+            source_url = source_obj.get("url", "")
+        else:
+            source_name = str(source_obj)
+            source_url = ""
+        
+        article_url = article.get("url", "")
+        title = article.get("title", "")
+        description = article.get("description", "")
+        
+        # 1. Check domain whitelist/blacklist (fast heuristic)
+        heuristic_result = _check_domain_trust(source_name, source_url, article_url)
+        if heuristic_result:
+            article["credibility"] = heuristic_result
+            return article
+        
+        # 2. Check Redis cache
+        content_hash = hashlib.md5(f"{title}:{description}".encode()).hexdigest()
+        cache_key = f"credibility:{content_hash}"
+        
+        cached = await get_from_cache(cache_key)
+        if cached:
+            article["credibility"] = cached
+            return article
+        
+        # 3. Run ML model inference
+        credibility_data = await analyze_article_credibility(title, description)
+        
+        # Cache the result (24 hours TTL)
+        await set_in_cache(cache_key, credibility_data, ttl=86400)
+        
+        article["credibility"] = credibility_data
+        
+    except Exception as e:
+        logger.warning(f"Credibility analysis failed for article: {e}")
+        article["credibility"] = {
+            "score": 0.5,
+            "label": "Unverified",
+            "source": "error",
+        }
+    
+    return article
+
+
 async def analyze_credibility(articles: List[Dict]) -> List[Dict]:
     """
     Analyze credibility for a list of articles.
-    Pipeline:
+    
+    OPTIMIZED: Uses asyncio.gather for parallel execution.
+    
+    Pipeline per article:
     1. Check Domain Whitelist/Blacklist (instant)
     2. Check Redis Cache
     3. Run ML Model inference
     """
-    for article in articles:
-        try:
-            # Extract source info
-            source_obj = article.get("source", {})
-            if isinstance(source_obj, dict):
-                source_name = source_obj.get("name", "")
-                source_url = source_obj.get("url", "")
-            else:
-                source_name = str(source_obj)
-                source_url = ""
-            
-            article_url = article.get("url", "")
-            title = article.get("title", "")
-            description = article.get("description", "")
-            
-            # 1. Check domain whitelist/blacklist (fast heuristic)
-            heuristic_result = _check_domain_trust(source_name, source_url, article_url)
-            if heuristic_result:
-                article["credibility"] = heuristic_result
-                continue
-            
-            # 2. Check Redis cache
-            content_hash = hashlib.md5(f"{title}:{description}".encode()).hexdigest()
-            cache_key = f"credibility:{content_hash}"
-            
-            cached = await get_from_cache(cache_key)
-            if cached:
-                article["credibility"] = cached
-                continue
-            
-            # 3. Run ML model inference
-            credibility_data = await analyze_article_credibility(title, description)
-            
-            # Cache the result (24 hours TTL)
-            await set_in_cache(cache_key, credibility_data, ttl=86400)
-            
-            article["credibility"] = credibility_data
-            
-        except Exception as e:
-            logger.warning(f"Credibility analysis failed for article: {e}")
-            article["credibility"] = {
-                "score": 0.5,
-                "label": "Unverified",
-                "source": "error",
-            }
+    if not articles:
+        return articles
+    
+    # ✅ Run all credibility analyses in parallel
+    tasks = [_analyze_single_article_credibility(article) for article in articles]
+    await asyncio.gather(*tasks)
     
     return articles
 
