@@ -25,12 +25,19 @@ class GNewsService:
         content_stripped = content.strip()
         if not content_stripped:
             return False
+        
+        # Content that is very brief (< 100 chars) is likely just a snippet
+        if len(content_stripped) < 100:
+            return False
+        
         lowered = content_stripped.lower()
-        truncation_markers = ["[+", "read more", "continue reading", "...", "…"]
+        # Only mark as incomplete if it has specific truncation markers
+        truncation_markers = ["[+", "read more", "continue reading"]
         if any(marker in lowered for marker in truncation_markers):
             return False
-        if content_stripped.endswith(("...", "…")):
-            return False
+        
+        # Note: Don't penalize content that ends with "..." as GNews snippets often do
+        # Even partial content from GNews is useful for the chatbot
         return True
 
     @staticmethod
