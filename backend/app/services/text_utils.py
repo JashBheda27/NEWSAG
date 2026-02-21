@@ -1,17 +1,33 @@
+import asyncio
 import httpx
 import re
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from bs4 import BeautifulSoup
 from deep_translator import GoogleTranslator
 from app.core.constants import SUPPORTED_LANGUAGES
 
 logger = logging.getLogger(__name__)
 
+# Thread pool for blocking I/O operations
+_TRANSLATE_EXECUTOR = ThreadPoolExecutor(max_workers=4)
 
-def translate_text(text: str, target_lang: str) -> str:
+
+def _translate_sync(text: str, target_lang: str) -> str:
+    """Synchronous translation (runs in thread pool)."""
+    try:
+        translated = GoogleTranslator(source="en", target=target_lang).translate(text)
+        return translated or text
+    except Exception as e:
+        logger.error("[TRANSLATE] Translation failed for lang=%s: %s", target_lang, e)
+        return text
+
+
+async def translate_text(text: str, target_lang: str) -> str:
     """
     Translate text to the target language using Google Translate.
-    Returns original text if translation fails or target is English.
+    
+    OPTIMIZED: Runs in thread pool to avoid blocking event loop.
     """
     if not text or target_lang == "en":
         return text
@@ -20,12 +36,8 @@ def translate_text(text: str, target_lang: str) -> str:
         logger.warning("[TRANSLATE] Unsupported language: %s", target_lang)
         return text
 
-    try:
-        translated = GoogleTranslator(source="en", target=target_lang).translate(text)
-        return translated or text
-    except Exception as e:
-        logger.error("[TRANSLATE] Translation failed for lang=%s: %s", target_lang, e)
-        return text
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(_TRANSLATE_EXECUTOR, _translate_sync, text, target_lang)
 
 
 async def extract_article_text(url: str) -> str:
