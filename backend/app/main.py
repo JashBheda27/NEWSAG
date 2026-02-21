@@ -5,7 +5,7 @@ from app.core.database import MongoDB
 from app.core.logging import configure_logging
 from app.core.indexes import create_indexes
 from app.core.cache import get_redis, close_redis
-from app.services.sentiment_ml import SentimentService, _load_model
+from app.services.model_manager import prewarm_models_background, model_manager
 from app.services.chat_llm import chat_llm
 
 
@@ -83,18 +83,19 @@ async def startup_event():
     configure_logging()
     MongoDB.connect()
     await create_indexes()
+    
     # ✅ Initialize Redis connection on startup without blocking app availability
     try:
         await get_redis()
         print("[REDIS] Connected to Redis cache")
     except Exception as exc:
         logger.warning("[REDIS] Startup connection failed; continuing without cache: %s", exc)
-    # ✅ Preload sentiment model to avoid first-request latency; do not block on failure
-    try:
-        _load_model()
-        print("[SENTIMENT] ML model loaded successfully at startup")
-    except Exception as exc:
-        logger.warning("[SENTIMENT] Model preload failed; will use neutral fallback: %s", exc)
+    
+    # ✅ NON-BLOCKING: Prewarm ML models in background (does not block startup)
+    # App is immediately ready to serve requests; first requests may use fallback
+    await prewarm_models_background()
+    print("[ML MODELS] Background prewarming started (non-blocking)")
+    
     # ✅ Warm up Ollama so llama3.1:8b loads into memory (avoids cold-start on first chat)
     try:
         available = await chat_llm.is_available()
@@ -104,6 +105,20 @@ async def startup_event():
             print("[OLLAMA] Ollama not available; chatbot will use rule-based fallbacks")
     except Exception as exc:
         logger.warning("[OLLAMA] Warmup check failed; chatbot will use fallbacks: %s", exc)
+
+
+# ✅ Health check endpoint with model status
+@app.get("/health", tags=["Health"])
+async def health_check_detailed():
+    """
+    Detailed health check with model loading status.
+    Returns 200 immediately (app is ready) but shows model warmup progress.
+    """
+    return {
+        "status": "running",
+        "models": model_manager.get_status(),
+        "message": "NewsAura backend is live"
+    }
 
 @app.on_event("shutdown")
 async def shutdown_event():
