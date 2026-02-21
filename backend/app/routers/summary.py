@@ -79,7 +79,7 @@ async def generate_summary(
     # --------------------------------------------------
     if article_text and len(article_text.split()) >= 200:
         try:
-            summary = summarizer.summarize(
+            summary = await summarizer.summarize_async(  # ✅ Now async-safe (thread pool)
                 article_text,
                 min_words=100,
                 max_words=120
@@ -109,7 +109,7 @@ async def generate_summary(
     # --------------------------------------------------
     translated = False
     if target_lang and target_lang != "en" and summary:
-        summary = translate_text(summary, target_lang)
+        summary = await translate_text(summary, target_lang)  # ✅ Now async-safe
         translated = True
 
     # --------------------------------------------------
