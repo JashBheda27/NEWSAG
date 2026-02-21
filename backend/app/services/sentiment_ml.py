@@ -1,54 +1,22 @@
 """
 Production-ready ML-based sentiment analysis using HuggingFace transformers.
 Uses cardiffnlp/twitter-roberta-base-sentiment-latest for news headlines.
+
+OPTIMIZED: Uses centralized ModelManager with thread pool execution
+to avoid blocking the async event loop during inference.
 """
 
+import asyncio
 import logging
-from typing import Dict, Optional
-from threading import Lock
+from typing import Dict
 import hashlib
 
 # Import cache functions for per-article sentiment caching
 from app.core.cache import get_from_cache, set_in_cache
 from app.core.config import settings
+from app.services.model_manager import model_manager, ML_EXECUTOR
 
 logger = logging.getLogger(__name__)
-
-# Singleton lock for thread-safe model loading
-_model_lock = Lock()
-_sentiment_pipeline = None
-
-
-def _load_model():
-    """
-    Load the sentiment analysis model once at startup.
-    Uses singleton pattern to avoid reloading.
-    """
-    global _sentiment_pipeline
-    
-    if _sentiment_pipeline is not None:
-        return _sentiment_pipeline
-    
-    with _model_lock:
-        # Double-check pattern to avoid race conditions
-        if _sentiment_pipeline is not None:
-            return _sentiment_pipeline
-        
-        try:
-            from transformers import pipeline
-
-            logger.info("Loading sentiment model: cardiffnlp/twitter-roberta-base-sentiment-latest")
-            _sentiment_pipeline = pipeline(
-                "sentiment-analysis",
-                model="cardiffnlp/twitter-roberta-base-sentiment-latest",
-                device=-1  # -1 = CPU only (production safe, no GPU assumptions)
-            )
-            logger.info("Sentiment model loaded successfully")
-            return _sentiment_pipeline
-        except Exception as e:
-            logger.error(f"Failed to load sentiment model: {str(e)}")
-            # Do not raise to avoid blocking startup; allow neutral fallback
-            return None
 
 
 def _normalize_label(raw_label: str) -> str:
@@ -81,6 +49,8 @@ class SentimentService:
     """
     ML-based sentiment analysis service.
     Provides label, confidence score, and model information.
+    
+    OPTIMIZED: Uses thread pool execution to avoid blocking event loop.
     """
     
     MODEL_NAME = "roberta-news"
@@ -90,6 +60,8 @@ class SentimentService:
         """
         Analyze sentiment of given text using HuggingFace transformer.
         Includes per-article Redis caching to avoid repeated ML inference.
+        
+        OPTIMIZED: ML inference runs in thread pool to avoid blocking event loop.
         
         Args:
             text: Input text (title, description, or content)
@@ -118,8 +90,8 @@ class SentimentService:
             return cached_sentiment
         
         try:
-            # Load model (singleton)
-            pipeline = _load_model()
+            # Get model from centralized manager (lazy loading)
+            pipeline = await model_manager.get_sentiment_model()
 
             # If model failed to load, fallback gracefully
             if pipeline is None:
@@ -133,8 +105,12 @@ class SentimentService:
             # Truncate to avoid overflow
             truncated_text = _truncate_text(text.strip(), max_tokens=512)
 
-            # Run inference (expensive operation)
-            results = pipeline(truncated_text, top_k=1)
+            # ✅ Run inference in thread pool (CPU-bound, would block event loop)
+            loop = asyncio.get_event_loop()
+            results = await loop.run_in_executor(
+                ML_EXECUTOR,
+                lambda: pipeline(truncated_text, top_k=1)
+            )
             
             if not results or len(results) == 0:
                 logger.warning(f"No sentiment results for text: {text[:50]}")
@@ -176,12 +152,11 @@ class SentimentService:
             }
 
     @staticmethod
-    def ensure_model_loaded() -> None:
-        """Best-effort model preload; never raises."""
+    async def ensure_model_loaded() -> None:
+        """Best-effort model preload; never raises. Now async-safe."""
         try:
-            _load_model()
+            await model_manager.prewarm_sentiment()
         except Exception:
-            # Should not happen because _load_model swallows, but guard defensively
             logger.warning("Sentiment model preload failed; will fallback to neutral on requests")
     
     @staticmethod
