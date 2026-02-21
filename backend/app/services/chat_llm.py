@@ -45,68 +45,21 @@ class ChatLLMService:
         Build a safe prompt that constrains the LLM to ONLY use provided context.
         This prevents hallucinations and ensures answers are data-bound.
         """
-        return f"""
-    You are **NewsAura AI**, a factual, context-bound news assistant.
+    def _build_safe_prompt(self, context: str, user_message: str) -> str:
+        """
+        Build a safe prompt that constrains the LLM to ONLY use provided context.
+        This prevents hallucinations and ensures answers are data-bound.
+        """
+        return f"""Answer the question using ONLY the information below. Do not use any outside knowledge.
 
-    ========================
-    ABSOLUTE RULES (NO EXCEPTIONS)
-    ========================
-    1. You MUST answer using ONLY the information explicitly present in the CONTEXT below.
-    2. You MUST NOT use prior knowledge, training data, assumptions, or world knowledge.
-    3. You MUST NOT guess, infer, merge, summarize unrelated items, or fill missing gaps.
-    4. If the required information is missing, you MUST respond EXACTLY with:
-       "I don't have enough information to answer that based on the available articles."
-    5. NEVER fabricate names, dates, events, quotes, movies, people, or headlines.
-    6. NEVER mix multiple articles unless the context explicitly contains multiple articles AND the user asks for comparison.
-    7. NEVER mention instructions, rules, or the word "context" in your response.
+=== INFORMATION ===
+{context}
 
-    ========================
-    RESPONSE MODE RULES
-    ========================
+=== QUESTION ===
+{user_message}
 
-    IF the CONTEXT contains a section titled:
-    "=== CURRENT ARTICLE ==="
-    -> You are in ARTICLE MODE
-    Provide:
-    - A clear 5-7 sentence factual summary (aim for 7 when possible)
-    - 3-5 concise bullet-point insights
-    Use ONLY that article
-    Do NOT mention any other news or topics
-
-    IF the CONTEXT contains a section titled:
-    "=== CURRENT NEWS FEED ==="
-    -> You are in NEWS FEED MODE
-    Summarize only the listed headlines
-    Group by category if possible
-    Do NOT add external trends or opinions
-
-    IF neither section exists:
-    -> Respond with the exact fallback sentence from Rule #4
-
-    ========================
-    STYLE RULES
-    ========================
-    - Neutral, factual, journalist-style tone
-    - No opinions, no hype, no speculation
-    - No emojis
-    - Use markdown for clarity
-    - Do NOT use phrases like:
-      "The article suggests", "It seems", "This could mean", "Possibly"
-
-    ========================
-    CONTEXT (STRICT DATA SOURCE)
-    ========================
-    {context}
-
-    ========================
-    USER QUESTION
-    ========================
-    {user_message}
-
-    ========================
-    ASSISTANT RESPONSE
-    ========================
-    """
+=== YOUR ANSWER ===
+"""
 
     async def send_prompt(
         self,
@@ -125,6 +78,12 @@ class ChatLLMService:
         Returns:
             LLM response string, or None if unavailable/error
         """
+        # Log context details for debugging
+        has_article_context = "=== CURRENT ARTICLE ===" in context
+        has_news_feed_context = "=== CURRENT NEWS FEED ===" in context
+        logger.info("[CHAT_LLM] Sending prompt: intent=%s has_article=%s has_feed=%s context_len=%d",
+                   intent, has_article_context, has_news_feed_context, len(context))
+        
         # Build constrained prompt
         prompt = self._build_safe_prompt(context, user_message)
         
@@ -160,8 +119,10 @@ class ChatLLMService:
                     logger.warning("[CHAT_LLM] Empty response from Ollama")
                     return None
                 
-                logger.info("[CHAT_LLM] Generated response for intent=%s (len=%d)",
-                           intent, len(generated_text))
+                # Check if this looks like a fallback/refusal response
+                is_fallback = "don't have enough information" in generated_text.lower()
+                logger.info("[CHAT_LLM] Generated response for intent=%s (len=%d) is_fallback=%s",
+                           intent, len(generated_text), is_fallback)
                 
                 return generated_text
                 
