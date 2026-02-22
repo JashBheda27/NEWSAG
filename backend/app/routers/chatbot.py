@@ -717,6 +717,91 @@ Or click "Ask AI" on an article card for article-specific questions!"""
 
 
 # --------------------------------------------------
+# Response Formatting Helpers (Backend-Controlled)
+# --------------------------------------------------
+def format_article_response(article: dict, llm_text: str) -> str:
+    """
+    Format LLM response with structured article metadata.
+    Backend controls formatting, not the LLM.
+    
+    Args:
+        article: Article dict with title, category, sentiment, etc.
+        llm_text: Raw LLM response text
+    
+    Returns:
+        Formatted response string with article overview + explanation
+    """
+    # Extract article metadata with defaults
+    title = article.get("title", "Untitled Article")
+    category = article.get("category", "General")
+    if not category:
+        category = "General"
+    category = category.title()
+    
+    # Extract sentiment with proper handling
+    sentiment = article.get("sentiment", {})
+    sentiment_label = "Unknown"
+    sentiment_confidence = 0
+    
+    if isinstance(sentiment, dict):
+        sentiment_label = sentiment.get("label", "Unknown")
+        confidence_raw = sentiment.get("confidence", 0)
+        # Convert to percentage (handle both 0-1 float and already-percentage values)
+        if isinstance(confidence_raw, (int, float)):
+            if confidence_raw <= 1.0:
+                sentiment_confidence = int(confidence_raw * 100)
+            else:
+                sentiment_confidence = int(confidence_raw)
+    
+    # Sentiment emoji mapping
+    sentiment_emoji = {
+        "Positive": "😊",
+        "Negative": "😞",
+        "Neutral": "😐",
+        "Unknown": "❓"
+    }.get(sentiment_label, "❓")
+    
+    # Clean up LLM text
+    llm_text_clean = llm_text.strip() if llm_text else ""
+    
+    # Remove any accidental markdown headings from LLM
+    llm_text_clean = re.sub(r'^#+\s+', '', llm_text_clean, flags=re.MULTILINE)
+    
+    # Remove excessive whitespace and line breaks
+    llm_text_clean = re.sub(r'\n{3,}', '\n\n', llm_text_clean)
+    llm_text_clean = re.sub(r' {2,}', ' ', llm_text_clean)
+    
+    # Limit response length (~200 words max)
+    words = llm_text_clean.split()
+    if len(words) > 200:
+        llm_text_clean = ' '.join(words[:200]) + "..."
+    
+    # Build formatted response
+    response_parts = []
+    
+    # Article overview section
+    response_parts.append("📄 ARTICLE OVERVIEW")
+    response_parts.append("")
+    response_parts.append(f"📰 Title: {title}")
+    response_parts.append(f"🏷 Category: {category}")
+    
+    # Only include sentiment if we have valid data
+    if sentiment_label != "Unknown":
+        response_parts.append(f"{sentiment_emoji} Sentiment: {sentiment_label} ({sentiment_confidence}%)")
+    else:
+        response_parts.append(f"{sentiment_emoji} Sentiment: Not analyzed")
+    
+    response_parts.append("")
+    response_parts.append("📝 Explanation:")
+    response_parts.append(llm_text_clean)
+    
+    # Join with single newlines, trim final result
+    formatted_response = "\n".join(response_parts).strip()
+    
+    return formatted_response
+
+
+# --------------------------------------------------
 # Main Chat Endpoint
 # --------------------------------------------------
 @router.post("/message", response_model=ChatMessageResponse)
@@ -839,6 +924,11 @@ async def chat_message(
         reply = llm_response
         used_llm = True
         logger.info("[CHATBOT] Using LLM response for intent=%s", intent)
+        
+        # Apply backend-controlled formatting for article_qa intent
+        if intent == "article_qa" and article:
+            reply = format_article_response(article, llm_response)
+            logger.info("[CHATBOT] Applied article formatting to response")
     else:
         reply = get_fallback_message()
     
