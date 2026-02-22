@@ -40,25 +40,34 @@ class ChatLLMService:
             self._available = False
             return False
     
-    def _build_safe_prompt(self, context: str, user_message: str) -> str:
+    def _build_prompt(self, context: str, user_message: str, intent: str = "general") -> str:
         """
-        Build a safe prompt that constrains the LLM to ONLY use provided context.
-        This prevents hallucinations and ensures answers are data-bound.
+        Build a simple, direct prompt optimized for small LLM models.
+        Uses different formats based on intent for better responses.
         """
-    def _build_safe_prompt(self, context: str, user_message: str) -> str:
-        """
-        Build a safe prompt that constrains the LLM to ONLY use provided context.
-        This prevents hallucinations and ensures answers are data-bound.
-        """
-        return f"""Answer the question using ONLY the information below. Do not use any outside knowledge.
+        if intent == "article_qa":
+            # Simple, direct format for article questions
+            return f"""You are a helpful news assistant. Answer using the article context.
 
-=== INFORMATION ===
+CONTEXT:
 {context}
 
-=== QUESTION ===
+QUESTION:
 {user_message}
 
-=== YOUR ANSWER ===
+Answer clearly using the article.
+"""
+        else:
+            # General format for other intents
+            return f"""You are a helpful news assistant. Use the provided context to respond clearly and concisely.
+
+CONTEXT:
+{context}
+
+QUESTION:
+{user_message}
+
+Answer:
 """
 
     async def send_prompt(
@@ -84,8 +93,8 @@ class ChatLLMService:
         logger.info("[CHAT_LLM] Sending prompt: intent=%s has_article=%s has_feed=%s context_len=%d",
                    intent, has_article_context, has_news_feed_context, len(context))
         
-        # Build constrained prompt
-        prompt = self._build_safe_prompt(context, user_message)
+        # Build intent-aware prompt (simplified for small models)
+        prompt = self._build_prompt(context, user_message, intent)
         
         # Use separate connect (10s) and read (full timeout) limits
         timeout = httpx.Timeout(self.timeout, connect=10.0)
