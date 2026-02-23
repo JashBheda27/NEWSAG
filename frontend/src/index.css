@@ -169,10 +169,23 @@ button:focus-visible {
 .card-hover {
   transition: transform 250ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 250ms ease-out;
   will-change: transform;
+  transform-style: preserve-3d;
+}
+
+/* Apply smoothing and 3D-preserve to children to avoid subpixel blurring */
+.card-hover,
+.card-hover *,
+.card-lift,
+.card-lift * {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform: translateZ(0);
 }
 
 .card-hover:hover {
-  transform: translateY(-4px);
+  transform: translate3d(0, -4px, 0);
   box-shadow: var(--shadow-medium);
 }
 
@@ -180,11 +193,24 @@ button:focus-visible {
 .card-lift {
   transition: all 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
   will-change: transform, box-shadow;
+  transform-style: preserve-3d;
 }
 
 .card-lift:hover {
-  transform: translateY(-6px) scale(1.01);
+  transform: translate3d(0, -6px, 0) scale(1.01);
   box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.15);
+}
+
+/* Force children's GPU layer during hover to avoid subpixel text blur */
+.card-hover:hover *,
+.card-lift:hover * {
+  -webkit-transform: translateZ(0) !important;
+  transform: translateZ(0) !important;
+  -webkit-backface-visibility: hidden !important;
+  backface-visibility: hidden !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-rendering: optimizeLegibility !important;
 }
 
 /* Glassmorphism effect */
