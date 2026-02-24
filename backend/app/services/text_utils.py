@@ -43,24 +43,45 @@ async def translate_text(text: str, target_lang: str) -> str:
 async def extract_article_text(url: str) -> str:
     """
     Fetch and extract readable text from a news article URL.
-    Uses simple paragraph-based extraction for clarity.
+    Uses simple paragraph-based extraction with retry logic.
     """
 
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.5",
         "Referer": "https://www.google.com/",
     }
 
-    async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
-        try:
-            response = await client.get(url, headers=headers)
-        except Exception as e:
-            raise Exception(f"Failed to fetch URL: {str(e)}")
+    max_retries = 2
+    last_error = None
 
-    if response.status_code != 200:
-        raise Exception(f"HTTP {response.status_code}: Failed to fetch article content")
+    for attempt in range(max_retries + 1):
+        async with httpx.AsyncClient(timeout=12.0, follow_redirects=True) as client:
+            try:
+                response = await client.get(url, headers=headers)
+            except Exception as e:
+                last_error = e
+                if attempt < max_retries:
+                    logger.warning(
+                        "[SCRAPE] Retry %d/%d | url=%s | err=%s",
+                        attempt + 1, max_retries, url, e,
+                    )
+                    import asyncio
+                    await asyncio.sleep(1.0 * (attempt + 1))  # backoff
+                    continue
+                raise Exception(f"Failed to fetch URL after {max_retries + 1} attempts: {last_error}")
+
+        if response.status_code != 200:
+            logger.warning("[SCRAPE] HTTP %d | url=%s", response.status_code, url)
+            if attempt < max_retries:
+                import asyncio
+                await asyncio.sleep(1.0 * (attempt + 1))
+                continue
+            raise Exception(f"HTTP {response.status_code}: Failed to fetch article content")
+
+        # Successful response — break out of retry loop
+        break
 
     soup = BeautifulSoup(response.text, "html.parser")
 
@@ -83,5 +104,13 @@ async def extract_article_text(url: str) -> str:
 
     # Clean excessive whitespace
     text = re.sub(r"\s+", " ", text).strip()
+
+    # Validate: reject if too short (likely paywall / cookie wall)
+    word_count = len(text.split())
+    if word_count < 30:
+        logger.warning(
+            "[SCRAPE] Extracted text too short | words=%d | url=%s", word_count, url
+        )
+        return ""
 
     return text
