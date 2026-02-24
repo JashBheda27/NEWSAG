@@ -39,7 +39,7 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
       setIsLoading(true);
       setError(null);
       try {
-        const res = await newsService.getSummary(url, content, description, 'en');
+        const res = await newsService.getSummary(url, content, description, 'en', title, source);
         if (!mounted) return;
         setSummaryData(res);
       } catch (err: any) {
@@ -52,7 +52,22 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
     };
     fetchSummary();
     return () => { mounted = false; };
-  }, [isOpen, url, content, description]);
+  }, [isOpen, url, content, description, title, source]);
+
+  // Handle retry
+  const handleRetry = async () => {
+    setIsLoading(true);
+    setError(null);
+    setSummaryData(null);
+    try {
+      const res = await newsService.getSummary(url, content, description, selectedLang, title, source);
+      setSummaryData(res);
+    } catch (err: any) {
+      setError(err.message || 'Failed to generate summary.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Handle language change (translate existing summary)
   const handleLanguageChange = async (lang: string) => {
@@ -61,7 +76,7 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
     setIsTranslating(true);
     setError(null);
     try {
-      const res = await newsService.getSummary(url, content, description, lang);
+      const res = await newsService.getSummary(url, content, description, lang, title, source);
       setSummaryData(res);
     } catch (err: any) {
       setError(err.message || 'Translation failed.');
@@ -146,6 +161,22 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
              >
                {summaryData?.summary || 'No summary available.'}
             </div>
+
+            {/* Fallback indicator */}
+            {summaryData?.is_fallback && (
+              <div className="mt-3 flex items-center justify-between px-3 py-2 rounded border" style={{ backgroundColor: '#fffbe6', borderColor: '#ffe58f' }}>
+                <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: '#ad6800' }}>
+                  ⚠ {summaryData.source === 'description' ? 'Limited summary (from description)' : summaryData.source === 'placeholder' ? 'Summary unavailable' : 'Partial summary'}
+                </span>
+                <button
+                  onClick={handleRetry}
+                  className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded hover:bg-amber-100 transition-colors"
+                  style={{ color: '#ad6800' }}
+                >
+                  ↻ Retry
+                </button>
+              </div>
+            )}
 
             {/* Audio Player for TTS */}
             {summaryData?.audio_available && summaryData?.summary && (
