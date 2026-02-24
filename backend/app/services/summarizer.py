@@ -92,11 +92,19 @@ class TextSummarizer:
         return [
             s.strip()
             for s in sentences
-            if len(s.strip()) > 50
+            if len(s.strip()) > 30
         ]
 
     def _score(self, sentences: List[str]) -> np.ndarray:
-        tfidf = self.vectorizer.fit_transform(sentences)
+        # Use min_df=1 for short documents to avoid empty vocabulary
+        min_df = 1 if len(sentences) < 5 else 2
+        vectorizer = TfidfVectorizer(
+            stop_words="english",
+            ngram_range=(1, 2),
+            max_df=0.85,
+            min_df=min_df
+        )
+        tfidf = vectorizer.fit_transform(sentences)
         scores = tfidf.sum(axis=1).A1
 
         # 📰 Strong lead bias (news articles)
