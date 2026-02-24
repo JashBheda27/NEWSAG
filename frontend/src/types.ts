@@ -36,8 +36,9 @@ export interface CredibilityData {
 }
 
 export interface SummaryData {
-  source: 'cache' | 'generated' | 'description' | 'placeholder';
+  source: 'cache' | 'generated' | 'extracted' | 'description' | 'placeholder';
   summary: string;
+  is_fallback?: boolean;
   original_url?: string;
   language?: string;
   translated?: boolean;
