@@ -68,7 +68,9 @@ export const newsService = {
     url: string,
     content?: string,
     description?: string,
-    lang: string = 'en'
+    lang: string = 'en',
+    title?: string,
+    articleSource?: string
   ): Promise<SummaryData> => {
     try {
       // ✅ Send POST request with JSON payload
@@ -77,6 +79,8 @@ export const newsService = {
         content: content,          // Full article content when available
         description: description,  // GNews description fallback for paywalls
         lang: lang,                // Target language for translation
+        title: title,              // Article title for description validation
+        article_source: articleSource,  // Source name for quality tracking
       });
       return response.data;
     } catch (err) {
