@@ -120,12 +120,14 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
       setIsLoadingSummary(true);
       setSummaryError(null);
       try {
-        // ✅ Send both content and description so backend can choose best fallback
+        // ✅ Send content, description, title & source for backend validation
         const res = await newsService.getSummary(
           article.url,
           article.content,
           article.description,
-          'en'
+          'en',
+          article.title,
+          sourceValue
         );
         setSummary(res.summary);
         setSummaryData(res);
@@ -136,7 +138,31 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
         setIsLoadingSummary(false);
       }
     }
-  }, [article.url, article.content, article.description, summary]);
+  }, [article.url, article.content, article.description, article.title, sourceValue, summary]);
+
+  const handleRetrySummary = useCallback(async () => {
+    setSummary(null);
+    setSummaryData(null);
+    setIsLoadingSummary(true);
+    setSummaryError(null);
+    try {
+      const res = await newsService.getSummary(
+        article.url,
+        article.content,
+        article.description,
+        selectedLang,
+        article.title,
+        sourceValue
+      );
+      setSummary(res.summary);
+      setSummaryData(res);
+    } catch (err: any) {
+      console.error("Summary retry failed", err);
+      setSummaryError(err.message || "Failed to generate summary.");
+    } finally {
+      setIsLoadingSummary(false);
+    }
+  }, [article.url, article.content, article.description, article.title, sourceValue, selectedLang]);
 
   const handleLanguageChange = useCallback(async (lang: string) => {
     if (lang === selectedLang) return;
@@ -148,7 +174,9 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
         article.url,
         article.content,
         article.description,
-        lang
+        lang,
+        article.title,
+        sourceValue
       );
       setSummary(res.summary);
       setSummaryData(res);
@@ -157,7 +185,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
     } finally {
       setIsTranslating(false);
     }
-  }, [article.url, article.content, article.description, selectedLang]);
+  }, [article.url, article.content, article.description, article.title, sourceValue, selectedLang]);
 
   const toggleBookmark = useCallback(async () => {
     try {
@@ -432,6 +460,22 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
                  >
                    {summary}
                 </div>
+
+                {/* Fallback indicator */}
+                {summaryData?.is_fallback && (
+                  <div className="mt-3 flex items-center justify-between px-3 py-2 rounded border" style={{ backgroundColor: '#fffbe6', borderColor: '#ffe58f' }}>
+                    <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: '#ad6800' }}>
+                      ⚠ {summaryData.source === 'description' ? 'Limited summary (from description)' : summaryData.source === 'placeholder' ? 'Summary unavailable' : 'Partial summary'}
+                    </span>
+                    <button
+                      onClick={handleRetrySummary}
+                      className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded hover:bg-amber-100 transition-colors"
+                      style={{ color: '#ad6800' }}
+                    >
+                      ↻ Retry
+                    </button>
+                  </div>
+                )}
 
                 {/* Audio Player for TTS */}
                 {summaryData?.audio_available && summaryData?.summary && (
@@ -742,6 +786,22 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
                >
                  {summary}
               </div>
+
+              {/* Fallback indicator */}
+              {summaryData?.is_fallback && (
+                <div className="mt-3 flex items-center justify-between px-3 py-2 rounded border" style={{ backgroundColor: '#fffbe6', borderColor: '#ffe58f' }}>
+                  <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: '#ad6800' }}>
+                    ⚠ {summaryData.source === 'description' ? 'Limited summary (from description)' : summaryData.source === 'placeholder' ? 'Summary unavailable' : 'Partial summary'}
+                  </span>
+                  <button
+                    onClick={handleRetrySummary}
+                    className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded hover:bg-amber-100 transition-colors"
+                    style={{ color: '#ad6800' }}
+                  >
+                    ↻ Retry
+                  </button>
+                </div>
+              )}
 
               {/* Audio Player for TTS */}
               {summaryData?.audio_available && summaryData?.summary && (
