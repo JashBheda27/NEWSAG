@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
-from app.core.auth import get_current_user_optional
+from app.core.auth import require_auth, require_admin
 from app.core.database import get_db
 from app.core.cache import get_from_cache, set_in_cache
 from app.core.tts_config import (
@@ -50,7 +50,7 @@ async def list_tts_languages():
 @router.post("/generate")
 async def generate_tts(
     request: TTSRequest,
-    user=Depends(get_current_user_optional),
+    user=Depends(require_auth),
     db=Depends(get_db),
 ):
     """
@@ -120,7 +120,7 @@ async def generate_tts(
 
 @router.get("/usage")
 async def get_tts_usage(
-    user=Depends(get_current_user_optional),
+    user=Depends(require_admin),
     db=Depends(get_db),
 ):
     """
