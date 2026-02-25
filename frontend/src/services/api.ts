@@ -10,6 +10,30 @@ export const api = axios.create({
   },
 });
 
+type TokenProvider = () => Promise<string | null>;
+
+let tokenProvider: TokenProvider | null = null;
+
+export const setAuthTokenProvider = (provider: TokenProvider | null) => {
+  tokenProvider = provider;
+};
+
+api.interceptors.request.use(async (config) => {
+  if (!tokenProvider) return config;
+
+  const token = await tokenProvider();
+  if (token) {
+    config.headers = {
+      ...config.headers,
+      Authorization: `Bearer ${token}`,
+    };
+  } else if (config.headers && 'Authorization' in config.headers) {
+    delete (config.headers as Record<string, unknown>).Authorization;
+  }
+
+  return config;
+});
+
 export const getErrorMessage = (error: unknown): string => {
   if (!axios.isAxiosError(error)) {
     return 'An unexpected error occurred. Please try again.';
