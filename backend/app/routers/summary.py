@@ -7,7 +7,7 @@ from app.core.cache import get_from_cache, set_in_cache
 from app.core.constants import SUPPORTED_LANGUAGES
 from app.services.summarizer import TextSummarizer
 from app.services.text_utils import extract_article_text, translate_text
-from app.core.auth import get_current_user_optional
+from app.core.auth import require_auth, get_current_user_optional
 from app.core.database import get_db
 from app.core.tts_config import is_language_supported as is_tts_supported, get_voice_for_language
 
@@ -15,6 +15,35 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 summarizer = TextSummarizer()
+
+# Categories for anonymous access check
+CATEGORIES = ["general", "nation", "business", "technology", "sports", "entertainment", "health"]
+
+
+async def get_article_category(article_id: str | None, article_url: str | None) -> str | None:
+    """
+    Find and return the category of an article by checking all cached categories.
+    Returns 'general', another category, or None if not found.
+    """
+    if not article_id and not article_url:
+        return None
+    
+    for category in CATEGORIES:
+        cache_key = f"gnews:{category}"
+        try:
+            cached_articles = await get_from_cache(cache_key)
+            if not cached_articles:
+                continue
+            
+            for article in cached_articles:
+                if (article_id and article.get("id") == article_id) or \
+                   (article_url and article.get("url") == article_url):
+                    return category
+        except Exception as e:
+            logger.warning(f"[CACHE] Error checking category {category}: {e}")
+            continue
+    
+    return None
 
 # ──────────────────────────────────────────────────────────
 # Helpers
@@ -85,20 +114,31 @@ async def generate_summary(
     db=Depends(get_db),
 ):
     """
-    Summary rules:
-    - News card → description (frontend)
-    - AI summary → NLP ONLY
-    - Paywall / failure → fallback to same description
-    - Optional: translate summary to target language
+    Summary generation with anonymous+general access.
+    - Authenticated users: any category
+    - Anonymous users: general category only (or unknown category)
     """
+    is_demo = user.get("is_demo", False)
+    user_id = user.get("user_id")
 
     article_url = payload.get("url")
+    article_id = payload.get("article_id")
     gnews_content = payload.get("content")
     gnews_description = payload.get("description")
     target_lang = payload.get("lang", "en")
 
     if not article_url:
         raise HTTPException(status_code=400, detail="Article URL is required")
+
+    # Check category for anonymous users - block non-general
+    if is_demo:
+        article_category = await get_article_category(article_id, article_url)
+        if article_category and article_category != "general":
+            raise HTTPException(
+                status_code=403,
+                detail=f"Please sign in to access '{article_category}' category summaries."
+            )
+        logger.info(f"[SUMMARY ANON] category={article_category or 'unknown'} | url={article_url}")
 
     cache_key = "summary:" + hashlib.md5((article_url + ":" + target_lang).encode()).hexdigest()
 
