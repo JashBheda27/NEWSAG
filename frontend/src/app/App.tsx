@@ -10,7 +10,7 @@ import { ChatBot } from '../components/ui/ChatBot';
 import { ScrollToTop } from '../components/ui/ScrollToTop';
 import { useTheme } from '../hooks/useTheme';
 import { useNotification } from '../hooks/useNotification';
-import { setAuthToken } from '../services/api';
+import { setAuthToken, setAuthTokenProvider } from '../services/api';
 
 const AppLayout: React.FC<{ showNotification: (msg: string, type?: 'error' | 'success') => void }> = ({ showNotification }) => {
   const { isDark, toggleTheme } = useTheme();
@@ -23,8 +23,14 @@ const AppLayout: React.FC<{ showNotification: (msg: string, type?: 'error' | 'su
       if (!isLoaded) return;
       if (!isSignedIn) {
         setAuthToken(null);
+        setAuthTokenProvider(null);
         return;
       }
+
+      setAuthTokenProvider(async () => {
+        const token = await getToken();
+        return token || null;
+      });
 
       const token = await getToken();
       setAuthToken(token || null);
