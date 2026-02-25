@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends
 from app.core.database import get_db
-from app.core.auth import get_current_user_optional
+from app.core.auth import require_auth
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 @router.get("/stats")
 async def get_profile_stats(
-    user=Depends(get_current_user_optional),
+    user=Depends(require_auth),
     db=Depends(get_db),
 ):
     user_id = user["user_id"]
@@ -39,7 +39,7 @@ async def get_profile_stats(
 
 @router.get("/analytics")
 async def get_profile_analytics(
-    user=Depends(get_current_user_optional),
+    user=Depends(require_auth),
     db=Depends(get_db),
 ):
     user_id = user["user_id"]
