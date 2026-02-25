@@ -20,6 +20,13 @@ class Settings:
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379")
 
     # -----------------------------
+    # AUTH CONFIG
+    # -----------------------------
+    # Comma-separated list of Clerk user IDs that have admin access
+    # Example: ADMIN_USER_IDS=user_2abc123,user_3def456
+    ADMIN_USER_IDS: str = os.getenv("ADMIN_USER_IDS", "")
+
+    # -----------------------------
     # GNEWS CONFIG (ONLY SOURCE)
     # -----------------------------
     GNEWS_API_KEY: str = os.getenv("GNEWS_API_KEY", "")
