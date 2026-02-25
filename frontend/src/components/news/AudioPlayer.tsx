@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { useAuth } from '@clerk/clerk-react';
 
 interface AudioPlayerProps {
   text: string;
@@ -16,6 +17,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, language, classN
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const { getToken } = useAuth();
 
   // Cleanup audio URL on unmount
   useEffect(() => {
@@ -33,15 +35,25 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, language, classN
     setError(null);
 
     try {
+      // Get auth token for authenticated requests
+      const token = await getToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${BASE_URL}/api/tts/generate`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({ text, language }),
       });
 
       if (!response.ok) {
+        if (response.status === 403) {
+          throw new Error('Please sign in to use audio');
+        }
         throw new Error('Failed to generate audio');
       }
 
@@ -49,8 +61,8 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, language, classN
       const url = URL.createObjectURL(blob);
       setAudioUrl(url);
       return url;
-    } catch (err) {
-      setError('Audio unavailable');
+    } catch (err: any) {
+      setError(err.message || 'Audio unavailable');
       return null;
     } finally {
       setIsLoading(false);
