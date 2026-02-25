@@ -120,14 +120,15 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
       setIsLoadingSummary(true);
       setSummaryError(null);
       try {
-        // ✅ Send content, description, title & source for backend validation
+        // ✅ Send content, description, title, source & article_id for backend validation
         const res = await newsService.getSummary(
           article.url,
           article.content,
           article.description,
           'en',
           article.title,
-          sourceValue
+          sourceValue,
+          articleId
         );
         setSummary(res.summary);
         setSummaryData(res);
@@ -138,7 +139,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
         setIsLoadingSummary(false);
       }
     }
-  }, [article.url, article.content, article.description, article.title, sourceValue, summary]);
+  }, [article.url, article.content, article.description, article.title, sourceValue, articleId, summary]);
 
   const handleRetrySummary = useCallback(async () => {
     setSummary(null);
@@ -152,7 +153,8 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
         article.description,
         selectedLang,
         article.title,
-        sourceValue
+        sourceValue,
+        articleId
       );
       setSummary(res.summary);
       setSummaryData(res);
@@ -162,7 +164,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
     } finally {
       setIsLoadingSummary(false);
     }
-  }, [article.url, article.content, article.description, article.title, sourceValue, selectedLang]);
+  }, [article.url, article.content, article.description, article.title, sourceValue, articleId, selectedLang]);
 
   const handleLanguageChange = useCallback(async (lang: string) => {
     if (lang === selectedLang) return;
@@ -176,7 +178,8 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
         article.description,
         lang,
         article.title,
-        sourceValue
+        sourceValue,
+        articleId
       );
       setSummary(res.summary);
       setSummaryData(res);
@@ -185,7 +188,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
     } finally {
       setIsTranslating(false);
     }
-  }, [article.url, article.content, article.description, article.title, sourceValue, selectedLang]);
+  }, [article.url, article.content, article.description, article.title, sourceValue, articleId, selectedLang]);
 
   const toggleBookmark = useCallback(async () => {
     try {
