@@ -2,13 +2,14 @@
 Admin Router
 
 Protected endpoints for model management and training data administration.
+ALL routes require admin authentication.
 """
 
 import logging
 from fastapi import APIRouter, Depends, HTTPException
 from typing import Optional, List
 from app.core.database import get_db
-from app.core.auth import get_current_user_optional
+from app.core.auth import require_admin
 from app.services.training_data_service import TrainingDataService
 from app.services.model_fine_tuning_service import ModelFineTuningService
 
@@ -21,7 +22,7 @@ logger = logging.getLogger(__name__)
 # --------------------------------------------------
 @router.get("/training/stats")
 async def get_training_stats(
-    user=Depends(get_current_user_optional),
+    user=Depends(require_admin),
     db=Depends(get_db),
 ):
     """
@@ -44,7 +45,7 @@ async def get_training_stats(
 async def fine_tune_sentiment_model(
     min_samples: int = 50,
     epochs: int = 3,
-    user=Depends(get_current_user_optional),
+    user=Depends(require_admin),
     db=Depends(get_db),
 ):
     """
@@ -73,7 +74,7 @@ async def fine_tune_sentiment_model(
 async def fine_tune_credibility_model(
     min_samples: int = 30,
     epochs: int = 3,
-    user=Depends(get_current_user_optional),
+    user=Depends(require_admin),
     db=Depends(get_db),
 ):
     """
@@ -100,7 +101,7 @@ async def fine_tune_credibility_model(
 # --------------------------------------------------
 @router.post("/fine-tune/all")
 async def fine_tune_all_models(
-    user=Depends(get_current_user_optional),
+    user=Depends(require_admin),
     db=Depends(get_db),
 ):
     """
@@ -119,7 +120,7 @@ async def fine_tune_all_models(
 @router.get("/reports/pending")
 async def get_pending_reports(
     limit: int = 50,
-    user=Depends(get_current_user_optional),
+    user=Depends(require_admin),
     db=Depends(get_db),
 ):
     """
@@ -157,7 +158,7 @@ async def get_pending_reports(
 async def verify_report(
     report_id: str,
     verified: bool = True,
-    user=Depends(get_current_user_optional),
+    user=Depends(require_admin),
     db=Depends(get_db),
 ):
     """
@@ -196,7 +197,7 @@ async def verify_report(
 async def get_sentiment_feedback(
     limit: int = 100,
     source: Optional[str] = None,
-    user=Depends(get_current_user_optional),
+    user=Depends(require_admin),
     db=Depends(get_db),
 ):
     """
