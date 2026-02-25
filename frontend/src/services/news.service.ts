@@ -70,7 +70,8 @@ export const newsService = {
     description?: string,
     lang: string = 'en',
     title?: string,
-    articleSource?: string
+    articleSource?: string,
+    articleId?: string
   ): Promise<SummaryData> => {
     try {
       // ✅ Send POST request with JSON payload
@@ -81,6 +82,7 @@ export const newsService = {
         lang: lang,                // Target language for translation
         title: title,              // Article title for description validation
         article_source: articleSource,  // Source name for quality tracking
+        article_id: articleId,     // Article ID for category lookup
       });
       return response.data;
     } catch (err) {
