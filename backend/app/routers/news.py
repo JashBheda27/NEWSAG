@@ -1,11 +1,12 @@
 ﻿import asyncio
 import logging
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from app.services.news_service import GNewsService
 from app.services.sentiment_ml import SentimentService  # ✅ Use new ML-based sentiment
 from app.services.credibility_service import analyze_credibility  # ✅ Fake news detection
 from app.core.cache import get_from_cache, set_in_cache, delete_from_cache
 from app.core.gnews_counter import GNewsCounter
+from app.core.auth import require_auth, require_admin
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -257,7 +258,9 @@ async def get_hit_status():
 
 # ✅ NEW: Admin endpoint - Reset counter (testing only)
 @router.post("/admin/reset-hits")
-async def reset_hit_counter():
+async def reset_hit_counter(
+    user=Depends(require_admin),
+):
     """Reset hit counter (ADMIN ONLY - for testing)"""
     result = await GNewsCounter.reset_counter()
     return {
@@ -271,8 +274,11 @@ async def reset_hit_counter():
 # MANUAL REFRESH (1 HIT)
 # -----------------------------
 @router.post("/refresh/{category}")
-async def refresh_category(category: str):
-    """Manually refresh news for a specific category"""
+async def refresh_category(
+    category: str,
+    user=Depends(require_admin),
+):
+    """Manually refresh news for a specific category (ADMIN ONLY)"""
     cache_key = f"gnews:{category}"
     await delete_from_cache(cache_key)
 
@@ -319,9 +325,11 @@ async def _refresh_single_category(cat: str, semaphore: asyncio.Semaphore) -> di
 
 
 @router.post("/refresh-all")
-async def refresh_all():
+async def refresh_all(
+    user=Depends(require_admin),
+):
     """
-    Refresh all categories at once.
+    Refresh all categories at once (ADMIN ONLY).
     
     OPTIMIZED: Uses asyncio.gather with semaphore for controlled parallelism.
     Sequential: ~45 seconds → Parallel: ~8-10 seconds
@@ -355,10 +363,36 @@ async def refresh_all():
 # -----------------------------
 from fastapi import Depends
 from app.core.database import get_db
-from app.core.auth import get_current_user_optional
+from app.core.auth import require_auth, require_admin, get_current_user_optional
 from app.models.sentiment_training import SentimentRatingRequest
 from app.models.credibility_training import CredibilityReportRequest
 from app.services.training_data_service import TrainingDataService
+
+
+async def get_article_category(article_id: str | None, article_url: str | None) -> str | None:
+    """
+    Find and return the category of an article by checking all cached categories.
+    Returns 'general', another category, or None if not found.
+    """
+    if not article_id and not article_url:
+        return None
+    
+    for category in CATEGORIES:
+        cache_key = f"gnews:{category}"
+        try:
+            cached_articles = await get_from_cache(cache_key)
+            if not cached_articles:
+                continue
+            
+            for article in cached_articles:
+                if (article_id and article.get("id") == article_id) or \
+                   (article_url and article.get("url") == article_url):
+                    return category
+        except Exception as e:
+            logger.warning(f"[CACHE] Error checking category {category}: {e}")
+            continue
+    
+    return None
 
 
 @router.post("/rate")
@@ -369,7 +403,8 @@ async def rate_article_sentiment(
 ):
     """
     Submit user's sentiment rating for an article.
-    Used for fine-tuning the sentiment analysis model.
+    - Authenticated users: any category
+    - Anonymous users: general category only (or unknown category)
     
     Args:
         rating: User's sentiment correction
@@ -377,7 +412,18 @@ async def rate_article_sentiment(
     Returns:
         Confirmation of feedback submission
     """
+    is_demo = user.get("is_demo", False)
     user_id = user["user_id"]
+    
+    # Check category for anonymous users - block non-general
+    if is_demo:
+        article_category = await get_article_category(rating.article_id, rating.article_url)
+        if article_category and article_category != "general":
+            raise HTTPException(
+                status_code=403,
+                detail=f"Please sign in to rate '{article_category}' category articles."
+            )
+        logger.info(f"[RATE ANON] category={article_category or 'unknown'} | url={rating.article_url}")
     
     # Combine title and description for training text
     text = rating.title
@@ -417,7 +463,8 @@ async def report_misleading_article(
 ):
     """
     Report an article as potentially misleading.
-    Used for fine-tuning the fake news detection model.
+    - Authenticated users: any category
+    - Anonymous users: general category only (or unknown category)
     
     Args:
         report: Article details and user's reason for reporting
@@ -425,7 +472,18 @@ async def report_misleading_article(
     Returns:
         Report submission status
     """
+    is_demo = user.get("is_demo", False)
     user_id = user["user_id"]
+    
+    # Check category for anonymous users - block non-general
+    if is_demo:
+        article_category = await get_article_category(report.article_id, report.article_url)
+        if article_category and article_category != "general":
+            raise HTTPException(
+                status_code=403,
+                detail=f"Please sign in to report '{article_category}' category articles."
+            )
+        logger.info(f"[REPORT ANON] category={article_category or 'unknown'} | url={report.article_url}")
     
     result = await TrainingDataService.add_credibility_report(
         db=db,
