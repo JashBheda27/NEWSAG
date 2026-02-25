@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from bson import ObjectId
 from app.core.database import get_db
-from app.core.auth import get_current_user_optional
+from app.core.auth import require_auth
 from app.core.cache import get_from_cache, set_in_cache, delete_from_cache
 from app.models.comment import CommentModel, CommentCreateRequest
 
@@ -14,7 +14,7 @@ COMMENTS_CACHE_TTL = 300  # 5 minutes
 @router.post("/")
 async def add_comment(
     comment: CommentCreateRequest,
-    user=Depends(get_current_user_optional),
+    user=Depends(require_auth),
     db=Depends(get_db),
 ):
     data = comment.dict()
@@ -88,7 +88,7 @@ async def get_comments(article_id: str, db=Depends(get_db)):
 @router.delete("/{comment_id}")
 async def delete_comment(
     comment_id: str,
-    user=Depends(get_current_user_optional),
+    user=Depends(require_auth),
     db=Depends(get_db),
 ):
     result = await db.comments.delete_one({
