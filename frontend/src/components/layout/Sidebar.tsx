@@ -168,7 +168,7 @@ export const Sidebar: React.FC = () => {
                     <span className="sidebar-nav-icon">{cat.icon}</span>
                     <span className="sidebar-nav-label">
                       {cat.label}
-                      {cat.id !== 'general' && !isSignedIn && <span className="ml-2">🔒</span>}
+                      {cat.id !== 'general' && !isSignedIn && <span>🔒</span>}
                     </span>
                     {isCategoryActive && (
                       <span className="sidebar-category-badge">{cat.emoji}</span>
@@ -513,11 +513,24 @@ export const Sidebar: React.FC = () => {
 
         .sidebar-nav-icon {
           flex-shrink: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 20px;
+          height: 20px;
+        }
+
+        .sidebar-nav-icon svg {
+          display: block;
         }
 
         .sidebar-nav-label {
           flex: 1;
+          display: flex;
+          align-items: center;
+          gap: 8px;
           text-align: left;
+          white-space: nowrap;
         }
 
         .sidebar-section-divider {
