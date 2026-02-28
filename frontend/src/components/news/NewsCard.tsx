@@ -235,14 +235,14 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
   // ✅ List View Layout (Horizontal)
   if (viewType === 'list') {
     return (
-      <div className="group relative bg-white dark:bg-slate-800/90 rounded-3xl overflow-hidden border border-slate-100/80 dark:border-slate-700/50 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.08)] hover:shadow-[0_16px_32px_-8px_rgba(0,0,0,0.12)] transition-all duration-300 flex flex-col sm:flex-row hover:-translate-y-1 backdrop-blur-sm">
+      <div className="group relative bg-white dark:bg-slate-800/90 rounded-2xl overflow-hidden border border-gray-200 dark:border-slate-700/50 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col sm:flex-row hover:-translate-y-0.5">
         {/* Image Section - Adaptive for small screens */}
         <div className="relative w-full sm:w-52 h-48 sm:h-44 overflow-hidden flex-shrink-0">
           <img 
             src={imageUrl} 
             alt={article.title}
             loading="lazy"
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 will-change-transform"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 will-change-transform"
           />
           <div className="absolute top-3 left-3">
             <SentimentBadge sentiment={article.sentiment} />
@@ -258,19 +258,19 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
             <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
               {article.source}
             </span>
-            <div className="flex items-center gap-3 text-[11px] text-slate-400 dark:text-slate-500">
+            <div className="flex items-center gap-3 text-[11px] text-gray-600 dark:text-slate-500">
               <span>{formatRelativeTime(article.published_at)}</span>
               {(article.description || article.content) && (
-                <span className="text-slate-300 dark:text-slate-600">• {getReadTimeText(article.description || article.content)}</span>
+                <span className="text-gray-400 dark:text-slate-600">• {getReadTimeText(article.description || article.content)}</span>
               )}
             </div>
           </div>
           
-          <h3 className="text-lg font-bold leading-snug mb-2 line-clamp-2 text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-200">
+          <h3 className="text-lg font-semibold leading-snug mb-2 line-clamp-2 text-gray-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-200">
             <a href={article.url} target="_blank" rel="noopener noreferrer">{article.title}</a>
           </h3>
           
-          <p className="text-slate-500 dark:text-slate-400 text-sm line-clamp-2 mb-4 leading-relaxed">
+          <p className="text-gray-700 dark:text-slate-400 text-sm line-clamp-2 mb-4 leading-relaxed">
             {article.description}
           </p>
 
@@ -278,7 +278,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
             <div className="flex gap-1.5">
               <button 
                 onClick={toggleBookmark}
-                className={`p-2.5 rounded-xl transition-all duration-200 ${isBookmarked ? 'text-white bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25' : 'text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-110'}`}
+                className={`p-2.5 rounded-xl transition-all duration-200 ${isBookmarked ? 'text-white bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25' : 'text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-105'}`}
                 title="Bookmark"
               >
                 <svg className="w-4 h-4" fill={isBookmarked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
@@ -287,7 +287,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
               </button>
               <button 
                 onClick={toggleReadLater}
-                className={`p-2.5 rounded-xl transition-all duration-200 ${isInReadLater ? 'text-white bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25' : 'text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-110'}`}
+                className={`p-2.5 rounded-xl transition-all duration-200 ${isInReadLater ? 'text-white bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25' : 'text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-105'}`}
                 title="Read Later"
               >
                 <svg className="w-4 h-4" fill={isInReadLater ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
@@ -296,7 +296,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
               </button>
               <button 
                 onClick={() => setIsCommentsOpen(true)}
-                className="p-2.5 rounded-xl transition-all duration-200 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-110"
+                className="p-2.5 rounded-xl transition-all duration-200 text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-105"
                 title="Comments"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -311,7 +311,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
                   className={`p-2.5 rounded-xl transition-all duration-200 ${
                     feedbackSubmitted 
                       ? 'text-white bg-gradient-to-br from-emerald-500 to-green-600 shadow-lg shadow-emerald-500/25' 
-                      : 'text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-110'
+                      : 'text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-105'
                   }`}
                   title={feedbackSubmitted ? `Rated: ${feedbackSubmitted}` : "Rate Sentiment"}
                 >
@@ -327,8 +327,8 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
                 </button>
                 
                 {showFeedbackMenu && !feedbackSubmitted && (
-                  <div className="absolute bottom-full left-0 mb-2 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-xl shadow-xl border border-slate-200/50 dark:border-slate-600/50 py-2 z-50 min-w-[140px] animate-slide-up">
-                    <div className="px-3 py-1.5 text-[9px] uppercase tracking-widest text-slate-400 dark:text-slate-500 font-bold">
+                  <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-slate-800/95 backdrop-blur-xl rounded-xl shadow-xl border border-gray-200 dark:border-slate-600/50 py-2 z-50 min-w-[140px] animate-slide-up">
+                    <div className="px-3 py-1.5 text-[9px] uppercase tracking-widest text-gray-500 dark:text-slate-500 font-bold">
                       Rate Sentiment
                     </div>
                     {SENTIMENT_OPTIONS.map((option) => (
@@ -336,8 +336,8 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
                         key={option}
                         onClick={() => handleSentimentFeedback(option)}
                         disabled={isSubmittingFeedback}
-                        className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all flex items-center gap-2.5 ${
-                          article.sentiment?.label === option ? 'text-indigo-600 font-semibold' : 'text-slate-600 dark:text-slate-300'
+                        className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-all flex items-center gap-2.5 ${
+                          article.sentiment?.label === option ? 'text-indigo-600 font-semibold' : 'text-gray-700 dark:text-slate-300'
                         }`}
                       >
                         <span className={`w-2 h-2 rounded-full ${
@@ -358,7 +358,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
                 className={`p-2.5 rounded-xl transition-all duration-200 ${
                   reportSubmitted 
                     ? 'text-white bg-gradient-to-br from-orange-500 to-amber-600 shadow-lg shadow-orange-500/25' 
-                    : 'text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50 hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-600 dark:hover:text-rose-400 hover:scale-110'
+                    : 'text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-600 dark:hover:text-rose-400 hover:scale-105'
                 }`}
                 title={reportSubmitted ? "Report Submitted" : "Report Misleading"}
                 disabled={reportSubmitted}
@@ -555,14 +555,14 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
 
   // ✅ Grid View Layout (Vertical - Default)
   return (
-    <div className="group relative bg-white dark:bg-slate-800/90 rounded-3xl overflow-hidden border border-slate-100/80 dark:border-slate-700/50 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.08)] hover:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.15)] transition-all duration-300 flex flex-col hover:-translate-y-1.5 backdrop-blur-sm">
+    <div className="group relative bg-white dark:bg-slate-800/90 rounded-2xl overflow-hidden border border-gray-200 dark:border-slate-700/50 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-slate-600 transition-all duration-200 flex flex-col hover:-translate-y-1">
       {/* Image Section */}
       <div className="relative h-52 overflow-hidden">
         <img 
           src={imageUrl} 
           alt={article.title}
           loading="lazy"
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 will-change-transform"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 will-change-transform"
         />
         {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -580,30 +580,30 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
           <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
             {article.source}
           </span>
-          <div className="flex items-center gap-2 text-[11px] text-slate-400 dark:text-slate-500">
+          <div className="flex items-center gap-2 text-[11px] text-gray-600 dark:text-slate-500">
             <span>{formatRelativeTime(article.published_at)}</span>
             {(article.description || article.content) && (
               <>
-                <span className="text-slate-300 dark:text-slate-600">•</span>
+                <span className="text-gray-400 dark:text-slate-600">•</span>
                 <span>{getReadTimeText(article.description || article.content)}</span>
               </>
             )}
           </div>
         </div>
         
-        <h3 className="text-base font-bold leading-snug mb-3 line-clamp-2 text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-200">
+        <h3 className="text-base font-semibold leading-snug mb-3 line-clamp-2 text-gray-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-200">
           <a href={article.url} target="_blank" rel="noopener noreferrer">{article.title}</a>
         </h3>
         
-        <p className="text-slate-500 dark:text-slate-400 text-sm line-clamp-2 mb-4 leading-relaxed">
+        <p className="text-gray-700 dark:text-slate-400 text-sm line-clamp-2 mb-4 leading-relaxed">
           {article.description}
         </p>
 
-        <div className="mt-auto pt-4 flex items-center justify-between border-t border-slate-100 dark:border-slate-700/50">
+        <div className="mt-auto pt-4 flex items-center justify-between border-t border-gray-200 dark:border-slate-700/50">
           <div className="flex gap-1.5">
             <button 
               onClick={toggleBookmark}
-              className={`p-2.5 rounded-xl transition-all duration-200 ${isBookmarked ? 'text-white bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25' : 'text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-110'}`}
+              className={`p-2.5 rounded-xl transition-all duration-200 ${isBookmarked ? 'text-white bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25' : 'text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-105'}`}
               title="Bookmark"
             >
               <svg className="w-4 h-4" fill={isBookmarked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
@@ -612,7 +612,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
             </button>
             <button 
               onClick={toggleReadLater}
-              className={`p-2.5 rounded-xl transition-all duration-200 ${isInReadLater ? 'text-white bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25' : 'text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-110'}`}
+              className={`p-2.5 rounded-xl transition-all duration-200 ${isInReadLater ? 'text-white bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25' : 'text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-105'}`}
               title="Read Later"
             >
               <svg className="w-4 h-4" fill={isInReadLater ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
@@ -621,7 +621,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
             </button>
             <button 
               onClick={() => setIsCommentsOpen(true)}
-              className="p-2.5 rounded-xl transition-all duration-200 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-110"
+              className="p-2.5 rounded-xl transition-all duration-200 text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-105"
               title="Comments"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -636,7 +636,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
                 className={`p-2.5 rounded-xl transition-all duration-200 ${
                   feedbackSubmitted 
                     ? 'text-white bg-gradient-to-br from-emerald-500 to-green-600 shadow-lg shadow-emerald-500/25' 
-                    : 'text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-110'
+                    : 'text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-105'
                 }`}
                 title={feedbackSubmitted ? `Rated: ${feedbackSubmitted}` : "Rate Sentiment"}
               >
@@ -653,8 +653,8 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
               
               {/* Feedback Dropdown Menu */}
               {showFeedbackMenu && !feedbackSubmitted && (
-                <div className="absolute bottom-full left-0 mb-2 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-xl shadow-xl border border-slate-200/50 dark:border-slate-600/50 py-2 z-50 min-w-[140px] animate-slide-up">
-                  <div className="px-3 py-1.5 text-[9px] uppercase tracking-widest text-slate-400 dark:text-slate-500 font-bold">
+                <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-slate-800/95 backdrop-blur-xl rounded-xl shadow-xl border border-gray-200 dark:border-slate-600/50 py-2 z-50 min-w-[140px] animate-slide-up">
+                  <div className="px-3 py-1.5 text-[9px] uppercase tracking-widest text-gray-500 dark:text-slate-500 font-bold">
                     Rate Sentiment
                   </div>
                   {SENTIMENT_OPTIONS.map((option) => (
@@ -662,8 +662,8 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
                       key={option}
                       onClick={() => handleSentimentFeedback(option)}
                       disabled={isSubmittingFeedback}
-                      className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all flex items-center gap-2.5 ${
-                        article.sentiment?.label === option ? 'text-indigo-600 font-semibold' : 'text-slate-600 dark:text-slate-300'
+                      className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-all flex items-center gap-2.5 ${
+                        article.sentiment?.label === option ? 'text-indigo-600 font-semibold' : 'text-gray-700 dark:text-slate-300'
                       }`}
                     >
                       <span className={`w-2 h-2 rounded-full ${
@@ -684,7 +684,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
               className={`p-2.5 rounded-xl transition-all duration-200 ${
                 reportSubmitted 
                   ? 'text-white bg-gradient-to-br from-orange-500 to-amber-600 shadow-lg shadow-orange-500/25' 
-                  : 'text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50 hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-600 dark:hover:text-rose-400 hover:scale-110'
+                  : 'text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-600 dark:hover:text-rose-400 hover:scale-105'
               }`}
               title={reportSubmitted ? "Report Submitted" : "Report Misleading"}
               disabled={reportSubmitted}
