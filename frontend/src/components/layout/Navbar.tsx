@@ -21,7 +21,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onThemeToggle, isDark }) => {
   };
 
   return (
-    <nav className="sticky top-0 z-50 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-700/50 px-4 md:px-8 py-4 transition-all duration-300">
+    <nav className="sticky top-0 z-50 bg-white dark:bg-slate-900/80 dark:backdrop-blur-xl border-b border-gray-200 dark:border-slate-700/50 px-4 md:px-8 py-4 transition-all duration-300 shadow-sm">
       <div className="w-full flex items-center justify-between gap-4">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-3 group flex-shrink-0">
@@ -33,7 +33,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onThemeToggle, isDark }) => {
           >
             <span className="text-white font-black text-xl">NA</span>
           </motion.div>
-          <h1 className="text-xl font-bold tracking-tight hidden lg:block bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
+          <h1 className="text-xl font-bold tracking-tight hidden lg:block bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
             NewsAura
           </h1>
         </Link>
@@ -47,7 +47,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onThemeToggle, isDark }) => {
             <motion.div whileHover={{ y: -2 }} transition={{ type: "spring", stiffness: 400 }}>
               <Link
                 to="/"
-                className="px-3 py-2 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-all whitespace-nowrap"
+                className="px-3 py-2 rounded-xl text-sm font-bold text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-all whitespace-nowrap"
               >
                 Home
               </Link>
@@ -55,7 +55,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onThemeToggle, isDark }) => {
             <motion.div whileHover={{ y: -2 }} transition={{ type: "spring", stiffness: 400 }}>
               <Link
                 to="/bookmarks"
-                className="px-3 py-2 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-all whitespace-nowrap"
+                className="px-3 py-2 rounded-xl text-sm font-bold text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-all whitespace-nowrap"
               >
                 Bookmarks
               </Link>
@@ -63,7 +63,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onThemeToggle, isDark }) => {
             <motion.div whileHover={{ y: -2 }} transition={{ type: "spring", stiffness: 400 }}>
               <Link
                 to="/read-later"
-                className="px-3 py-2 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-all whitespace-nowrap"
+                className="px-3 py-2 rounded-xl text-sm font-bold text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-all whitespace-nowrap"
               >
                 Read Later
               </Link>
@@ -77,12 +77,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onThemeToggle, isDark }) => {
           <motion.button
             onClick={() => setMobileMenuOpen(prev => !prev)}
             aria-expanded={mobileMenuOpen}
-            className="md:hidden p-2.5 rounded-2xl bg-slate-200/50 dark:bg-slate-700/50 hover:bg-slate-300/50 dark:hover:bg-slate-600/50 transition-all"
+            className="md:hidden p-2.5 rounded-2xl bg-gray-100 dark:bg-slate-700/50 hover:bg-gray-200 dark:hover:bg-slate-600/50 transition-all"
             aria-label="Toggle menu"
             whileTap={{ scale: 0.9 }}
           >
             <motion.svg 
-              className="w-5 h-5 text-slate-600 dark:text-slate-200" 
+              className="w-5 h-5 text-gray-700 dark:text-slate-200" 
               fill="none" 
               viewBox="0 0 24 24" 
               stroke="currentColor"
@@ -95,7 +95,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onThemeToggle, isDark }) => {
 
           <motion.button 
             onClick={onThemeToggle}
-            className="p-2.5 rounded-2xl bg-slate-200/50 dark:bg-slate-700/50 hover:bg-slate-300/50 dark:hover:bg-slate-600/50 transition-all"
+            className="p-2.5 rounded-2xl bg-gray-100 dark:bg-slate-700/50 hover:bg-gray-200 dark:hover:bg-slate-600/50 transition-all"
             aria-label="Toggle theme"
             whileTap={{ scale: 0.9 }}
             whileHover={{ scale: 1.05 }}
@@ -112,7 +112,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onThemeToggle, isDark }) => {
               </motion.svg>
             ) : (
               <motion.svg 
-                className="w-5 h-5 text-slate-600" 
+                className="w-5 h-5 text-gray-700" 
                 fill="currentColor" 
                 viewBox="0 0 20 20"
                 animate={{ rotate: -360 }}
