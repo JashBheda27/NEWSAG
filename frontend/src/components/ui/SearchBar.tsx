@@ -84,10 +84,10 @@ export const SearchBar: React.FC = () => {
           window.setTimeout(() => setIsOpen(false), 120);
         }}
         placeholder="Search news..."
-        className="w-full px-4 py-2.5 pl-10 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm text-slate-700 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 transition-all"
+        className="w-full px-4 py-2.5 pl-10 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm text-gray-900 dark:text-slate-200 placeholder-gray-500 dark:placeholder-slate-500 transition-all"
       />
       <svg
-        className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+        className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -101,17 +101,17 @@ export const SearchBar: React.FC = () => {
       </svg>
 
       {isOpen && (loading || inputValue.trim().length >= 2) && (
-        <div className="absolute left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-50 max-h-64 overflow-auto">
+        <div className="absolute left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl shadow-lg z-50 max-h-64 overflow-auto">
           {loading ? (
-            <div className="px-4 py-3 text-sm text-slate-500">Loading...</div>
+            <div className="px-4 py-3 text-sm text-gray-600">Loading...</div>
           ) : suggestions.length === 0 ? (
-            <div className="px-4 py-3 text-sm text-slate-500">No results found</div>
+            <div className="px-4 py-3 text-sm text-gray-600">No results found</div>
           ) : (
             suggestions.map((item) => (
               <div
                 key={item.id || item.url}
                 onMouseDown={() => handleSelect(item)}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer transition-colors duration-150"
               >
                 <img
                   src={item.image_url || `https://picsum.photos/seed/${item.title?.length || 1}/80/80`}
@@ -119,10 +119,10 @@ export const SearchBar: React.FC = () => {
                   className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
                 />
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-slate-200 truncate">
                     {item.title}
                   </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                  <p className="text-xs text-gray-600 dark:text-slate-400 truncate">
                     {typeof item.source === 'string' ? item.source : (item.source as any)?.name}
                   </p>
                 </div>
