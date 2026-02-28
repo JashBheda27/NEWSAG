@@ -5,13 +5,14 @@
 
   color-scheme: light dark;
   color: #0f172a;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%, #f8fafc 100%);
+  background: #f8fafc;
   background-attachment: fixed;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
   
   /* Design System - Spacing Scale */
   --spacing-xs: 0.25rem;
@@ -29,8 +30,9 @@
   --radius-2xl: 2rem;
   
   /* Design System - Shadows */
-  --shadow-soft: 0 2px 8px -2px rgba(0, 0, 0, 0.05), 0 4px 16px -4px rgba(0, 0, 0, 0.08);
-  --shadow-medium: 0 4px 12px -2px rgba(0, 0, 0, 0.08), 0 8px 24px -4px rgba(0, 0, 0, 0.12);
+  --shadow-soft: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --shadow-medium: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-large: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   --shadow-glow: 0 0 20px -5px rgba(99, 102, 241, 0.3);
 }
 
@@ -76,6 +78,9 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 h1 {
@@ -213,16 +218,17 @@ button:focus-visible {
   text-rendering: optimizeLegibility !important;
 }
 
-/* Glassmorphism effect */
+/* Glassmorphism effect - Solid in light mode for sharpness */
 .glass {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgb(255, 255, 255);
+  border: 1px solid rgb(226, 232, 240);
+  box-shadow: var(--shadow-soft);
 }
 
 .dark .glass {
   background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
