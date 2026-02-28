@@ -133,7 +133,7 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           {/* Section Header with accent bar */}
           <div className="relative pl-4 border-l-4 border-gradient-to-b from-indigo-500 to-purple-600" style={{ borderImage: 'linear-gradient(180deg, #6366f1 0%, #8b5cf6 100%) 1' }}>
-            <h2 className="text-3xl sm:text-4xl font-black mb-1 flex items-center gap-4 text-slate-900 dark:text-white">
+            <h2 className="text-3xl sm:text-4xl font-black mb-1 flex items-center gap-4 text-gray-900 dark:text-white">
               {queryFromUrl.length >= 2 ? 'Search Results' : `${categories.find(c => c.id === category)?.label.split(' ')[1]} Feed`}
               <motion.span 
                 className="inline-flex items-center justify-center px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full text-sm font-bold"
@@ -144,7 +144,7 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
                 {articles.length} articles
               </motion.span>
             </h2>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">
+            <p className="text-gray-700 dark:text-slate-400 text-sm">
               {queryFromUrl.length >= 2 ? `Results for "${queryFromUrl}"` : 'Latest AI-powered news coverage'}
             </p>
           </div>
@@ -156,13 +156,13 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
             transition={{ delay: 0.3 }}
           >
             {/* ✅ Pill Style Segmented Control - NO API calls */}
-            <div className="flex items-center bg-slate-100/80 dark:bg-slate-800/80 rounded-full p-1 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50 shadow-inner">
+            <div className="flex items-center bg-gray-100 dark:bg-slate-800/80 dark:backdrop-blur-sm rounded-full p-1 border border-gray-200 dark:border-slate-700/50 shadow-sm">
               <motion.button
                 onClick={() => setViewType('grid')}
-                className={`relative px-4 py-2 rounded-full transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${
+                className={`relative px-4 py-2 rounded-full transition-all duration-200 font-semibold text-sm flex items-center gap-2 ${
                   viewType === 'grid'
                     ? 'text-white'
-                    : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
+                    : 'text-gray-600 hover:text-gray-800 dark:text-slate-400 dark:hover:text-slate-300'
                 }`}
                 title="Grid View"
                 whileTap={{ scale: 0.95 }}
@@ -181,10 +181,10 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
               </motion.button>
               <motion.button
                 onClick={() => setViewType('list')}
-                className={`relative px-4 py-2 rounded-full transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${
+                className={`relative px-4 py-2 rounded-full transition-all duration-200 font-semibold text-sm flex items-center gap-2 ${
                   viewType === 'list'
                     ? 'text-white'
-                    : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
+                    : 'text-gray-600 hover:text-gray-800 dark:text-slate-400 dark:hover:text-slate-300'
                 }`}
                 title="List View"
                 whileTap={{ scale: 0.95 }}
@@ -223,19 +223,19 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
               <div className="absolute inset-2 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-full"></div>
             </motion.div>
           </div>
-          <h3 className="text-2xl font-black mb-2 text-slate-900 dark:text-white">Warming up AI Engine</h3>
-          <p className="text-slate-600 dark:text-slate-300 mb-2 text-sm">First load may take a few seconds while the model initializes...</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Thank you for your patience</p>
+          <h3 className="text-2xl font-black mb-2 text-gray-900 dark:text-white">Warming up AI Engine</h3>
+          <p className="text-gray-700 dark:text-slate-300 mb-2 text-sm">First load may take a few seconds while the model initializes...</p>
+          <p className="text-xs text-gray-600 dark:text-slate-400">Thank you for your patience</p>
         </motion.div>
       ) : error ? (
         <motion.div 
-          className="max-w-xl mx-auto py-20 px-8 bg-white dark:bg-slate-800 rounded-[2.5rem] shadow-2xl border border-rose-100 dark:border-rose-900/20 text-center"
+          className="max-w-xl mx-auto py-20 px-8 bg-white dark:bg-slate-800 rounded-[2.5rem] shadow-lg border border-rose-200 dark:border-rose-900/20 text-center"
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.4 }}
         >
-          <h3 className="text-2xl font-black mb-4">Feed Unavailable</h3>
-          <p className="text-slate-500 dark:text-slate-400 mb-8">{error}</p>
+          <h3 className="text-2xl font-black mb-4 text-gray-900 dark:text-white">Feed Unavailable</h3>
+          <p className="text-gray-700 dark:text-slate-400 mb-8">{error}</p>
           <Button size="lg" onClick={() => fetchNews(category)}>Try Again</Button>
         </motion.div>
       ) : (
