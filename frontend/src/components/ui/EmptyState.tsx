@@ -43,11 +43,11 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         {icon}
       </motion.div>
       
-      <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
         {title}
       </h2>
       
-      <p className="text-slate-600 dark:text-slate-400 mb-6">
+      <p className="text-gray-700 dark:text-slate-400 mb-6">
         {description}
       </p>
       
