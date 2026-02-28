@@ -195,18 +195,15 @@ export const Sidebar: React.FC = () => {
           bottom: 28px;
           display: flex;
           width: 80px;
-          background: rgba(255, 255, 255, 0.85);
-          backdrop-filter: blur(20px) saturate(180%);
-          -webkit-backdrop-filter: blur(20px) saturate(180%);
+          background: rgb(255, 255, 255);
           border-radius: 24px;
           transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
           overflow: hidden;
           z-index: 40;
           box-shadow: 
-            0 8px 32px -8px rgba(0, 0, 0, 0.12),
-            0 2px 8px -2px rgba(0, 0, 0, 0.08),
-            inset 0 1px 1px rgba(255, 255, 255, 0.8);
-          border: 1px solid rgba(255, 255, 255, 0.5);
+            0 4px 6px -1px rgba(0, 0, 0, 0.1),
+            0 2px 4px -1px rgba(0, 0, 0, 0.06);
+          border: 1px solid rgb(226, 232, 240);
         }
 
         .dark .sidebar-container {
@@ -266,7 +263,7 @@ export const Sidebar: React.FC = () => {
           justify-content: center;
           border-radius: 16px;
           transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-          color: rgb(100, 116, 139);
+          color: rgb(71, 85, 105);
           position: relative;
         }
 
@@ -433,11 +430,11 @@ export const Sidebar: React.FC = () => {
           bottom: 12px;
           left: 8px;
           right: 12px;
-          background: linear-gradient(135deg, rgba(248, 250, 252, 0.8) 0%, rgba(241, 245, 249, 0.8) 100%);
+          background: rgb(248, 250, 252);
           border-radius: 18px;
           padding-bottom: 12px;
           overflow-y: auto;
-          border: 1px solid rgba(226, 232, 240, 0.5);
+          border: 1px solid rgb(226, 232, 240);
         }
 
         .dark .sidebar-right-inner {
