@@ -40,7 +40,7 @@ const AppLayout: React.FC<{ showNotification: (msg: string, type?: 'error' | 'su
   }, [getToken, isLoaded, isSignedIn]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 transition-colors duration-300">
+    <div className="min-h-screen flex flex-col bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 transition-colors duration-200">
       <Navbar 
         onThemeToggle={toggleTheme}
         isDark={isDark}
