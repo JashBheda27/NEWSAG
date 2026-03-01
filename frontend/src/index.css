@@ -36,6 +36,17 @@
   --shadow-glow: 0 0 20px -5px rgba(99, 102, 241, 0.3);
 }
 
+/* Devanagari font styling for Hindi content */
+[lang="hi"] .newspaper-paper,
+[lang="hi"] .newspaper-paper * {
+  font-family: 'Noto Sans Devanagari', 'Hind', system-ui, sans-serif !important;
+}
+
+/* Utility class for applying Devanagari font on demand */
+.devanagari {
+  font-family: 'Noto Sans Devanagari', 'Hind', system-ui, sans-serif !important;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     color: rgba(255, 255, 255, 0.95);
@@ -51,7 +62,7 @@
 
 /* Newspaper Styles */
 .newspaper-paper {
-  background-color: #fdfcf0;
+  background-color: #ececec;
   color: #1a1a1a;
 }
 
