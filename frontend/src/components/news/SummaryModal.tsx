@@ -104,8 +104,8 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
           className="newspaper-paper border border-black w-full"
           style={{ outline: '1px solid #000', outlineOffset: '4px' }}
         >
-          <div className="border p-4 sm:p-6" style={{ borderColor: '#d0d0d0', borderWidth: '1px' }}>
-             <div className="text-center mb-6 pb-3 border-b-4 border-black border-double">
+          <div className="border p-3 sm:p-4" style={{ borderColor: '#d0d0d0', borderWidth: '1px' }}>
+             <div className="text-center mb-3 pb-2 border-b-4 border-black border-double">
                 <div className="mb-1">
                   <span className="text-[8px] font-normal uppercase tracking-widest italic">Special AI Edition</span>
                 </div>
@@ -114,12 +114,12 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
                 </h4>
              </div>
 
-             <h2 className="font-serif text-lg sm:text-xl font-normal mb-4 leading-tight text-center italic">
+             <h2 className="font-serif text-lg sm:text-xl font-normal mb-2 leading-tight text-center italic">
                "{title}"
              </h2>
 
              {/* Language Selector */}
-             <div className="flex items-center justify-center gap-2 mb-4">
+             <div className="flex items-center justify-center gap-2 mb-3">
                <label
                  htmlFor="lang-select"
                  className="text-[10px] uppercase tracking-widest font-normal"
@@ -151,9 +151,9 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
              </div>
 
              <div 
-               className={`text-sm leading-relaxed text-justify md:columns-2 gap-6 whitespace-pre-wrap transition-opacity duration-300 ${isTranslating ? 'opacity-40' : ''}`}
+               className={`text-base leading-snug text-justify md:columns-2 gap-6 whitespace-pre-wrap transition-opacity duration-300 ${isTranslating ? 'opacity-40' : ''} ${selectedLang === 'hi' ? 'devanagari' : ''}`}
                style={{ 
-                 fontFamily: 'Georgia, "Times New Roman", serif',
+                 ...(selectedLang !== 'hi' ? { fontFamily: 'Georgia, "Times New Roman", serif' } : {}),
                  fontWeight: '300',
                  opacity: isTranslating ? 0.4 : 0.85,
                  color: '#333'
@@ -164,7 +164,7 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
 
             {/* Fallback indicator */}
             {summaryData?.is_fallback && (
-              <div className="mt-3 flex items-center justify-between px-3 py-2 rounded border" style={{ backgroundColor: '#fffbe6', borderColor: '#ffe58f' }}>
+              <div className="mt-2 flex items-center justify-between px-3 py-1.5 rounded border" style={{ backgroundColor: '#fffbe6', borderColor: '#ffe58f' }}>
                 <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: '#ad6800' }}>
                   ⚠ {summaryData.source === 'description' ? 'Limited summary (from description)' : summaryData.source === 'placeholder' ? 'Summary unavailable' : 'Partial summary'}
                 </span>
@@ -180,8 +180,8 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
 
             {/* Audio Player for TTS */}
             {summaryData?.audio_available && summaryData?.summary && (
-              <div className="mt-4 pt-3 border-t border-slate-300 dark:border-slate-600">
-                <div className="flex items-center gap-2 mb-2">
+              <div className="mt-3 pt-2 border-t border-slate-300 dark:border-slate-600">
+                <div className="flex items-center gap-2 mb-1">
                   <span className="text-[9px] uppercase tracking-widest text-slate-500">Listen to Summary</span>
                 </div>
                 <AudioPlayer 
@@ -192,9 +192,9 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
               </div>
             )}
           
-          <div className="border-t border-black mt-6" ></div>
+          <div className="border-t border-black mt-3" ></div>
           
-          <div className="px-6 py-3" style={{backgroundColor: '#fdfcf0'}}>
+          <div className="px-4 py-2" style={{backgroundColor: '#ececec'}}>
             <div className="flex items-center justify-center gap-4">
               <div className="flex items-center gap-2">
                 <button 
@@ -230,7 +230,7 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
                 </button>
                 <button 
                   onClick={() => window.open(url, '_blank')}
-                  className="text-[10px] font-normal uppercase tracking-widest border border-slate-800 dark:border-slate-200 px-3 py-1 text-slate-900 dark:text-slate-100 bg-[#fdfcf0] dark:bg-slate-900/80 hover:text-white dark:hover:text-white hover:border-indigo-600 dark:hover:border-indigo-300 hover:bg-indigo-600 dark:hover:bg-indigo-500 transition-colors"
+                  className="text-[10px] font-normal uppercase tracking-widest border border-slate-800 dark:border-slate-200 px-3 py-1 text-slate-900 dark:text-slate-100 bg-[#ececec] dark:bg-slate-900/80 hover:text-white dark:hover:text-white hover:border-indigo-600 dark:hover:border-indigo-300 hover:bg-indigo-600 dark:hover:bg-indigo-500 transition-colors"
                 >
                   Read Full Article
                 </button>
