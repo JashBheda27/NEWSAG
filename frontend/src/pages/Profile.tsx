@@ -75,8 +75,8 @@ export const Profile: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 page-transition">
-      <div className="max-w-5xl mx-auto px-4 py-12">
-        <div className="rounded-[2.5rem] bg-white/95 backdrop-blur-lg border border-slate-200/80 shadow-2xl shadow-slate-200/50 px-8 py-10 md:px-12 md:py-14 dark:bg-slate-800/95 dark:border-slate-700/80 dark:shadow-slate-900/50">
+      <div className="max-w-5xl mx-auto px-4 py-6">
+        <div className="rounded-[2rem] bg-white/95 backdrop-blur-lg border border-slate-200/80 shadow-2xl shadow-slate-200/50 px-6 py-6 md:px-8 md:py-8 dark:bg-slate-800/95 dark:border-slate-700/80 dark:shadow-slate-900/50">
           <div className="flex flex-col md:flex-row items-start gap-8">
             <div className="w-28 h-28 md:w-36 md:h-36 rounded-[2rem] overflow-hidden shadow-xl shadow-indigo-500/10 flex-shrink-0 p-[3px] bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
               <img src={userData.avatar} alt={userData.name} className="w-full h-full object-cover rounded-[1.75rem]" />
@@ -100,7 +100,7 @@ export const Profile: React.FC = () => {
                 </div>
               </div>
 
-              <div className="mt-10 grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard
                   label="Articles Read"
                   value={valueOr(analytics?.tier1.articles_read ?? '—')}
@@ -143,7 +143,7 @@ export const Profile: React.FC = () => {
               </div>
 
               {!isLoadingStats && analytics?.tier2.weekly_activity?.length ? (
-                <div className="mt-8">
+                <div className="mt-6">
                   <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4 dark:text-slate-500 flex items-center gap-2">
                     <span className="w-1 h-4 bg-gradient-to-b from-indigo-500 to-purple-500 rounded-full"></span>
                     Weekly Activity
@@ -154,7 +154,7 @@ export const Profile: React.FC = () => {
                       const heightPercent = (item.count / maxCount) * 100;
                       return (
                         <div key={item.day} className="flex flex-col items-center gap-2">
-                          <div className="h-24 w-full flex items-end justify-center">
+                          <div className="h-20 w-full flex items-end justify-center">
                             <div 
                               className="w-full max-w-[32px] rounded-t-lg bg-gradient-to-t from-indigo-500 to-purple-500 animate-bar transition-all duration-500"
                               style={{ 
