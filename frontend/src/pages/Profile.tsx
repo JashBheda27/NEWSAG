@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, useUser } from '@clerk/clerk-react';
 import { Button } from '../components/ui/Button.tsx';
+import { EditProfileModal } from '../components/EditProfileModal.tsx';
 import { userService } from '../services/user.service';
 import type { ProfileAnalyticsResponse } from '../services/user.service';
 
@@ -34,6 +35,7 @@ export const Profile: React.FC = () => {
   const navigate = useNavigate();
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [analytics, setAnalytics] = useState<ProfileAnalyticsResponse | null>(null);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
 
   const handleLogout = async () => {
     await signOut();
@@ -90,7 +92,7 @@ export const Profile: React.FC = () => {
                   <p className="text-slate-600 mt-4 max-w-xl leading-relaxed dark:text-slate-400">{userData.bio}</p>
                 </div>
                 <div className="flex gap-3">
-                  <Button variant="outline" size="sm" className="!rounded-xl !px-5">Edit Profile</Button>
+                  <Button variant="outline" size="sm" className="!rounded-xl !px-5" onClick={() => setIsEditProfileOpen(true)}>Edit Profile</Button>
                   <button
                     onClick={handleLogout}
                     className="px-5 py-2.5 rounded-xl text-sm font-bold text-red-500 hover:text-white hover:bg-red-500 border-2 border-red-200 hover:border-red-500 transition-all duration-300 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-600 dark:hover:border-red-600"
@@ -177,6 +179,8 @@ export const Profile: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <EditProfileModal isOpen={isEditProfileOpen} onClose={() => setIsEditProfileOpen(false)} />
     </div>
   );
 };
