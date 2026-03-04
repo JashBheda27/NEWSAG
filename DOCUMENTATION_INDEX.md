@@ -168,6 +168,27 @@ Complete guide to all documentation in the NewsAura project.
 
 ---
 
+#### [ADMIN_DASHBOARD.md](ADMIN_DASHBOARD.md) ✨ NEW
+**Purpose:** Admin dashboard management and operations
+**Contents:**
+- Admin role setup and configuration
+- Daily operational tasks (credibility review, cache management)
+- Incident response procedures
+- Audit logging and compliance
+- Security and authentication
+- API endpoint reference
+- Troubleshooting guide
+- Integration checklist
+
+**Use when:**
+- Setting up admin users
+- Managing content (credibility, sentiment)
+- Responding to incidents
+- Reviewing audit logs
+- Troubleshooting admin access
+
+---
+
 #### [GNEWS_INTEGRATION_GUIDE.md](GNEWS_INTEGRATION_GUIDE.md)
 **Purpose:** Google News API integration
 **Contents:**
@@ -256,6 +277,11 @@ Complete guide to all documentation in the NewsAura project.
 ### Debugging Issues
 1. [ANIMATION_TROUBLESHOOTING.md](ANIMATION_TROUBLESHOOTING.md) - Animation issues
 2. [DEVELOPER_SETUP.md](DEVELOPER_SETUP.md) - Troubleshooting section
+
+### Admin Operations
+1. [ADMIN_DASHBOARD.md](ADMIN_DASHBOARD.md) - Setup, daily tasks, incident response
+2. [AUTHENTICATION_GUIDE.md](AUTHENTICATION_GUIDE.md) - Admin auth configuration
+3. [API_CHANGES.md](API_CHANGES.md) - Admin API endpoint reference
 
 ### Understanding Architecture
 1. [README.md](README.md) - Overview
