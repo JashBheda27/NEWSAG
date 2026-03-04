@@ -91,15 +91,25 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
     setSuccess(false);
 
     try {
-      await user.update({
+      // Check if username changed
+      const usernameChanged = formData.username.trim() !== user.username;
+      
+      // Build update payload - only include username if it changed
+      const updatePayload: any = {
         firstName: formData.firstName,
         lastName: formData.lastName,
-        username: formData.username.trim() || null,
         unsafeMetadata: {
           ...user.unsafeMetadata,
           customImageUrl: formData.imageUrl,
         },
-      });
+      };
+
+      // Only add username if it changed (username updates require verification)
+      if (usernameChanged && formData.username.trim()) {
+        updatePayload.username = formData.username.trim();
+      }
+
+      await user.update(updatePayload);
 
       if (wantsPasswordUpdate) {
         await user.updatePassword({
@@ -123,7 +133,11 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
       }, 1500);
     } catch (err) {
       const message = parseClerkError(err);
-      if (wantsPasswordUpdate) {
+      
+      // Check if it's a verification error specifically for username
+      if (message.includes('verification') || message.includes('additional')) {
+        setProfileError('Username change requires additional verification. Please ensure your email is verified in your Clerk account settings, or try again after re-logging in.');
+      } else if (wantsPasswordUpdate) {
         setPasswordError(message);
       } else {
         setProfileError(message);
@@ -210,6 +224,14 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
                     disabled={isSaving}
                     className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   />
+                  {formData.username !== user?.username && (
+                    <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      Changing username requires account verification
+                    </p>
+                  )}
                 </div>
 
                 <div>
