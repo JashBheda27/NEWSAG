@@ -7,6 +7,8 @@ from app.services.credibility_service import analyze_credibility  # ✅ Fake new
 from app.core.cache import get_from_cache, set_in_cache, delete_from_cache
 from app.core.gnews_counter import GNewsCounter
 from app.core.auth import require_auth, require_admin
+from app.core.database import get_db
+from app.services.admin_audit_service import AdminAuditService
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -260,9 +262,22 @@ async def get_hit_status():
 @router.post("/admin/reset-hits")
 async def reset_hit_counter(
     user=Depends(require_admin),
+    db=Depends(get_db),
 ):
     """Reset hit counter (ADMIN ONLY - for testing)"""
+    admin_id = user["user_id"]
     result = await GNewsCounter.reset_counter()
+    
+    # Log to audit trail
+    await AdminAuditService.log_action(
+        db=db,
+        admin_user_id=admin_id,
+        action="reset_quota",
+        resource_type="gnews_hits",
+        details={"reset_to": 0},
+        success=True,
+    )
+    
     return {
         "status": "reset",
         "hits": result,
@@ -277,8 +292,10 @@ async def reset_hit_counter(
 async def refresh_category(
     category: str,
     user=Depends(require_admin),
+    db=Depends(get_db),
 ):
     """Manually refresh news for a specific category (ADMIN ONLY)"""
+    admin_id = user["user_id"]
     cache_key = f"gnews:{category}"
     await delete_from_cache(cache_key)
 
@@ -287,6 +304,18 @@ async def refresh_category(
         articles = await GNewsService.fetch_category(category)
     except Exception as e:
         logger.error(f"Error refreshing {category}: {str(e)}")
+        
+        # Log failure to audit trail
+        await AdminAuditService.log_action(
+            db=db,
+            admin_user_id=admin_id,
+            action="refresh_cache",
+            resource_type="news_category",
+            resource_id=category,
+            success=False,
+            error_message=str(e),
+        )
+        
         raise HTTPException(status_code=502, detail=str(e))
     
     # Add sentiment BEFORE caching (computed once, cached with articles)
@@ -296,6 +325,17 @@ async def refresh_category(
     articles = await analyze_credibility(articles)
     
     await set_in_cache(cache_key, articles)
+    
+    # Log success to audit trail
+    await AdminAuditService.log_action(
+        db=db,
+        admin_user_id=admin_id,
+        action="refresh_cache",
+        resource_type="news_category",
+        resource_id=category,
+        details={"articles_count": len(articles)},
+        success=True,
+    )
 
     return {
         "message": f"{category} refreshed",
@@ -327,6 +367,7 @@ async def _refresh_single_category(cat: str, semaphore: asyncio.Semaphore) -> di
 @router.post("/refresh-all")
 async def refresh_all(
     user=Depends(require_admin),
+    db=Depends(get_db),
 ):
     """
     Refresh all categories at once (ADMIN ONLY).
@@ -336,6 +377,7 @@ async def refresh_all(
     """
     import asyncio
     
+    admin_id = user["user_id"]
     categories = CATEGORIES
     
     # Semaphore to limit concurrent API calls (avoid rate limiting)
@@ -349,6 +391,21 @@ async def refresh_all(
     errors = [f"{r['category']}: {r['error']}" for r in results if r["error"]]
 
     logger.warning(f"[MANUAL REFRESH ALL] categories={len(categories)}, articles={total_articles}")
+    
+    # Log to audit trail
+    await AdminAuditService.log_action(
+        db=db,
+        admin_user_id=admin_id,
+        action="refresh_cache",
+        resource_type="all_categories",
+        details={
+            "categories_count": len(categories),
+            "articles_count": total_articles,
+            "error_count": len(errors),
+        },
+        success=len(errors) == 0,
+        error_message="; ".join(errors) if errors else None,
+    )
 
     return {
         "message": "All categories refreshed",
