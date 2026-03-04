@@ -98,6 +98,29 @@ async def create_indexes():
         )
 
         logger.info("[OK] Summary logs indexes created")
+
+        # --------------------------------------------------
+        # ADMIN AUDIT LOG COLLECTION
+        # --------------------------------------------------
+        # Index for admin action audit trail
+        await db.admin_audit_logs.create_index(
+            [("created_at", -1)],
+            name="idx_audit_created"
+        )
+        
+        # Index for filtering by admin user
+        await db.admin_audit_logs.create_index(
+            [("admin_user_id", 1), ("created_at", -1)],
+            name="idx_audit_admin_created"
+        )
+        
+        # Index for filtering by action type
+        await db.admin_audit_logs.create_index(
+            [("action", 1), ("created_at", -1)],
+            name="idx_audit_action_created"
+        )
+        
+        logger.info("[OK] Admin audit log indexes created")
         
         logger.info("[OK] All MongoDB indexes created successfully")
         
