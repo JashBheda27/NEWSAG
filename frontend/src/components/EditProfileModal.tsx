@@ -8,10 +8,12 @@ interface EditProfileModalProps {
 
 export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose }) => {
   const { user, isLoaded } = useUser();
+  const AUTO_CLOSE_MS = 4000;
   const [isSaving, setIsSaving] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [successMessages, setSuccessMessages] = useState<string[]>([]);
+  const [showSuccess, setShowSuccess] = useState(false);
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -24,21 +26,22 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
   });
 
   useEffect(() => {
-    if (user && isLoaded) {
-      setFormData({
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        username: user.username || '',
-        imageUrl: user.imageUrl || '',
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: '',
-      });
-      setProfileError(null);
-      setPasswordError(null);
-      setSuccess(false);
-    }
-  }, [user, isLoaded, isOpen]);
+    if (!isOpen || !user || !isLoaded) return;
+
+    setFormData({
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      username: user.username || '',
+      imageUrl: user.imageUrl || '',
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+    });
+    setProfileError(null);
+    setPasswordError(null);
+    setSuccessMessages([]);
+    setShowSuccess(false);
+  }, [isOpen, isLoaded, user?.id]);
 
   const parseClerkError = (error: unknown): string => {
     if (typeof error === 'object' && error !== null && 'errors' in error) {
@@ -88,9 +91,13 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
     setIsSaving(true);
     setProfileError(null);
     setPasswordError(null);
-    setSuccess(false);
+    setSuccessMessages([]);
+    setShowSuccess(false);
 
     try {
+      // Track which fields changed for success messages
+      const changedFields: string[] = [];
+      
       // Check if username changed
       const usernameChanged = formData.username.trim() !== user.username;
       
@@ -109,17 +116,40 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
         updatePayload.username = formData.username.trim();
       }
 
-      await user.update(updatePayload);
+      // Track profile field changes - compare trimmed values
+      if (formData.firstName.trim() !== (user.firstName || '').trim()) changedFields.push('First name');
+      if (formData.lastName.trim() !== (user.lastName || '').trim()) changedFields.push('Last name');
+      if (usernameChanged && formData.username.trim()) changedFields.push('Username');
+      const currentImageUrl = ((user.unsafeMetadata?.customImageUrl as string) || user.imageUrl || '').trim();
+      if (formData.imageUrl.trim() !== currentImageUrl) changedFields.push('Profile image');
 
+      await user.update(updatePayload);
+      
+      // If no specific fields detected as changed, add generic profile success message
+      if (!changedFields.length) {
+        changedFields.push('Profile');
+      }
+
+      // Handle password update separately so profile success isn't blocked
       if (wantsPasswordUpdate) {
-        await user.updatePassword({
-          newPassword: formData.newPassword,
-          currentPassword: user.passwordEnabled ? formData.currentPassword : undefined,
-          signOutOfOtherSessions: false,
-        });
+        try {
+          await user.updatePassword({
+            newPassword: formData.newPassword,
+            currentPassword: user.passwordEnabled ? formData.currentPassword : undefined,
+            signOutOfOtherSessions: false,
+          });
+          changedFields.push('Password');
+        } catch (pwdErr) {
+          setPasswordError('❌ ' + parseClerkError(pwdErr));
+        }
       }
       
-      setSuccess(true);
+      // Set success messages for all changed fields
+      if (changedFields.length > 0) {
+        setSuccessMessages(changedFields.map(field => `${field} successfully updated!`));
+        setShowSuccess(true);
+      }
+      
       setFormData((previous) => ({
         ...previous,
         currentPassword: '',
@@ -129,28 +159,30 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
 
       setTimeout(() => {
         onClose();
-        setSuccess(false);
-      }, 1500);
+        setShowSuccess(false);
+        setSuccessMessages([]);
+      }, AUTO_CLOSE_MS);
     } catch (err) {
       const message = parseClerkError(err);
       
       // Check if it's a verification error specifically for username
       if (message.includes('verification') || message.includes('additional')) {
-        setProfileError('Username change requires additional verification. Please ensure your email is verified in your Clerk account settings, or try again after re-logging in.');
-      } else if (wantsPasswordUpdate) {
-        setPasswordError(message);
+        setProfileError('❌ Username change requires additional verification. Please ensure your email is verified in your Clerk account settings, or try again after re-logging in.');
       } else {
-        setProfileError(message);
+        setProfileError('❌ ' + message);
       }
     } finally {
       setIsSaving(false);
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen && !showSuccess) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fadeIn">
+    <>
+      {/* Modal */}
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fadeIn">
       <div className="w-full max-w-5xl rounded-3xl bg-white dark:bg-slate-800 shadow-2xl animate-slideUp">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-4 md:px-5 py-3">
@@ -328,10 +360,25 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
             </div>
           )}
 
-          {/* Success Message */}
-          {success && (
-            <div className="rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 px-4 py-3">
-              <p className="text-sm font-medium text-green-600 dark:text-green-400">Profile updated successfully!</p>
+          {/* Success Messages - Large Prominent Alert */}
+          {showSuccess && successMessages.length > 0 && (
+            <div className="rounded-2xl bg-green-50 dark:bg-green-900/30 border-2 border-green-300 dark:border-green-600 px-6 py-4 animate-slideDown">
+              <div className="space-y-3">
+                {successMessages.map((msg, index) => (
+                  <div key={index} className="flex items-center gap-3">
+                    <svg className="w-6 h-6 flex-shrink-0 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-lg font-bold text-green-700 dark:text-green-300">{msg}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-green-200/70 dark:bg-green-800/60">
+                <div
+                  className="h-full w-full origin-left rounded-full bg-green-500/80 dark:bg-green-400/80 animate-successProgress"
+                  style={{ animationDuration: `${AUTO_CLOSE_MS}ms` }}
+                />
+              </div>
             </div>
           )}
 
@@ -364,6 +411,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
           </div>
         </form>
       </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes fadeIn {
@@ -386,6 +435,26 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
           }
         }
 
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes successProgress {
+          from {
+            transform: scaleX(1);
+          }
+          to {
+            transform: scaleX(0);
+          }
+        }
+
         .animate-fadeIn {
           animation: fadeIn 200ms ease-out;
         }
@@ -393,7 +462,17 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
         .animate-slideUp {
           animation: slideUp 300ms ease-out;
         }
+
+        .animate-slideDown {
+          animation: slideDown 300ms ease-out;
+        }
+
+        .animate-successProgress {
+          animation-name: successProgress;
+          animation-timing-function: linear;
+          animation-fill-mode: forwards;
+        }
       `}</style>
-    </div>
+    </>
   );
 };
