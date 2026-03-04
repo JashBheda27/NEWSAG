@@ -60,6 +60,9 @@ async def get_jwks():
 async def _validate_token(token: str) -> dict:
     """
     Internal: Validate JWT token and return user payload.
+    Hybrid admin detection:
+    - Primary: check ADMIN_USER_IDS allowlist (env-based, fast)
+    - Fallback: check Clerk metadata/custom claims for admin role
     Raises HTTPException on failure.
     """
     try:
@@ -100,10 +103,24 @@ async def _validate_token(token: str) -> dict:
         user_id = payload["sub"]
         email = payload.get("email")
         
+        # Hybrid admin detection
+        is_admin = user_id in ADMIN_USER_IDS
+        
+        # Fallback to Clerk metadata if not in allowlist
+        # Check for admin role in custom claims or org metadata
+        if not is_admin:
+            # Option 1: Check custom metadata (if using Clerk metadata API)
+            custom_claims = payload.get("metadata", {})
+            is_admin = custom_claims.get("admin", False)
+            
+            # Option 2: Check org roles (if using Clerk organizations)
+            if not is_admin and "org_role" in payload:
+                is_admin = payload.get("org_role") in ["admin", "owner"]
+        
         return {
             "user_id": user_id,
             "email": email,
-            "is_admin": user_id in ADMIN_USER_IDS,
+            "is_admin": is_admin,
         }
 
     except StopIteration:
