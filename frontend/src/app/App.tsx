@@ -16,6 +16,7 @@ const AppLayout: React.FC<{ showNotification: (msg: string, type?: 'error' | 'su
   const { isDark, toggleTheme } = useTheme();
   const location = useLocation();
   const isAuthPage = location.pathname === '/login';
+  const isAdminPage = location.pathname.startsWith('/admin');
   const { isLoaded, isSignedIn, getToken } = useAuth();
 
   useEffect(() => {
@@ -41,25 +42,29 @@ const AppLayout: React.FC<{ showNotification: (msg: string, type?: 'error' | 'su
 
   return (
     <div className="min-h-screen flex flex-col bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 transition-colors duration-200">
-      <Navbar 
-        onThemeToggle={toggleTheme}
-        isDark={isDark}
-      />
+      {!isAdminPage && (
+        <Navbar 
+          onThemeToggle={toggleTheme}
+          isDark={isDark}
+        />
+      )}
 
-      {!isAuthPage && <Sidebar />}
+      {!isAuthPage && !isAdminPage && <Sidebar />}
 
-      <main className={`flex-grow overflow-x-hidden ${isAuthPage ? '' : 'lg:pl-28 max-sm:pb-24'}`}>
+      <main className={`flex-grow overflow-x-hidden ${isAuthPage || isAdminPage ? '' : 'lg:pl-28 max-sm:pb-24'}`}>
         <AppRouter showNotification={showNotification} />
       </main>
 
-      <Footer />
+      {!isAdminPage && <Footer />}
       
       {/* Scroll to top button */}
       <ScrollToTop />
       
-      <ChatBot 
-        onError={(msg) => showNotification(msg, 'error')}
-      />
+      {!isAdminPage && (
+        <ChatBot 
+          onError={(msg) => showNotification(msg, 'error')}
+        />
+      )}
     </div>
   );
 };
