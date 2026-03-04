@@ -3,6 +3,8 @@ import { Routes, Route } from 'react-router-dom';
 import { Home } from '../pages/Home';
 import { Login } from '../pages/Login';
 import { ProtectedRoute } from '../components/ProtectedRoute';
+import { AdminRoute } from '../components/AdminRoute';
+import { AdminDashboard } from '../pages/AdminDashboard';
 
 // Lazy load non-critical pages for better initial load
 const Profile = lazy(() => import('../pages/Profile').then(m => ({ default: m.Profile })));
@@ -70,6 +72,16 @@ export const AppRouter: React.FC<AppRouterProps> = ({ showNotification }) => {
               <ReadLater />
             </Suspense>
           </ProtectedRoute>
+        }
+      />
+
+      {/* Admin Routes */}
+      <Route
+        path="/admin/*"
+        element={
+          <AdminRoute>
+            <AdminDashboard showNotification={showNotification} />
+          </AdminRoute>
         }
       />
 
