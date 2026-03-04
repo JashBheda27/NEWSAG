@@ -12,6 +12,7 @@ from app.core.database import get_db
 from app.core.auth import require_admin
 from app.services.training_data_service import TrainingDataService
 from app.services.model_fine_tuning_service import ModelFineTuningService
+from app.services.admin_audit_service import AdminAuditService
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -56,12 +57,23 @@ async def fine_tune_sentiment_model(
         min_samples: Minimum samples required to start training
         epochs: Number of training epochs
     """
-    logger.info(f"[ADMIN] Fine-tune sentiment requested by user={user['user_id']}")
+    admin_id = user["user_id"]
+    logger.info(f"[ADMIN] Fine-tune sentiment requested by user={admin_id}")
     
     result = await ModelFineTuningService.fine_tune_sentiment(
         db=db,
         min_samples=min_samples,
         epochs=epochs,
+    )
+    
+    # Log to audit trail
+    await AdminAuditService.log_action(
+        db=db,
+        admin_user_id=admin_id,
+        action="fine_tune",
+        resource_type="sentiment_model",
+        details={"min_samples": min_samples, "epochs": epochs},
+        success=True,
     )
     
     return result
@@ -85,12 +97,23 @@ async def fine_tune_credibility_model(
         min_samples: Minimum samples required to start training
         epochs: Number of training epochs
     """
-    logger.info(f"[ADMIN] Fine-tune credibility requested by user={user['user_id']}")
+    admin_id = user["user_id"]
+    logger.info(f"[ADMIN] Fine-tune credibility requested by user={admin_id}")
     
     result = await ModelFineTuningService.fine_tune_credibility(
         db=db,
         min_samples=min_samples,
         epochs=epochs,
+    )
+    
+    # Log to audit trail
+    await AdminAuditService.log_action(
+        db=db,
+        admin_user_id=admin_id,
+        action="fine_tune",
+        resource_type="credibility_model",
+        details={"min_samples": min_samples, "epochs": epochs},
+        success=True,
     )
     
     return result
@@ -183,6 +206,17 @@ async def verify_report(
     status = "verified" if verified else "rejected"
     logger.info(f"[ADMIN] Report {report_id} {status} by {admin_id}")
     
+    # Log to audit trail
+    await AdminAuditService.log_action(
+        db=db,
+        admin_user_id=admin_id,
+        action="verify_report" if verified else "reject_report",
+        resource_type="credibility_report",
+        resource_id=report_id,
+        details={"status": status},
+        success=True,
+    )
+    
     return {
         "message": f"Report {status}",
         "report_id": report_id,
@@ -232,3 +266,64 @@ async def get_sentiment_feedback(
         "count": len(feedback),
         "feedback": feedback,
     }
+
+
+# --------------------------------------------------
+# AUDIT LOG
+# --------------------------------------------------
+@router.get("/audit/logs")
+async def get_audit_logs(
+    limit: int = 100,
+    admin_user_id: Optional[str] = None,
+    action: Optional[str] = None,
+    resource_type: Optional[str] = None,
+    user=Depends(require_admin),
+    db=Depends(get_db),
+):
+    """
+    Retrieve admin audit log entries.
+    
+    Args:
+        limit: Maximum records to return
+        admin_user_id: Filter by admin user
+        action: Filter by action type
+        resource_type: Filter by resource type
+    """
+    logs = await AdminAuditService.get_audit_log(
+        db=db,
+        limit=limit,
+        admin_user_id=admin_user_id,
+        action=action,
+        resource_type=resource_type,
+    )
+    
+    return {
+        "count": len(logs),
+        "logs": logs,
+    }
+
+
+@router.get("/audit/activity-summary")
+async def get_admin_activity_summary(
+    admin_user_id: Optional[str] = None,
+    days: int = 7,
+    user=Depends(require_admin),
+    db=Depends(get_db),
+):
+    """
+    Get a summary of admin activity.
+    
+    Args:
+        admin_user_id: Admin user ID (if None, defaults to current user)
+        days: Number of days to look back
+    """
+    # If no admin_user_id provided, use current user
+    target_admin_id = admin_user_id or user["user_id"]
+    
+    summary = await AdminAuditService.get_admin_activity_summary(
+        db=db,
+        admin_user_id=target_admin_id,
+        days=days,
+    )
+    
+    return summary
