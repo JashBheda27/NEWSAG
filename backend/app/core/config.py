@@ -24,8 +24,15 @@ class Settings:
     # -----------------------------
     # Comma-separated list of Clerk user IDs that have admin access
     # Example: ADMIN_USER_IDS=user_2abc123,user_3def456
-    ADMIN_USER_IDS: str = os.getenv("ADMIN_USER_IDS", "")
-
+    ADMIN_USER_IDS: str = os.getenv("ADMIN_USER_IDS", "")    
+    # Clerk admin role/metadata keys for hybrid auth
+    # If using Clerk metadata API, set this to the metadata key name
+    CLERK_ADMIN_METADATA_KEY: str = os.getenv("CLERK_ADMIN_METADATA_KEY", "admin")
+    
+    # If using Clerk organizations with role-based access
+    # Set this to comma-separated list of org roles that grant admin access
+    # Example: admin,owner
+    CLERK_ADMIN_ORG_ROLES: str = os.getenv("CLERK_ADMIN_ORG_ROLES", "admin,owner")
     # -----------------------------
     # GNEWS CONFIG (ONLY SOURCE)
     # -----------------------------
