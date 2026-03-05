@@ -13,6 +13,9 @@ from app.core.auth import require_admin
 from app.services.training_data_service import TrainingDataService
 from app.services.model_fine_tuning_service import ModelFineTuningService
 from app.services.admin_audit_service import AdminAuditService
+from app.core.cache import get_redis, get_from_cache
+from app.core.gnews_counter import GNewsCounter
+from datetime import datetime, timedelta
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -327,3 +330,135 @@ async def get_admin_activity_summary(
     )
     
     return summary
+
+
+# --------------------------------------------------
+# ADMIN OVERVIEW / METRICS
+# --------------------------------------------------
+@router.get("/metrics")
+async def get_admin_metrics(
+    user=Depends(require_admin),
+    db=Depends(get_db),
+):
+    """
+    Return aggregated admin dashboard metrics:
+    - total_users: count of persisted users (if any)
+    - active_this_week: distinct users active in last 7 days (bookmarks/read_later/summary_logs)
+    - articles_indexed: sum of cached articles across categories
+    - avg_sentiment: average sentiment score from cached articles (pos=1, neutral=0, neg=-1)
+    """
+    now = datetime.utcnow()
+    start_week = now - timedelta(days=7)
+
+    # total users (may be 0 if users are not persisted)
+    try:
+        total_users = await db.users.count_documents({})
+    except Exception:
+        total_users = 0
+
+    # active this week (distinct user_ids across collections)
+    active_ids = set()
+    try:
+        bookmarks_ids = await db.bookmarks.distinct("user_id", {"created_at": {"$gte": start_week}})
+        readlater_ids = await db.read_later.distinct("user_id", {"created_at": {"$gte": start_week}})
+        summary_ids = await db.summary_logs.distinct("user_id", {"created_at": {"$gte": start_week}})
+
+        for _id in (bookmarks_ids or []):
+            if _id:
+                active_ids.add(_id)
+        for _id in (readlater_ids or []):
+            if _id:
+                active_ids.add(_id)
+        for _id in (summary_ids or []):
+            if _id:
+                active_ids.add(_id)
+    except Exception:
+        active_ids = set()
+
+    active_this_week = len(active_ids)
+
+    # articles indexed: sum cached articles for known categories
+    CATEGORIES = ["general", "nation", "business", "technology", "sports", "entertainment", "health"]
+    articles_indexed = 0
+    sentiment_score_total = 0.0
+    sentiment_count = 0
+
+    try:
+        for cat in CATEGORIES:
+            cache_key = f"gnews:{cat}"
+            cached = await get_from_cache(cache_key)
+            if cached and isinstance(cached, list):
+                articles_indexed += len(cached)
+                # compute sentiment avg from cached articles if present
+                for article in cached:
+                    sent = article.get("sentiment")
+                    if sent and isinstance(sent, dict):
+                        label = sent.get("label")
+                        # map labels
+                        if label == "positive" or label == "Positive":
+                            sentiment_score_total += 1
+                            sentiment_count += 1
+                        elif label == "negative" or label == "Negative":
+                            sentiment_score_total += -1
+                            sentiment_count += 1
+                        elif label == "neutral" or label == "Neutral":
+                            sentiment_score_total += 0
+                            sentiment_count += 1
+    except Exception:
+        articles_indexed = articles_indexed or 0
+
+    avg_sentiment = None
+    if sentiment_count > 0:
+        avg = sentiment_score_total / sentiment_count
+        # convert to a simple positive ratio (0..1) for display: (avg +1)/2
+        avg_sentiment = (avg + 1) / 2
+
+    return {
+        "total_users": total_users,
+        "active_this_week": active_this_week,
+        "articles_indexed": articles_indexed,
+        "avg_sentiment": avg_sentiment,
+    }
+
+
+# --------------------------------------------------
+# SYSTEM STATUS (Redis)
+# --------------------------------------------------
+@router.get("/system/status")
+async def get_system_status(
+    user=Depends(require_admin),
+):
+    """
+    Return simple system status including Redis INFO and GNews quota.
+    """
+    redis_client = await get_redis()
+    redis_info = {}
+    total_keys = None
+    try:
+        if redis_client is None:
+            redis_info = {"connected": False}
+        else:
+            info = await redis_client.info()
+            redis_info = {
+                "connected": True,
+                "used_memory_human": info.get("used_memory_human"),
+                "uptime_in_seconds": info.get("uptime_in_seconds"),
+            }
+            try:
+                total_keys = await redis_client.dbsize()
+            except Exception:
+                total_keys = None
+    except Exception:
+        redis_info = {"connected": False}
+
+    # include GNews hit status
+    try:
+        hits = await GNewsCounter.get_hit_status()
+    except Exception:
+        hits = None
+
+    return {
+        "redis": redis_info,
+        "redis_keys": total_keys,
+        "gnews_hits": hits,
+    }
