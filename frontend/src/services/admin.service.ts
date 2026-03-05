@@ -190,6 +190,9 @@ export const adminApi = {
   async getHitCounterStatus(): Promise<NewsStatus> {
     try {
       const response = await api.get('/api/news/status/hits');
+      // Backend may return a wrapper { status, hits, message }
+      // unwrap `hits` if present, otherwise return the response body directly.
+      if (response?.data?.hits) return response.data.hits;
       return response.data;
     } catch (error) {
       throw new Error(`Failed to fetch quota status: ${getErrorMessage(error)}`);
