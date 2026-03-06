@@ -76,6 +76,12 @@ export interface NewsStatus {
   reset_time_utc: string;
 }
 
+export interface AdminMetrics {
+  total_users: number;
+  active_this_week: number;
+  articles_indexed: number;
+  avg_sentiment: number | null; // either 0-1 fraction or 0-100 percent depending on backend
+}
 export const adminApi = {
   /**
    * Training & Fine-Tuning
@@ -263,6 +269,19 @@ export const adminApi = {
       return response.data;
     } catch (error) {
       throw new Error(`Failed to fetch profile stats: ${getErrorMessage(error)}`);
+    }
+  },
+
+  /**
+   * Admin dashboard metrics: total users, active this week,
+   * articles indexed, and average sentiment.
+   */
+  async getAdminMetrics(): Promise<AdminMetrics> {
+    try {
+      const response = await api.get('/api/admin/metrics');
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to fetch admin metrics: ${getErrorMessage(error)}`);
     }
   },
 };

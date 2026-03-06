@@ -46,6 +46,8 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ showNotification }
   const [_loading, setLoading] = useState(true);
   const [_trainingStats, setTrainingStats] = useState<any>(null);
   const [hitStatus, setHitStatus] = useState<any>(null);
+  const [metricsLoading, setMetricsLoading] = useState(true);
+  const [metricsError, setMetricsError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchMetrics = async () => {
@@ -58,23 +60,41 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ showNotification }
         const hits = await adminApi.getHitCounterStatus();
         setHitStatus(hits);
 
-        // Update KPIs
-        setKpis((prev) =>
-          prev.map((kpi) => {
-            switch (kpi.label) {
-              case 'Total Users':
-                return { ...kpi, value: '—' }; // Would need user count endpoint
-              case 'Active This Week':
-                return { ...kpi, value: '—' }; // Would need session tracking
-              case 'Articles Indexed':
-                return { ...kpi, value: '—' }; // Would need article count endpoint
-              case 'Avg Sentiment (Pos)':
-                return { ...kpi, value: '—' }; // Would need sentiment aggregate
-              default:
-                return kpi;
-            }
-          })
-        );
+        // Fetch admin metrics and update KPI cards
+        // Fetch admin metrics and update KPI cards with loading/error handling
+        setMetricsLoading(true);
+        setMetricsError(null);
+        try {
+          const metrics = await adminApi.getAdminMetrics();
+
+          const formatSentiment = (val: number | null) => {
+            if (val === null || val === undefined) return '—';
+            if (val > 0 && val <= 1) return `${Math.round(val * 100)}%`;
+            return `${Math.round(val)}%`;
+          };
+
+          setKpis((prev) =>
+            prev.map((kpi) => {
+              switch (kpi.label) {
+                case 'Total Users':
+                  return { ...kpi, value: metrics.total_users ?? '—' };
+                case 'Active This Week':
+                  return { ...kpi, value: metrics.active_this_week ?? '—' };
+                case 'Articles Indexed':
+                  return { ...kpi, value: metrics.articles_indexed ?? '—' };
+                case 'Avg Sentiment (Pos)':
+                  return { ...kpi, value: formatSentiment(metrics.avg_sentiment) };
+                default:
+                  return kpi;
+              }
+            })
+          );
+        } catch (err) {
+          console.error('Failed to fetch admin metrics', err);
+          setMetricsError(err instanceof Error ? err.message : 'Failed to load metrics');
+        } finally {
+          setMetricsLoading(false);
+        }
 
         setLoading(false);
       } catch (err) {
@@ -116,7 +136,13 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ showNotification }
               {kpi.label}
             </p>
             <p className="text-2xl font-bold text-slate-900 dark:text-white">
-              {kpi.value}
+              {metricsLoading ? (
+                <span className="inline-block h-8 w-24 rounded bg-slate-200 dark:bg-slate-700 animate-pulse" />
+              ) : metricsError ? (
+                <span className="text-sm font-semibold text-rose-600">Error</span>
+              ) : (
+                kpi.value
+              )}
             </p>
           </div>
         ))}
