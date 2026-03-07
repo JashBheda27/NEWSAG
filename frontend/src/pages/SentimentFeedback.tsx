@@ -9,12 +9,20 @@ export const SentimentFeedback: React.FC<SentimentFeedbackProps> = ({ showNotifi
   const [samples, setSamples] = useState<SentimentFeedbackType[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'positive' | 'neutral' | 'negative'>('all');
+  const [sentimentStats, setSentimentStats] = useState<any>(null);
 
   useEffect(() => {
     const fetchSamples = async () => {
       try {
         const data = await adminApi.getSentimentFeedback(100);
         setSamples(data.feedback);
+        // fetch distribution stats
+        try {
+          const s = await adminApi.getSentimentStats();
+          setSentimentStats(s);
+        } catch (err) {
+          console.error('Failed to load sentiment stats', err);
+        }
         setLoading(false);
       } catch (err) {
         showNotification(`Failed to load sentiment samples: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error');
@@ -114,15 +122,15 @@ export const SentimentFeedback: React.FC<SentimentFeedbackProps> = ({ showNotifi
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
           <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Positive</p>
-          <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">—%</p>
+          <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{sentimentStats?.percentages?.positive !== undefined ? `${sentimentStats.percentages.positive}%` : '—%'}</p>
         </div>
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
           <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Neutral</p>
-          <p className="text-3xl font-bold text-slate-600 dark:text-slate-400">—%</p>
+          <p className="text-3xl font-bold text-slate-600 dark:text-slate-400">{sentimentStats?.percentages?.neutral !== undefined ? `${sentimentStats.percentages.neutral}%` : '—%'}</p>
         </div>
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
           <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Negative</p>
-          <p className="text-3xl font-bold text-rose-600 dark:text-rose-400">—%</p>
+          <p className="text-3xl font-bold text-rose-600 dark:text-rose-400">{sentimentStats?.percentages?.negative !== undefined ? `${sentimentStats.percentages.negative}%` : '—%'}</p>
         </div>
       </div>
     </div>
