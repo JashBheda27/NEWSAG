@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { adminApi } from '../services/admin.service';
 
 interface SystemOpsProps {
@@ -8,6 +8,21 @@ interface SystemOpsProps {
 export const SystemOps: React.FC<SystemOpsProps> = ({ showNotification }) => {
   const [refreshing, setRefreshing] = useState<string | null>(null);
   const [resetting, setResetting] = useState(false);
+
+  const [systemStatus, setSystemStatus] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const sys = await adminApi.getSystemStatus();
+        setSystemStatus(sys);
+      } catch (err) {
+        console.error('Admin dashboard fetch failed', err);
+      }
+    };
+
+    fetchStatus();
+  }, []);
 
   const handleRefreshCache = async (category?: string) => {
     setRefreshing(category || 'all');
@@ -105,15 +120,15 @@ export const SystemOps: React.FC<SystemOpsProps> = ({ showNotification }) => {
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-sm">Today's Hits</span>
-                <span className="font-semibold text-slate-900 dark:text-white">—</span>
+                <span className="font-semibold text-slate-900 dark:text-white">{systemStatus?.gnews?.today_hits ?? '—'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm">Remaining</span>
-                <span className="font-semibold text-slate-900 dark:text-white">—</span>
+                <span className="font-semibold text-slate-900 dark:text-white">{systemStatus?.gnews?.remaining ?? '—'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm">Reset Time (UTC)</span>
-                <span className="font-semibold text-slate-900 dark:text-white">—</span>
+                <span className="font-semibold text-slate-900 dark:text-white">{systemStatus?.gnews?.reset_time ?? '—'}</span>
               </div>
             </div>
           </div>
@@ -163,11 +178,11 @@ export const SystemOps: React.FC<SystemOpsProps> = ({ showNotification }) => {
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Latency</span>
-                <span className="text-slate-900 dark:text-white">—</span>
+                <span className="text-slate-900 dark:text-white">{systemStatus?.database?.latency_ms ? `${systemStatus.database.latency_ms.toFixed(1)} ms` : '—'}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Collections</span>
-                <span className="text-slate-900 dark:text-white">—</span>
+                <span className="text-slate-900 dark:text-white">{systemStatus?.database?.collections ?? '—'}</span>
               </div>
             </div>
           </div>
