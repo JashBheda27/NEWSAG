@@ -16,6 +16,8 @@ from app.services.admin_audit_service import AdminAuditService
 from app.core.cache import get_redis, get_from_cache
 from app.core.gnews_counter import GNewsCounter
 from datetime import datetime, timedelta
+import time
+import os
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -35,10 +37,54 @@ async def get_training_stats(
     """
     stats = await TrainingDataService.get_training_stats(db)
     model_info = ModelFineTuningService.get_model_info()
-    
+
+    # Get sample counts and last trained times
+    try:
+        sentiment_samples = await db.sentiment_training.count_documents({})
+    except Exception:
+        sentiment_samples = 0
+
+    try:
+        credibility_samples = await db.credibility_training.count_documents({})
+    except Exception:
+        credibility_samples = 0
+
+    def _get_mtime(path):
+        try:
+            if path:
+                return datetime.utcfromtimestamp(os.path.getmtime(path)).isoformat()
+        except Exception:
+            return None
+
+    sentiment_last = _get_mtime(model_info.get("sentiment", {}).get("fine_tuned_path"))
+    credibility_last = _get_mtime(model_info.get("credibility", {}).get("fine_tuned_path"))
+
+    # Recent fine-tune jobs from audit logs
+    recent_jobs = []
+    try:
+        cursor = db.admin_audit_logs.find({"action": "fine_tune"}).sort("created_at", -1).limit(10)
+        async for doc in cursor:
+            recent_jobs.append({
+                "model": doc.get("resource_type", "unknown").replace("_model", ""),
+                "date": doc.get("created_at").isoformat() if doc.get("created_at") else None,
+                "samples": doc.get("details", {}).get("samples_used") or doc.get("details", {}).get("min_samples"),
+                "status": "completed" if doc.get("success", True) else "failed",
+            })
+    except Exception:
+        recent_jobs = []
+
     return {
         "training_data": stats,
         "models": model_info,
+        "sentiment_model": {
+            "last_trained": sentiment_last,
+            "training_samples": sentiment_samples,
+        },
+        "credibility_model": {
+            "last_trained": credibility_last,
+            "training_samples": credibility_samples,
+        },
+        "recent_jobs": recent_jobs,
     }
 
 
@@ -427,10 +473,12 @@ async def get_admin_metrics(
 @router.get("/system/status")
 async def get_system_status(
     user=Depends(require_admin),
+    db=Depends(get_db),
 ):
     """
     Return simple system status including Redis INFO and GNews quota.
     """
+    logger.info("[ADMIN] Fetching system status")
     redis_client = await get_redis()
     redis_info = {}
     total_keys = None
@@ -439,10 +487,23 @@ async def get_system_status(
             redis_info = {"connected": False}
         else:
             info = await redis_client.info()
+            # compute hit rate if possible
+            hits = info.get("keyspace_hits", 0) or 0
+            misses = info.get("keyspace_misses", 0) or 0
+            hit_rate = None
+            try:
+                total = int(hits) + int(misses)
+                hit_rate = (int(hits) / total) * 100 if total > 0 else None
+            except Exception:
+                hit_rate = None
+
             redis_info = {
                 "connected": True,
                 "used_memory_human": info.get("used_memory_human"),
                 "uptime_in_seconds": info.get("uptime_in_seconds"),
+                "keyspace_hits": hits,
+                "keyspace_misses": misses,
+                "hit_rate": hit_rate,
             }
             try:
                 total_keys = await redis_client.dbsize()
@@ -457,8 +518,103 @@ async def get_system_status(
     except Exception:
         hits = None
 
+    # Database ping + collections
+    db_status = {"connected": False, "latency_ms": None, "collections": None}
+    try:
+        start = time.time()
+        await db.command({"ping": 1})
+        latency = (time.time() - start) * 1000
+        cols = await db.list_collection_names()
+        db_status = {
+            "connected": True,
+            "latency_ms": latency,
+            "collections": len(cols) if cols is not None else None,
+        }
+    except Exception:
+        db_status = {"connected": False}
+
+    # Build normalized gnews info
+    gnews_info = None
+    try:
+        if hits:
+            reset_time = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+            gnews_info = {
+                "today_hits": hits.get("today_hits") if isinstance(hits, dict) else None,
+                "remaining": hits.get("remaining_hits") if isinstance(hits, dict) else None,
+                "limit": hits.get("max_hits") if isinstance(hits, dict) else None,
+                "reset_time": reset_time.isoformat() + "Z",
+            }
+    except Exception:
+        gnews_info = None
+
     return {
-        "redis": redis_info,
-        "redis_keys": total_keys,
-        "gnews_hits": hits,
+        "database": db_status,
+        "redis": {
+            "connected": redis_info.get("connected", False),
+            "hit_rate": redis_info.get("hit_rate"),
+            "memory_usage": redis_info.get("used_memory_human"),
+        },
+        "gnews": gnews_info,
+    }
+
+
+# --------------------------------------------------
+# SENTIMENT STATS
+# --------------------------------------------------
+@router.get("/sentiment/stats")
+async def get_sentiment_stats(
+    user=Depends(require_admin),
+    db=Depends(get_db),
+):
+    """
+    Aggregate sentiment distribution counts and percentages.
+    """
+    logger.info("[ADMIN] Fetching sentiment stats")
+    pipeline = [
+        {"$group": {"_id": "$final_label", "count": {"$sum": 1}}}
+    ]
+
+    counts = {"positive": 0, "neutral": 0, "negative": 0}
+    total = 0
+    try:
+        cursor = db.sentiment_training.aggregate(pipeline)
+        async for doc in cursor:
+            label = (doc.get("_id") or "").lower()
+            c = int(doc.get("count", 0))
+            total += c
+            if "pos" in label:
+                counts["positive"] = c
+            elif "neu" in label:
+                counts["neutral"] = c
+            elif "neg" in label:
+                counts["negative"] = c
+            else:
+                # try mapping explicit labels
+                if label == "positive":
+                    counts["positive"] = c
+                elif label == "neutral":
+                    counts["neutral"] = c
+                elif label == "negative":
+                    counts["negative"] = c
+    except Exception:
+        # fallback to simple counts
+        try:
+            counts["positive"] = await db.sentiment_training.count_documents({"final_label": {"$in": ["positive", "Positive"]}})
+            counts["neutral"] = await db.sentiment_training.count_documents({"final_label": {"$in": ["neutral", "Neutral"]}})
+            counts["negative"] = await db.sentiment_training.count_documents({"final_label": {"$in": ["negative", "Negative"]}})
+            total = counts["positive"] + counts["neutral"] + counts["negative"]
+        except Exception:
+            total = 0
+
+    # compute percentages
+    percentages = {"positive": 0, "neutral": 0, "negative": 0}
+    if total > 0:
+        percentages = {
+            k: round((v / total) * 100, 1) for k, v in counts.items()
+        }
+
+    return {
+        "counts": counts,
+        "total": total,
+        "percentages": percentages,
     }
