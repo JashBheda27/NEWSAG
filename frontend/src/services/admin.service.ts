@@ -284,6 +284,23 @@ export const adminApi = {
       throw new Error(`Failed to fetch admin metrics: ${getErrorMessage(error)}`);
     }
   },
+  async getSystemStatus(): Promise<any> {
+    try {
+      const response = await api.get('/api/admin/system/status');
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to fetch system status: ${getErrorMessage(error)}`);
+    }
+  },
+
+  async getSentimentStats(): Promise<{ counts: Record<string, number>; total: number; percentages: Record<string, number> }> {
+    try {
+      const response = await api.get('/api/admin/sentiment/stats');
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to fetch sentiment stats: ${getErrorMessage(error)}`);
+    }
+  },
 };
 
 export default adminApi;
