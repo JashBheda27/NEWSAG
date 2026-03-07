@@ -46,6 +46,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ showNotification }
   const [_loading, setLoading] = useState(true);
   const [_trainingStats, setTrainingStats] = useState<any>(null);
   const [hitStatus, setHitStatus] = useState<any>(null);
+  const [systemStatus, setSystemStatus] = useState<any>(null);
   const [metricsLoading, setMetricsLoading] = useState(true);
   const [metricsError, setMetricsError] = useState<string | null>(null);
 
@@ -59,6 +60,16 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ showNotification }
         // Fetch GNews hit status
         const hits = await adminApi.getHitCounterStatus();
         setHitStatus(hits);
+
+        // Fetch system status (redis/db/gnews)
+        try {
+          const sys = await adminApi.getSystemStatus();
+          setSystemStatus(sys);
+        } catch (err) {
+          console.error('Failed to fetch system status', err);
+        }
+
+        // (sentiment distribution shown on Sentiment Feedback page)
 
         // Fetch admin metrics and update KPI cards
         // Fetch admin metrics and update KPI cards with loading/error handling
@@ -208,11 +219,11 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ showNotification }
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-slate-600 dark:text-slate-400">Hit Rate</span>
-              <span className="text-sm font-medium text-slate-900 dark:text-white">—</span>
+              <span className="text-sm font-medium text-slate-900 dark:text-white">{systemStatus?.redis?.hit_rate ? `${systemStatus.redis.hit_rate.toFixed(1)}%` : '—'}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-slate-600 dark:text-slate-400">Memory Usage</span>
-              <span className="text-sm font-medium text-slate-900 dark:text-white">—</span>
+              <span className="text-sm font-medium text-slate-900 dark:text-white">{systemStatus?.redis?.memory_usage ?? '—'}</span>
             </div>
           </div>
         </div>
@@ -250,6 +261,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ showNotification }
           </div>
         </div>
       </div>
+      {/* Sentiment distribution is shown on the Sentiment Feedback page */}
     </div>
   );
 };
