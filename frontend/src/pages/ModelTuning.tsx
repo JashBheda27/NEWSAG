@@ -8,12 +8,14 @@ interface ModelTuningProps {
 export const ModelTuning: React.FC<ModelTuningProps> = ({ showNotification }) => {
   const [_loading, setLoading] = useState(true);
   const [tuning, setTuning] = useState<'sentiment' | 'credibility' | null>(null);
+  const [trainingStats, setTrainingStats] = useState<any>(null);
   const jobs: any[] = []; // Placeholder - backend endpoint not yet implemented
 
   useEffect(() => {
     const fetchJobs = async () => {
       try {
-        // TODO: Implement jobs endpoint in backend
+        const stats = await adminApi.getTrainingStats();
+        setTrainingStats(stats);
         setLoading(false);
       } catch (err) {
         showNotification(`Failed to load tuning jobs: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error');
@@ -75,11 +77,11 @@ export const ModelTuning: React.FC<ModelTuningProps> = ({ showNotification }) =>
           <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-slate-600 dark:text-slate-400">Last trained</span>
-              <span className="font-medium text-slate-900 dark:text-white">—</span>
+              <span className="font-medium text-slate-900 dark:text-white">{trainingStats?.sentiment_model?.last_trained ? new Date(trainingStats.sentiment_model.last_trained).toLocaleString() : '—'}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-slate-600 dark:text-slate-400">Training samples</span>
-              <span className="font-medium text-slate-900 dark:text-white">—</span>
+              <span className="font-medium text-slate-900 dark:text-white">{trainingStats?.sentiment_model?.training_samples ?? '—'}</span>
             </div>
           </div>
         </div>
@@ -102,11 +104,11 @@ export const ModelTuning: React.FC<ModelTuningProps> = ({ showNotification }) =>
           <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-slate-600 dark:text-slate-400">Last trained</span>
-              <span className="font-medium text-slate-900 dark:text-white">—</span>
+                <span className="font-medium text-slate-900 dark:text-white">{trainingStats?.credibility_model?.last_trained ? new Date(trainingStats.credibility_model.last_trained).toLocaleString() : '—'}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-slate-600 dark:text-slate-400">Training samples</span>
-              <span className="font-medium text-slate-900 dark:text-white">—</span>
+                <span className="font-medium text-slate-900 dark:text-white">{trainingStats?.credibility_model?.training_samples ?? '—'}</span>
             </div>
           </div>
         </div>
