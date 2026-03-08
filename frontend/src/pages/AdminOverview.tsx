@@ -46,6 +46,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ showNotification }
   const [_loading, setLoading] = useState(true);
   const [_trainingStats, setTrainingStats] = useState<any>(null);
   const [hitStatus, setHitStatus] = useState<any>(null);
+  const [hitHistory, setHitHistory] = useState<Array<{date: string; count: number}>>([]);
   const [systemStatus, setSystemStatus] = useState<any>(null);
   const [metricsLoading, setMetricsLoading] = useState(true);
   const [metricsError, setMetricsError] = useState<string | null>(null);
@@ -60,6 +61,14 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ showNotification }
         // Fetch GNews hit status
         const hits = await adminApi.getHitCounterStatus();
         setHitStatus(hits);
+
+        // Fetch hit history (7 days)
+        try {
+          const history = await adminApi.getHitHistory(7);
+          setHitHistory(history.history || []);
+        } catch (err) {
+          console.error('Failed to fetch hit history', err);
+        }
 
         // Fetch system status (redis/db/gnews)
         try {
@@ -260,6 +269,32 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ showNotification }
             </div>
           </div>
         </div>
+      </div>
+
+      {/* GNews Hits History */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">GNews Hits (Last 7 days)</h3>
+        {hitHistory && hitHistory.length > 0 ? (
+          <div className="flex items-end gap-3 h-32">
+            {(() => {
+              const max = Math.max(...hitHistory.map(h => h.count), 1);
+              return hitHistory.map((h) => (
+                <div key={h.date} className="flex-1 text-center">
+                  <div className="h-full flex items-end justify-center">
+                    <div
+                      title={`${h.date}: ${h.count}`}
+                      className="bg-indigo-500 dark:bg-indigo-400 rounded-t-md transition-all"
+                      style={{ width: '70%', height: `${(h.count / max) * 100}%` }}
+                    />
+                  </div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">{h.date.split('-').slice(1).join('-')}</div>
+                </div>
+              ));
+            })()}
+          </div>
+        ) : (
+          <div className="text-sm text-slate-500">No history available</div>
+        )}
       </div>
       {/* Sentiment distribution is shown on the Sentiment Feedback page */}
     </div>
