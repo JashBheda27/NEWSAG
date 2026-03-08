@@ -18,6 +18,7 @@ from app.core.gnews_counter import GNewsCounter
 from datetime import datetime, timedelta
 import time
 import os
+from app.services.metrics_service import MetricsService
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -424,32 +425,57 @@ async def get_admin_metrics(
     active_this_week = len(active_ids)
 
     # articles indexed: sum cached articles for known categories
-    CATEGORIES = ["general", "nation", "business", "technology", "sports", "entertainment", "health"]
+    # Prefer DB-backed articles if available; fall back to cache if DB is empty
     articles_indexed = 0
     sentiment_score_total = 0.0
     sentiment_count = 0
 
     try:
-        for cat in CATEGORIES:
-            cache_key = f"gnews:{cat}"
-            cached = await get_from_cache(cache_key)
-            if cached and isinstance(cached, list):
-                articles_indexed += len(cached)
-                # compute sentiment avg from cached articles if present
-                for article in cached:
-                    sent = article.get("sentiment")
-                    if sent and isinstance(sent, dict):
-                        label = sent.get("label")
-                        # map labels
-                        if label == "positive" or label == "Positive":
+        # Try DB first
+        try:
+            articles_indexed = await db.articles.count_documents({})
+        except Exception:
+            articles_indexed = 0
+
+        if articles_indexed and articles_indexed > 0:
+            # compute avg sentiment from DB-stored sentiment field
+            cursor = db.articles.find({"sentiment": {"$exists": True}})
+            async for doc in cursor:
+                sent = doc.get("sentiment")
+                if sent and isinstance(sent, dict):
+                    label = sent.get("label")
+                    if label and isinstance(label, str):
+                        l = label.lower()
+                        if "pos" in l:
                             sentiment_score_total += 1
                             sentiment_count += 1
-                        elif label == "negative" or label == "Negative":
+                        elif "neg" in l:
                             sentiment_score_total += -1
                             sentiment_count += 1
-                        elif label == "neutral" or label == "Neutral":
+                        elif "neu" in l:
                             sentiment_score_total += 0
                             sentiment_count += 1
+        else:
+            # Fallback to cache-based calculation
+            CATEGORIES = ["general", "nation", "business", "technology", "sports", "entertainment", "health"]
+            for cat in CATEGORIES:
+                cache_key = f"gnews:{cat}"
+                cached = await get_from_cache(cache_key)
+                if cached and isinstance(cached, list):
+                    articles_indexed += len(cached)
+                    for article in cached:
+                        sent = article.get("sentiment")
+                        if sent and isinstance(sent, dict):
+                            label = sent.get("label")
+                            if label == "positive" or label == "Positive":
+                                sentiment_score_total += 1
+                                sentiment_count += 1
+                            elif label == "negative" or label == "Negative":
+                                sentiment_score_total += -1
+                                sentiment_count += 1
+                            elif label == "neutral" or label == "Neutral":
+                                sentiment_score_total += 0
+                                sentiment_count += 1
     except Exception:
         articles_indexed = articles_indexed or 0
 
@@ -618,3 +644,33 @@ async def get_sentiment_stats(
         "total": total,
         "percentages": percentages,
     }
+
+
+@router.get("/metrics/hits")
+async def get_hit_history(
+    days: int = 7,
+    user=Depends(require_admin),
+    db=Depends(get_db),
+):
+    """
+    Return daily hit counts for the past `days` days (default 7).
+    Each entry contains: { date: YYYY-MM-DD, count: int, hours: {HH: count, ...} }
+    """
+    results = []
+    try:
+        now = datetime.utcnow()
+        for i in range(days - 1, -1, -1):
+            d = (now - timedelta(days=i)).strftime("%Y-%m-%d")
+            doc = await MetricsService.get_daily_hits(d)
+            if doc:
+                results.append({
+                    "date": d,
+                    "count": int(doc.get("count", 0)),
+                    "hours": doc.get("hours", {}),
+                })
+            else:
+                results.append({"date": d, "count": 0, "hours": {}})
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to retrieve hit history")
+
+    return {"days": days, "history": results}
