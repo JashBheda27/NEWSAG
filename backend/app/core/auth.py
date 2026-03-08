@@ -17,6 +17,9 @@ import os
 import httpx
 import json
 import logging
+from datetime import datetime
+
+from app.core.database import get_db
 
 logger = logging.getLogger(__name__)
 
@@ -157,6 +160,7 @@ async def _validate_token(token: str) -> dict:
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
+    db=Depends(get_db),
 ) -> dict:
     """
     REQUIRED authentication - raises 401 if not authenticated.
@@ -165,7 +169,21 @@ async def get_current_user(
     Returns:
         dict: {"user_id": str, "email": str, "is_admin": bool}
     """
-    return await _validate_token(credentials.credentials)
+    user = await _validate_token(credentials.credentials)
+
+    # Upsert minimal user record into db.users for admin dashboard counts
+    try:
+        doc = {
+            "user_id": user.get("user_id"),
+            "email": user.get("email"),
+            "last_seen": datetime.utcnow(),
+        }
+        # Set created_at only on insert
+        await db.users.update_one({"user_id": doc["user_id"]}, {"$set": doc, "$setOnInsert": {"created_at": datetime.utcnow()}}, upsert=True)
+    except Exception as e:
+        logger.warning(f"[AUTH] Failed to upsert user to DB: {e}")
+
+    return user
 
 
 # Semantic alias for clarity
@@ -174,6 +192,7 @@ require_auth = get_current_user
 
 async def require_admin(
     credentials: HTTPAuthorizationCredentials = Depends(security),
+    db=Depends(get_db),
 ) -> dict:
     """
     REQUIRED authentication + ADMIN role.
@@ -191,6 +210,17 @@ async def require_admin(
             detail="Admin access required",
         )
     
+    # Upsert admin user into DB (ensure admin presence is tracked)
+    try:
+        doc = {
+            "user_id": user.get("user_id"),
+            "email": user.get("email"),
+            "last_seen": datetime.utcnow(),
+        }
+        await db.users.update_one({"user_id": doc["user_id"]}, {"$set": doc, "$setOnInsert": {"created_at": datetime.utcnow()}}, upsert=True)
+    except Exception as e:
+        logger.warning(f"[AUTH] Failed to upsert admin user to DB: {e}")
+
     logger.info(f"[AUTH] Admin access granted to {user['user_id']}")
     return user
 
@@ -218,6 +248,20 @@ async def get_current_user_optional(
     try:
         user = await _validate_token(credentials.credentials)
         user["is_demo"] = False
+
+        # Upsert user on optional auth as well
+        try:
+            db = await get_db()
+            doc = {
+                "user_id": user.get("user_id"),
+                "email": user.get("email"),
+                "last_seen": datetime.utcnow(),
+            }
+            await db.users.update_one({"user_id": doc["user_id"]}, {"$set": doc, "$setOnInsert": {"created_at": datetime.utcnow()}}, upsert=True)
+        except Exception:
+            # best-effort only
+            pass
+
         return user
     except HTTPException:
         # Token invalid - fall back to demo user
