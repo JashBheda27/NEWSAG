@@ -9,6 +9,7 @@ from app.core.gnews_counter import GNewsCounter
 from app.core.auth import require_auth, require_admin
 from app.core.database import get_db
 from app.services.admin_audit_service import AdminAuditService
+from datetime import datetime
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -179,7 +180,7 @@ async def add_sentiment_to_articles(articles):
 # GET NEWS BY TOPIC (CACHE FIRST)
 # -----------------------------
 @router.get("/topic/{topic}")
-async def get_news_by_topic(topic: str):
+async def get_news_by_topic(topic: str, db=Depends(get_db)):
     """Fetch news by topic/category with caching"""
     # TODO: Future enhancement - include country/language/pagination in cache key
     cache_key = f"gnews:{topic}"
@@ -218,6 +219,28 @@ async def get_news_by_topic(topic: str):
     
     # ✅ Add credibility/fake news detection
     articles = await analyze_credibility(articles)
+
+    # Persist lightweight article metadata + sentiment to DB (upsert)
+    try:
+        for article in articles:
+            try:
+                doc = {
+                    "article_id": article.get("id"),
+                    "title": article.get("title"),
+                    "source": article.get("source"),
+                    "url": article.get("url"),
+                    "published_at": article.get("published_at"),
+                    "category": article.get("category"),
+                    "content_is_full": article.get("content_is_full", False),
+                    "cached_at": datetime.utcnow(),
+                }
+                if article.get("sentiment"):
+                    doc["sentiment"] = article.get("sentiment")
+                await db.articles.update_one({"article_id": doc["article_id"]}, {"$set": doc}, upsert=True)
+            except Exception as e:
+                logger.warning(f"[DB] Failed to upsert article {article.get('id')}: {e}")
+    except Exception:
+        logger.warning("[DB] Error while persisting articles to DB")
     
     await set_in_cache(cache_key, articles)
     full_count = sum(1 for article in articles if article.get("content_is_full"))
@@ -243,9 +266,9 @@ async def get_news_by_topic(topic: str):
 
 # Backward compatibility
 @router.get("/{category}")
-async def get_news(category: str):
+async def get_news(category: str, db=Depends(get_db)):
     """Fetch news by category (backward compatibility)"""
-    return await get_news_by_topic(category)
+    return await get_news_by_topic(category, db=db)
 
 # ✅ NEW: Get hit counter status
 @router.get("/status/hits")
@@ -347,7 +370,7 @@ async def refresh_category(
 # -----------------------------
 # REFRESH ALL (7 HITS) - PARALLELIZED
 # -----------------------------
-async def _refresh_single_category(cat: str, semaphore: asyncio.Semaphore) -> dict:
+async def _refresh_single_category(cat: str, semaphore: asyncio.Semaphore, db) -> dict:
     """Refresh a single category with semaphore for rate limiting."""
     async with semaphore:  # Limit concurrent API calls
         try:
@@ -357,6 +380,28 @@ async def _refresh_single_category(cat: str, semaphore: asyncio.Semaphore) -> di
             articles = await add_sentiment_to_articles(articles)
             # Add credibility/fake news detection
             articles = await analyze_credibility(articles)
+            # Persist articles to DB
+            try:
+                for article in articles:
+                    try:
+                        doc = {
+                            "article_id": article.get("id"),
+                            "title": article.get("title"),
+                            "source": article.get("source"),
+                            "url": article.get("url"),
+                            "published_at": article.get("published_at"),
+                            "category": article.get("category"),
+                            "content_is_full": article.get("content_is_full", False),
+                            "cached_at": datetime.utcnow(),
+                        }
+                        if article.get("sentiment"):
+                            doc["sentiment"] = article.get("sentiment")
+                        await db.articles.update_one({"article_id": doc["article_id"]}, {"$set": doc}, upsert=True)
+                    except Exception as e:
+                        logger.warning(f"[DB] Failed to upsert article {article.get('id')}: {e}")
+            except Exception:
+                logger.warning("[DB] Error while persisting articles to DB")
+
             await set_in_cache(f"gnews:{cat}", articles)
             return {"category": cat, "count": len(articles), "error": None}
         except Exception as e:
@@ -384,7 +429,7 @@ async def refresh_all(
     semaphore = asyncio.Semaphore(3)  # Max 3 concurrent fetches
     
     # ✅ Run all category refreshes in parallel (controlled by semaphore)
-    tasks = [_refresh_single_category(cat, semaphore) for cat in categories]
+    tasks = [_refresh_single_category(cat, semaphore, db) for cat in categories]
     results = await asyncio.gather(*tasks)
     
     total_articles = sum(r["count"] for r in results)
