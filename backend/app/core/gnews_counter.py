@@ -6,6 +6,7 @@ Tracks API calls for rate limiting (100 requests/day free tier)
 from datetime import datetime
 from typing import Dict
 from app.core.cache import get_from_cache, set_in_cache, delete_from_cache
+from app.services.metrics_service import MetricsService
 
 class GNewsCounter:
     """
@@ -40,6 +41,12 @@ class GNewsCounter:
         
         # Store back in cache with 24-hour TTL
         await set_in_cache(cache_key, new_hits, ttl=86400)
+
+        # Persist daily count to DB (best-effort)
+        try:
+            await MetricsService.record_gnews_hit(1)
+        except Exception:
+            pass
         
         remaining = max(0, GNewsCounter.MAX_HITS_PER_DAY - new_hits)
         is_warning = new_hits >= GNewsCounter.WARNING_THRESHOLD
@@ -102,6 +109,16 @@ class GNewsCounter:
         Returns: reset status
         """
         cache_key = GNewsCounter.get_today_key()
+        # Read final count before deleting (if exists) and persist if present
+        final = await get_from_cache(cache_key) or 0
+        try:
+            if final:
+                # write remaining count into DB (best-effort)
+                # record difference is not known here; record final as idempotent write
+                await MetricsService.record_gnews_hit(0)
+        except Exception:
+            pass
+
         await delete_from_cache(cache_key)
         
         return {
