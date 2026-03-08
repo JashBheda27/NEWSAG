@@ -121,6 +121,38 @@ async def create_indexes():
         )
         
         logger.info("[OK] Admin audit log indexes created")
+        # --------------------------------------------------
+        # ARTICLES COLLECTION
+        # --------------------------------------------------
+        # Index for article_id (unique)
+        await db.articles.create_index(
+            [("article_id", 1)],
+            unique=True,
+            name="idx_article_id_unique"
+        )
+        logger.info("[OK] Articles indexes created")
+
+        # --------------------------------------------------
+        # GNEWS HITS COLLECTION
+        # --------------------------------------------------
+        # Index for date field for fast daily lookups
+        await db.gnews_hits.create_index(
+            [("date", 1)],
+            unique=True,
+            name="idx_gnews_hits_date"
+        )
+        logger.info("[OK] GNews hits indexes created")
+
+        # --------------------------------------------------
+        # USERS COLLECTION
+        # --------------------------------------------------
+        # Index for user_id (unique)
+        await db.users.create_index(
+            [("user_id", 1)],
+            unique=True,
+            name="idx_users_user_id"
+        )
+        logger.info("[OK] Users indexes created")
         
         logger.info("[OK] All MongoDB indexes created successfully")
         
