@@ -2,7 +2,6 @@
 
 Complete guide to all documentation in the NewsAura project.
 
----
 
 ## 🗺️ Quick Navigation
 
