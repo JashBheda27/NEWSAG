@@ -284,6 +284,14 @@ export const adminApi = {
       throw new Error(`Failed to fetch admin metrics: ${getErrorMessage(error)}`);
     }
   },
+  async getHitHistory(days: number = 7): Promise<{ days: number; history: Array<{ date: string; count: number; hours?: Record<string, number> }> }> {
+    try {
+      const response = await api.get('/api/admin/metrics/hits', { params: { days } });
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to fetch hit history: ${getErrorMessage(error)}`);
+    }
+  },
   async getSystemStatus(): Promise<any> {
     try {
       const response = await api.get('/api/admin/system/status');
