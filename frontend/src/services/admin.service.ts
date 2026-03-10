@@ -284,6 +284,15 @@ export const adminApi = {
       throw new Error(`Failed to fetch admin metrics: ${getErrorMessage(error)}`);
     }
   },
+  async getClerkUserCount(): Promise<{ total_users: number | null; source?: string }> {
+    try {
+      const response = await api.get('/api/admin/clerk-user-count');
+      return response.data;
+    } catch (error) {
+      // Return a neutral shape so callers can fallback
+      return { total_users: null, source: 'error' };
+    }
+  },
   async getHitHistory(days: number = 7): Promise<{ days: number; history: Array<{ date: string; count: number; hours?: Record<string, number> }> }> {
     try {
       const response = await api.get('/api/admin/metrics/hits', { params: { days } });
