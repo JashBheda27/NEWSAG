@@ -23,12 +23,11 @@ api.interceptors.request.use(async (config) => {
 
   const token = await tokenProvider();
   if (token) {
-    config.headers = {
-      ...config.headers,
-      Authorization: `Bearer ${token}`,
-    };
-  } else if (config.headers && 'Authorization' in config.headers) {
-    delete (config.headers as Record<string, unknown>).Authorization;
+    // Use a cast to avoid Axios header typing issues
+    (config.headers as Record<string, string | number | boolean | undefined>)['Authorization'] = `Bearer ${token}`;
+  } else if (config.headers) {
+    // safe delete with cast
+    delete (config.headers as Record<string, unknown>)['Authorization'];
   }
 
   return config;
