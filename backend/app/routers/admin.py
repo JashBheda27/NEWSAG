@@ -19,6 +19,7 @@ from datetime import datetime, timedelta
 import time
 import os
 from app.services.metrics_service import MetricsService
+from app.services.clerk_service import get_clerk_user_count
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -397,11 +398,20 @@ async def get_admin_metrics(
     now = datetime.utcnow()
     start_week = now - timedelta(days=7)
 
-    # total users (may be 0 if users are not persisted)
+    # total users: prefer authoritative Clerk count when available
+    total_users = 0
     try:
-        total_users = await db.users.count_documents({})
+        clerk_count = await get_clerk_user_count()
+        if clerk_count is not None:
+            total_users = clerk_count
+        else:
+            total_users = await db.users.count_documents({})
     except Exception:
-        total_users = 0
+        # fallback to DB count if Clerk fails
+        try:
+            total_users = await db.users.count_documents({})
+        except Exception:
+            total_users = 0
 
     # active this week (distinct user_ids across collections)
     active_ids = set()
@@ -491,6 +501,21 @@ async def get_admin_metrics(
         "articles_indexed": articles_indexed,
         "avg_sentiment": avg_sentiment,
     }
+
+
+@router.get("/clerk-user-count")
+async def get_clerk_user_count_endpoint(
+    user=Depends(require_admin),
+):
+    """Return authoritative user count from Clerk (server-side)."""
+    try:
+        count = await get_clerk_user_count()
+        if count is None:
+            raise Exception("Clerk API not configured or failed")
+        return {"total_users": count, "source": "clerk"}
+    except Exception:
+        # Fallback response when Clerk not available
+        return {"total_users": None, "source": "clerk_unavailable"}
 
 
 # --------------------------------------------------
