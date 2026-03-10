@@ -53,11 +53,24 @@ async def get_jwks():
     if _jwks_cache:
         return _jwks_cache
 
-    async with httpx.AsyncClient() as client:
-        res = await client.get(CLERK_JWKS_URL)
-        res.raise_for_status()
-        _jwks_cache = res.json()
-        return _jwks_cache
+    # Defensive checks and logging for JWKS fetch
+    if not CLERK_JWKS_URL:
+        logger.error("[AUTH] CLERK_JWKS_URL is not configured (CLERK_ISSUER missing)")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Clerk issuer not configured")
+
+    logger.debug(f"[AUTH] Fetching JWKS from {CLERK_JWKS_URL}")
+    try:
+        async with httpx.AsyncClient() as client:
+            res = await client.get(CLERK_JWKS_URL, timeout=10)
+            res.raise_for_status()
+            _jwks_cache = res.json()
+            return _jwks_cache
+    except httpx.HTTPStatusError as he:
+        logger.warning(f"[AUTH] Failed to fetch JWKS from {CLERK_JWKS_URL}: {he}")
+        raise
+    except Exception as e:
+        logger.warning(f"[AUTH] Failed to fetch JWKS from {CLERK_JWKS_URL}: {e}")
+        raise
 
 
 async def _validate_token(token: str) -> dict:
