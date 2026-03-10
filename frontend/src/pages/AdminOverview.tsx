@@ -109,6 +109,20 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ showNotification }
               }
             })
           );
+          // If metrics.total_users is null or 0, attempt authoritative Clerk count
+          if (!metrics.total_users || metrics.total_users === 0) {
+            try {
+              const clerk = await adminApi.getClerkUserCount();
+              if (clerk) {
+                const display = typeof clerk.total_users === 'number' ? clerk.total_users : '—';
+                setKpis((prev) =>
+                  prev.map((kpi) => (kpi.label === 'Total Users' ? { ...kpi, value: display } : kpi))
+                );
+              }
+            } catch (e) {
+              // ignore fallback errors
+            }
+          }
         } catch (err) {
           console.error('Failed to fetch admin metrics', err);
           setMetricsError(err instanceof Error ? err.message : 'Failed to load metrics');
