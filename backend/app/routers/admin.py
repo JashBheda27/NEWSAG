@@ -66,12 +66,43 @@ async def get_training_stats(
     try:
         cursor = db.admin_audit_logs.find({"action": "fine_tune"}).sort("created_at", -1).limit(10)
         async for doc in cursor:
+            details = doc.get("details", {})
+            normalized_status = details.get("status")
+            if normalized_status == "success":
+                normalized_status = "completed"
+            elif normalized_status == "error":
+                normalized_status = "failed"
+
             recent_jobs.append({
                 "model": doc.get("resource_type", "unknown").replace("_model", ""),
                 "date": doc.get("created_at").isoformat() if doc.get("created_at") else None,
-                "samples": doc.get("details", {}).get("samples_used") or doc.get("details", {}).get("min_samples"),
-                "status": "completed" if doc.get("success", True) else "failed",
+                "samples": details.get("samples_used") or details.get("samples_available") or details.get("min_samples"),
+                "samples_used": details.get("samples_used"),
+                "samples_available": details.get("samples_available"),
+                "min_required": details.get("min_required") or details.get("min_samples"),
+                "status": normalized_status or ("completed" if doc.get("success", True) else "failed"),
+                "training_loss": details.get("training_loss"),
+                "eval_loss": details.get("eval_loss"),
+                "duration_seconds": details.get("duration_seconds"),
             })
+
+        # Derive last_trained from audit logs for more reliable tracking
+        try:
+            sentiment_last_audit = await db.admin_audit_logs.find_one(
+                {"action": "fine_tune", "resource_type": "sentiment_model", "details.status": "success"},
+                sort=[("created_at", -1)]
+            )
+            if sentiment_last_audit:
+                sentiment_last = sentiment_last_audit.get("created_at").isoformat() if sentiment_last_audit.get("created_at") else sentiment_last
+        
+            credibility_last_audit = await db.admin_audit_logs.find_one(
+                {"action": "fine_tune", "resource_type": "credibility_model", "details.status": "success"},
+                sort=[("created_at", -1)]
+            )
+            if credibility_last_audit:
+                credibility_last = credibility_last_audit.get("created_at").isoformat() if credibility_last_audit.get("created_at") else credibility_last
+        except Exception:
+            pass
     except Exception:
         recent_jobs = []
 
@@ -123,8 +154,18 @@ async def fine_tune_sentiment_model(
         admin_user_id=admin_id,
         action="fine_tune",
         resource_type="sentiment_model",
-        details={"min_samples": min_samples, "epochs": epochs},
-        success=True,
+        details={
+            "min_samples": min_samples,
+            "epochs": epochs,
+            "status": result.get("status"),
+            "samples_used": result.get("samples_used"),
+            "samples_available": result.get("samples_available"),
+            "min_required": result.get("min_required"),
+            "training_loss": result.get("training_loss"),
+            "eval_loss": result.get("eval_loss"),
+            "duration_seconds": result.get("duration_seconds"),
+        },
+        success=result.get("status") in ["success", "skipped"],
     )
     
     return result
@@ -163,8 +204,18 @@ async def fine_tune_credibility_model(
         admin_user_id=admin_id,
         action="fine_tune",
         resource_type="credibility_model",
-        details={"min_samples": min_samples, "epochs": epochs},
-        success=True,
+        details={
+            "min_samples": min_samples,
+            "epochs": epochs,
+            "status": result.get("status"),
+            "samples_used": result.get("samples_used"),
+            "samples_available": result.get("samples_available"),
+            "min_required": result.get("min_required"),
+            "training_loss": result.get("training_loss"),
+            "eval_loss": result.get("eval_loss"),
+            "duration_seconds": result.get("duration_seconds"),
+        },
+        success=result.get("status") in ["success", "skipped"],
     )
     
     return result
