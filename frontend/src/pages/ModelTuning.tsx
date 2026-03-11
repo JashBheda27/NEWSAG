@@ -9,7 +9,10 @@ export const ModelTuning: React.FC<ModelTuningProps> = ({ showNotification }) =>
   const [_loading, setLoading] = useState(true);
   const [tuning, setTuning] = useState<'sentiment' | 'credibility' | null>(null);
   const [trainingStats, setTrainingStats] = useState<any>(null);
-  const jobs: any[] = []; // Placeholder - backend endpoint not yet implemented
+  const jobs = (trainingStats?.recent_jobs || []).map((job: any, idx: number) => ({
+    ...job,
+    id: idx,
+  }));
 
   useEffect(() => {
     const fetchJobs = async () => {
@@ -47,12 +50,23 @@ export const ModelTuning: React.FC<ModelTuningProps> = ({ showNotification }) =>
       case 'running':
         return <span className="text-amber-500 animate-spin">⏳</span>;
       case 'completed':
+      case 'success':
         return <span className="text-emerald-500">✓</span>;
       case 'failed':
+      case 'error':
         return <span className="text-rose-500">✗</span>;
+      case 'skipped':
+        return <span className="text-slate-500">⊘</span>;
       default:
         return <span className="text-slate-400">⏳</span>;
     }
+  };
+
+  const getSamplesText = (job: any) => {
+    if (job.status === 'skipped' && job.samples_available != null && job.min_required != null) {
+      return `${job.samples_available}/${job.min_required} samples`;
+    }
+    return `${job.samples ?? '—'} samples`;
   };
 
   return (
@@ -129,7 +143,7 @@ export const ModelTuning: React.FC<ModelTuningProps> = ({ showNotification }) =>
           </div>
         ) : (
           <div className="space-y-3">
-            {jobs.map((job) => (
+            {jobs.map((job: any) => (
               <div
                 key={job.id}
                 className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-lg"
@@ -141,7 +155,7 @@ export const ModelTuning: React.FC<ModelTuningProps> = ({ showNotification }) =>
                       {job.model} model
                     </p>
                     <p className="text-sm text-slate-500 dark:text-slate-400">
-                      {job.samples_processed} samples • {new Date(job.started_at).toLocaleDateString()}
+                      {getSamplesText(job)} • {new Date(job.date).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
@@ -149,9 +163,9 @@ export const ModelTuning: React.FC<ModelTuningProps> = ({ showNotification }) =>
                   <p className="text-sm font-semibold text-slate-900 dark:text-white capitalize mb-1">
                     {job.status}
                   </p>
-                  {job.accuracy && (
+                  {job.training_loss && (
                     <p className="text-xs text-slate-600 dark:text-slate-400">
-                      Accuracy: {(job.accuracy * 100).toFixed(1)}%
+                      Loss: {job.training_loss.toFixed(4)}
                     </p>
                   )}
                 </div>
