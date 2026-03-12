@@ -9,6 +9,7 @@ class CommentCreateRequest(BaseModel):
     article_id: str
     article_title: str
     text: str
+    username: Optional[str] = None
 
 
 class CommentModel(MongoBase):
