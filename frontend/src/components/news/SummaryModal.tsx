@@ -242,7 +242,7 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
       )}
     </Modal>
     {isCommentsOpen && articleId && (
-      <Modal isOpen={isCommentsOpen} onClose={() => setIsCommentsOpen(false)} title="💬 Comments">
+      <Modal isOpen={isCommentsOpen} onClose={() => setIsCommentsOpen(false)} title="💬 Comments" accent="comments">
         <CommentSection articleId={articleId} articleTitle={title || ''} />
       </Modal>
     )}
