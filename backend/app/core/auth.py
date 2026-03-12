@@ -118,6 +118,18 @@ async def _validate_token(token: str) -> dict:
 
         user_id = payload["sub"]
         email = payload.get("email")
+
+        username = (
+            payload.get("username")
+            or payload.get("preferred_username")
+            or payload.get("user_name")
+        )
+        display_name = payload.get("name")
+        if not display_name:
+            first_name = payload.get("first_name") or payload.get("given_name")
+            last_name = payload.get("last_name") or payload.get("family_name")
+            full_name = " ".join(part for part in [first_name, last_name] if part)
+            display_name = full_name or username
         
         # Hybrid admin detection
         is_admin = user_id in ADMIN_USER_IDS
@@ -136,6 +148,8 @@ async def _validate_token(token: str) -> dict:
         return {
             "user_id": user_id,
             "email": email,
+            "username": username,
+            "name": display_name,
             "is_admin": is_admin,
         }
 
@@ -184,11 +198,13 @@ async def get_current_user(
     """
     user = await _validate_token(credentials.credentials)
 
-    # Upsert minimal user record into db.users for admin dashboard counts
+    # Upsert user record into db.users for dashboard counts + profile display.
     try:
         doc = {
             "user_id": user.get("user_id"),
             "email": user.get("email"),
+            "username": user.get("username"),
+            "name": user.get("name"),
             "last_seen": datetime.utcnow(),
         }
         # Set created_at only on insert
@@ -228,6 +244,8 @@ async def require_admin(
         doc = {
             "user_id": user.get("user_id"),
             "email": user.get("email"),
+            "username": user.get("username"),
+            "name": user.get("name"),
             "last_seen": datetime.utcnow(),
         }
         await db.users.update_one({"user_id": doc["user_id"]}, {"$set": doc, "$setOnInsert": {"created_at": datetime.utcnow()}}, upsert=True)
@@ -268,6 +286,8 @@ async def get_current_user_optional(
             doc = {
                 "user_id": user.get("user_id"),
                 "email": user.get("email"),
+                "username": user.get("username"),
+                "name": user.get("name"),
                 "last_seen": datetime.utcnow(),
             }
             await db.users.update_one({"user_id": doc["user_id"]}, {"$set": doc, "$setOnInsert": {"created_at": datetime.utcnow()}}, upsert=True)
