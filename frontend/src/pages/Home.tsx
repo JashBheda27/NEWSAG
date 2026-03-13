@@ -110,7 +110,7 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
 
   return (
     <motion.div 
-      className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12"
+      className="w-full max-w-[1520px] mx-auto px-3 sm:px-4 lg:px-5 py-8 sm:py-12"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4 }}
