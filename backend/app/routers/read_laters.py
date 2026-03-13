@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from bson import ObjectId
 from app.core.database import get_db
 from app.core.auth import require_auth
@@ -24,7 +24,11 @@ async def add_read_later(
     })
 
     if exists:
-        raise HTTPException(status_code=400, detail="Already in Read Later")
+        return {
+            "message": "Already in Read Later",
+            "id": str(exists.get("_id")),
+            "created_at": exists.get("created_at"),
+        }
 
     data = item.dict()
     data["user_id"] = user_id
@@ -119,6 +123,35 @@ async def remove_read_later(
     result = await db.read_later.delete_one({
         "_id": ObjectId(item_id),
         "user_id": user_id,
+    })
+
+    if result.deleted_count == 0:
+        raise HTTPException(
+            status_code=404,
+            detail="Item not found or unauthorized",
+        )
+
+    return {"message": "Removed from Read Later"}
+
+
+@router.delete("/")
+async def remove_read_later_by_article(
+    article_id: str = Query(..., min_length=1),
+    user=Depends(require_auth),
+    db=Depends(get_db),
+):
+    """
+    Remove read-later entry by logical article identifier (article_id/url).
+    This keeps frontend toggles stable when item ObjectId is not available in card state.
+    """
+    user_id = user["user_id"]
+
+    result = await db.read_later.delete_one({
+        "user_id": user_id,
+        "$or": [
+            {"article_id": article_id},
+            {"url": article_id},
+        ],
     })
 
     if result.deleted_count == 0:
