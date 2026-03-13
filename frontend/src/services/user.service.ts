@@ -91,6 +91,13 @@ export const userService = {
       throw new Error(getErrorMessage(err));
     }
   },
+  removeFromReadLaterByArticleId: async (articleId: string): Promise<void> => {
+    try {
+      await api.delete('/api/read-later/', { params: { article_id: articleId } });
+    } catch (err) {
+      throw new Error(getErrorMessage(err));
+    }
+  },
 
   // Comments
   getComments: async (articleId: string): Promise<Comment[]> => {
