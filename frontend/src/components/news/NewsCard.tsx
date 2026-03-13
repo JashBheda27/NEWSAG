@@ -9,6 +9,7 @@ import { Modal } from '../ui/Modal';
 import { formatRelativeTime, getReadTimeText } from '../../utils/timeUtils';
 import { openChatWithArticle } from '../../utils/chatEvents';
 import { SUPPORTED_LANGUAGES } from '../../utils/constants';
+import { Bookmark, Bot, Check, Clock3, MessageCircle, Sparkles, ThumbsUp, TriangleAlert } from 'lucide-react';
 
 // Lazy load heavy components
 const CommentSection = lazy(() => import('./commentSection').then(m => ({ default: m.CommentSection })));
@@ -18,6 +19,13 @@ const SENTIMENT_OPTIONS = ['Positive', 'Neutral', 'Negative'] as const;
 
 // Alias for backward compatibility
 const LANGUAGES = SUPPORTED_LANGUAGES;
+
+const ACTION_BTN_BASE = 'relative inline-flex items-center justify-center p-2.5 rounded-xl transition-all duration-200 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900';
+const ACTION_BTN_INACTIVE = 'text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-105';
+const ACTION_BTN_ACTIVE_PRIMARY = 'text-white bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg shadow-indigo-500/30';
+const ACTION_BTN_ACTIVE_SUCCESS = 'text-white bg-gradient-to-br from-emerald-500 to-green-600 shadow-lg shadow-emerald-500/30';
+const ACTION_BTN_ACTIVE_WARNING = 'text-white bg-gradient-to-br from-orange-500 to-amber-600 shadow-lg shadow-orange-500/30';
+const ACTION_ICON_CLASS = 'w-[17px] h-[17px] stroke-[1.9] transition-transform duration-200';
 
 interface NewsCardProps {
   article: Article;
@@ -215,11 +223,13 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
 
   const toggleReadLater = useCallback(async () => {
     try {
+      const articleIdValue = article.url || article.id;
+
       if (isInReadLater) {
-        await userService.removeFromReadLater(article.url);
+        await userService.removeFromReadLaterByArticleId(articleIdValue);
       } else {
         await userService.addToReadLater({
-          article_id: article.id,
+          article_id: articleIdValue,
           title: article.title,
           source: sourceValue,
           url: article.url,
@@ -274,55 +284,45 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
             {article.description}
           </p>
 
-          <div className="mt-auto flex items-center justify-between">
+          <div className="mt-auto flex flex-wrap items-center justify-between gap-y-2">
             <div className="flex gap-1.5">
               <button 
                 onClick={toggleBookmark}
-                className={`p-2.5 rounded-xl transition-all duration-200 ${isBookmarked ? 'text-white bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25' : 'text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-105'}`}
+                className={`${ACTION_BTN_BASE} ${isBookmarked ? ACTION_BTN_ACTIVE_PRIMARY : ACTION_BTN_INACTIVE}`}
                 title="Bookmark"
               >
-                <svg className="w-4 h-4" fill={isBookmarked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                </svg>
+                <Bookmark className={`${ACTION_ICON_CLASS} ${isBookmarked ? 'scale-105' : ''}`} />
               </button>
               <button 
                 onClick={toggleReadLater}
-                className={`p-2.5 rounded-xl transition-all duration-200 ${isInReadLater ? 'text-white bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25' : 'text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-105'}`}
+                className={`${ACTION_BTN_BASE} ${isInReadLater ? ACTION_BTN_ACTIVE_PRIMARY : ACTION_BTN_INACTIVE}`}
                 title="Read Later"
               >
-                <svg className="w-4 h-4" fill={isInReadLater ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+                <Clock3 className={`${ACTION_ICON_CLASS} ${isInReadLater ? 'scale-105' : ''}`} />
               </button>
               <button 
                 onClick={() => setIsCommentsOpen(true)}
-                className="p-2.5 rounded-xl transition-all duration-200 text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-105"
+                className={`${ACTION_BTN_BASE} ${ACTION_BTN_INACTIVE}`}
                 title="Comments"
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
+                <MessageCircle className={ACTION_ICON_CLASS} />
               </button>
               
               {/* ✅ ML Feedback Button (List View) */}
               <div className="relative">
                 <button 
                   onClick={() => setShowFeedbackMenu(!showFeedbackMenu)}
-                  className={`p-2.5 rounded-xl transition-all duration-200 ${
+                  className={`${ACTION_BTN_BASE} ${
                     feedbackSubmitted 
-                      ? 'text-white bg-gradient-to-br from-emerald-500 to-green-600 shadow-lg shadow-emerald-500/25' 
-                      : 'text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-105'
+                      ? ACTION_BTN_ACTIVE_SUCCESS
+                      : ACTION_BTN_INACTIVE
                   }`}
                   title={feedbackSubmitted ? `Rated: ${feedbackSubmitted}` : "Rate Sentiment"}
                 >
                   {feedbackSubmitted ? (
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-                    </svg>
+                    <Check className={`${ACTION_ICON_CLASS} stroke-[2.4]`} />
                   ) : (
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-                    </svg>
+                    <ThumbsUp className={ACTION_ICON_CLASS} />
                   )}
                 </button>
                 
@@ -355,30 +355,30 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
               {/* ✅ Report Button (List View) */}
               <button 
                 onClick={() => setShowReportModal(true)}
-                className={`p-2.5 rounded-xl transition-all duration-200 ${
+                className={`${ACTION_BTN_BASE} ${
                   reportSubmitted 
-                    ? 'text-white bg-gradient-to-br from-orange-500 to-amber-600 shadow-lg shadow-orange-500/25' 
+                    ? ACTION_BTN_ACTIVE_WARNING
                     : 'text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-600 dark:hover:text-rose-400 hover:scale-105'
                 }`}
                 title={reportSubmitted ? "Report Submitted" : "Report Misleading"}
                 disabled={reportSubmitted}
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
+                <TriangleAlert className={ACTION_ICON_CLASS} />
               </button>
             </div>
             
-            <div className="flex gap-1.5">
-              <Button variant="ghost" size="sm" onClick={handleSummary} className="text-indigo-600 dark:text-indigo-400 font-bold text-[11px] px-3 py-1.5 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-all hover:scale-105">
-                ✨ Summary
+            <div className="flex gap-1.5 ml-auto shrink-0">
+              <Button variant="ghost" size="sm" onClick={handleSummary} className="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 font-bold text-[10px] px-2.5 py-1.5 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-all hover:scale-105 active:scale-95 whitespace-nowrap">
+                <Sparkles className="w-3.5 h-3.5 stroke-[2.1]" />
+                Summary
               </Button>
               <button
                 onClick={() => openChatWithArticle(article.id, article.title)}
-                className="px-3 py-1.5 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-all hover:scale-105"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-all hover:scale-105 active:scale-95 whitespace-nowrap"
                 title="Ask AI about this article"
               >
-                🤖 Ask
+                <Bot className="w-3.5 h-3.5 stroke-[2.1]" />
+                Ask
               </button>
             </div>
           </div>
@@ -599,55 +599,45 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
           {article.description}
         </p>
 
-        <div className="mt-auto pt-4 flex items-center justify-between border-t border-gray-200 dark:border-slate-700/50">
+        <div className="mt-auto pt-4 flex flex-wrap items-center justify-between gap-y-2 border-t border-gray-200 dark:border-slate-700/50">
           <div className="flex gap-1.5">
             <button 
               onClick={toggleBookmark}
-              className={`p-2.5 rounded-xl transition-all duration-200 ${isBookmarked ? 'text-white bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25' : 'text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-105'}`}
+              className={`${ACTION_BTN_BASE} ${isBookmarked ? ACTION_BTN_ACTIVE_PRIMARY : ACTION_BTN_INACTIVE}`}
               title="Bookmark"
             >
-              <svg className="w-4 h-4" fill={isBookmarked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-              </svg>
+              <Bookmark className={`${ACTION_ICON_CLASS} ${isBookmarked ? 'scale-105' : ''}`} />
             </button>
             <button 
               onClick={toggleReadLater}
-              className={`p-2.5 rounded-xl transition-all duration-200 ${isInReadLater ? 'text-white bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25' : 'text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-105'}`}
+              className={`${ACTION_BTN_BASE} ${isInReadLater ? ACTION_BTN_ACTIVE_PRIMARY : ACTION_BTN_INACTIVE}`}
               title="Read Later"
             >
-              <svg className="w-4 h-4" fill={isInReadLater ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+              <Clock3 className={`${ACTION_ICON_CLASS} ${isInReadLater ? 'scale-105' : ''}`} />
             </button>
             <button 
               onClick={() => setIsCommentsOpen(true)}
-              className="p-2.5 rounded-xl transition-all duration-200 text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-105"
+              className={`${ACTION_BTN_BASE} ${ACTION_BTN_INACTIVE}`}
               title="Comments"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
+              <MessageCircle className={ACTION_ICON_CLASS} />
             </button>
             
             {/* ✅ ML Feedback Dropdown */}
             <div className="relative">
               <button 
                 onClick={() => setShowFeedbackMenu(!showFeedbackMenu)}
-                className={`p-2.5 rounded-xl transition-all duration-200 ${
+                className={`${ACTION_BTN_BASE} ${
                   feedbackSubmitted 
-                    ? 'text-white bg-gradient-to-br from-emerald-500 to-green-600 shadow-lg shadow-emerald-500/25' 
-                    : 'text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-105'
+                    ? ACTION_BTN_ACTIVE_SUCCESS
+                    : ACTION_BTN_INACTIVE
                 }`}
                 title={feedbackSubmitted ? `Rated: ${feedbackSubmitted}` : "Rate Sentiment"}
               >
                 {feedbackSubmitted ? (
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-                  </svg>
+                  <Check className={`${ACTION_ICON_CLASS} stroke-[2.4]`} />
                 ) : (
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-                  </svg>
+                  <ThumbsUp className={ACTION_ICON_CLASS} />
                 )}
               </button>
               
@@ -681,30 +671,30 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
             {/* ✅ Report Misleading Button */}
             <button 
               onClick={() => setShowReportModal(true)}
-              className={`p-2.5 rounded-xl transition-all duration-200 ${
+              className={`${ACTION_BTN_BASE} ${
                 reportSubmitted 
-                  ? 'text-white bg-gradient-to-br from-orange-500 to-amber-600 shadow-lg shadow-orange-500/25' 
+                  ? ACTION_BTN_ACTIVE_WARNING
                   : 'text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-600 dark:hover:text-rose-400 hover:scale-105'
               }`}
               title={reportSubmitted ? "Report Submitted" : "Report Misleading"}
               disabled={reportSubmitted}
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
+              <TriangleAlert className={ACTION_ICON_CLASS} />
             </button>
           </div>
           
-          <div className="flex gap-1.5">
-            <Button variant="ghost" size="sm" onClick={handleSummary} className="text-indigo-600 dark:text-indigo-400 font-bold text-[11px] px-3 py-1.5 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-all hover:scale-105">
-              ✨ Summary
+          <div className="flex gap-1.5 ml-auto shrink-0">
+            <Button variant="ghost" size="sm" onClick={handleSummary} className="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 font-bold text-[10px] px-2.5 py-1.5 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-all hover:scale-105 active:scale-95 whitespace-nowrap">
+              <Sparkles className="w-3.5 h-3.5 stroke-[2.1]" />
+              Summary
             </Button>
             <button
               onClick={() => openChatWithArticle(article.id, article.title)}
-              className="px-3 py-1.5 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-all hover:scale-105"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-all hover:scale-105 active:scale-95 whitespace-nowrap"
               title="Ask AI about this article"
             >
-              🤖 Ask
+              <Bot className="w-3.5 h-3.5 stroke-[2.1]" />
+              Ask
             </button>
           </div>
         </div>
