@@ -14,12 +14,23 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { LoginRequiredModal } from '../ui/LoginRequiredModal';
+import { NEWS_CATEGORY_IDS } from '../../utils/constants';
 
 interface CategoryItem {
   id: string;
   label: string;
   icon: LucideIcon;
 }
+
+const iconMap: Record<string, LucideIcon> = {
+  general: Globe,
+  nation: Landmark,
+  business: BriefcaseBusiness,
+  technology: Cpu,
+  sports: Trophy,
+  entertainment: Clapperboard,
+  health: HeartPulse,
+};
 
 export const Sidebar: React.FC = () => {
   const location = useLocation();
@@ -29,43 +40,11 @@ export const Sidebar: React.FC = () => {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [selectedCategoryName, setSelectedCategoryName] = useState('');
 
-  const categories: CategoryItem[] = [
-    {
-      id: 'general',
-      label: 'General',
-      icon: Globe,
-    },
-    {
-      id: 'nation',
-      label: 'Nation',
-      icon: Landmark,
-    },
-    {
-      id: 'business',
-      label: 'Business',
-      icon: BriefcaseBusiness,
-    },
-    {
-      id: 'technology',
-      label: 'Technology',
-      icon: Cpu,
-    },
-    {
-      id: 'sports',
-      label: 'Sports',
-      icon: Trophy,
-    },
-    {
-      id: 'entertainment',
-      label: 'Entertainment',
-      icon: Clapperboard,
-    },
-    {
-      id: 'health',
-      label: 'Health',
-      icon: HeartPulse,
-    },
-  ];
+  const categories: CategoryItem[] = NEWS_CATEGORY_IDS.map((cat) => ({
+    id: cat.id,
+    label: cat.label,
+    icon: iconMap[cat.id] ?? Globe,
+  }));
 
   return (
     <>
