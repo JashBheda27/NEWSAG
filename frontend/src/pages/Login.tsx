@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSignIn, useSignUp } from '@clerk/clerk-react';
+import { FormErrorMessage } from '../components/ui/FormErrorMessage';
+import { useTheme } from '../hooks/useTheme';
 import './Login.css';
 
 type ViewType = 'login' | 'register';
@@ -73,22 +75,25 @@ const SocialButtons = () => {
 
   return (
     <div className="sso">
-      {/* Added: Google OAuth button with click handler */}
-      <a
+      <button
+        type="button"
         title="Google"
+        aria-label="Continue with Google"
         className="fa-brands fa-google"
         onClick={handleGoogle}
+        disabled={oauthLoading}
         style={{ cursor: oauthLoading ? 'not-allowed' : 'pointer', opacity: oauthLoading ? 0.5 : 1 }}
       />
-      {/* Added: Facebook OAuth button with click handler */}
-      <a
+      <button
+        type="button"
         title="Facebook"
+        aria-label="Continue with Facebook"
         className="fa-brands fa-facebook-f"
         onClick={handleFacebook}
+        disabled={oauthLoading}
         style={{ cursor: oauthLoading ? 'not-allowed' : 'pointer', opacity: oauthLoading ? 0.5 : 1 }}
       />
-      {/* Added: Display OAuth errors if any */}
-      {oauthError && <div style={{ color: '#ef4444', fontSize: '12px', marginTop: '10px' }}>{oauthError}</div>}
+      <FormErrorMessage message={oauthError} compact className="mt-2" />
     </div>
   );
 };
@@ -130,14 +135,11 @@ const LoginForm = ({ activeView }: FormProps) => {
         password,
       });
 
-      console.log('Sign in result:', result.status);
-
       if (result.status === 'complete') {
         await setActive?.({ session: result.createdSessionId });
         navigate('/');
       } else {
-        // Try to set the session anyway - sometimes Clerk marks it incomplete but session exists
-        console.log('Attempting to activate session despite status:', result.status);
+        // Try to set the session anyway - sometimes Clerk marks it incomplete but session exists.
         try {
           if (result.createdSessionId) {
             await setActive?.({ session: result.createdSessionId });
@@ -145,13 +147,11 @@ const LoginForm = ({ activeView }: FormProps) => {
           } else {
             setError(`Login incomplete (${result.status}). Please check your Clerk dashboard settings.`);
           }
-        } catch (activationErr) {
-          console.error('Session activation failed:', activationErr);
+        } catch {
           setError('Login successful but session activation failed. Try refreshing the page.');
         }
       }
     } catch (err: any) {
-      console.error('Login error:', err);
       const errorMessage = err.errors?.[0]?.message || 'Login failed';
       if (errorMessage.includes("Couldn't find your account")) {
         setError("Account not found. Please sign up first or check your email.");
@@ -171,7 +171,7 @@ const LoginForm = ({ activeView }: FormProps) => {
       <SocialButtons />
       <span>or use your email</span>
 
-      {error && <div style={{ color: '#ef4444', fontSize: '12px', marginBottom: '10px' }}>{error}</div>}
+      <FormErrorMessage message={error} compact className="mb-2" />
 
       <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
       <input
@@ -218,8 +218,6 @@ const RegisterForm = ({ activeView }: FormProps) => {
     }
 
     try {
-      console.log('Starting signup process...');
-      
       // Create account with Clerk - generate unique username
       const timestamp = Date.now().toString().slice(-6); // Last 6 digits of timestamp
       const username = email.split('@')[0] + '_' + timestamp;
@@ -232,12 +230,8 @@ const RegisterForm = ({ activeView }: FormProps) => {
         password: password,
       });
 
-      console.log('Signup result:', result.status, 'Unverified:', result.unverifiedFields);
-      console.log('Full signup result:', JSON.stringify(result, null, 2));
-
       // Check if signup is complete
       if (result.status === 'complete') {
-        console.log('Signup complete, activating session...');
         await setActive?.({ session: result.createdSessionId });
         navigate('/');
         return;
@@ -246,15 +240,13 @@ const RegisterForm = ({ activeView }: FormProps) => {
       // Check if email verification is needed
       if (result.unverifiedFields && result.unverifiedFields.length > 0) {
         if (result.unverifiedFields.includes('email_address')) {
-          console.log('Email verification required');
           await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
           setPendingVerification(true);
         } else {
           setError('Additional verification required: ' + result.unverifiedFields.join(', '));
         }
       } else {
-        // Try to set active session anyway - status might be wrong
-        console.log('Attempting to activate session despite status:', result.status);
+        // Try to set active session anyway - status might be wrong.
         try {
           if (result.createdSessionId) {
             await setActive?.({ session: result.createdSessionId });
@@ -262,13 +254,11 @@ const RegisterForm = ({ activeView }: FormProps) => {
           } else {
             setError(`Signup incomplete. Status: ${result.status}. Please go to Clerk dashboard → Configure → User & authentication and ensure all required fields are optional.`);
           }
-        } catch (activationErr) {
-          console.error('Activation error:', activationErr);
+        } catch {
           setError('Account created but activation failed. Try logging in or check Clerk dashboard settings.');
         }
       }
     } catch (err: any) {
-      console.error('Signup error:', err);
       const errorMessage = err.errors?.[0]?.message || 'Registration failed';
       if (errorMessage.includes('password')) {
         setError('Password must be at least 8 characters and contain letters and numbers.');
@@ -316,7 +306,7 @@ const RegisterForm = ({ activeView }: FormProps) => {
       <h2>Verify Email</h2>
       <span>Enter the verification code sent to {email}</span>
 
-      {error && <div style={{ color: '#ef4444', fontSize: '12px', marginBottom: '10px' }}>{error}</div>}
+      <FormErrorMessage message={error} compact className="mb-2" />
 
       <input
         type="text"
@@ -335,7 +325,7 @@ const RegisterForm = ({ activeView }: FormProps) => {
       <SocialButtons />
       <span>or use your email</span>
 
-      {error && <div style={{ color: '#ef4444', fontSize: '12px', marginBottom: '10px' }}>{error}</div>}
+      <FormErrorMessage message={error} compact className="mb-2" />
 
       <input type="text" placeholder="Full Name" value={name} onChange={(e) => setName(e.target.value)} required />
       <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
@@ -359,6 +349,7 @@ const RegisterForm = ({ activeView }: FormProps) => {
 
 export const Login: React.FC = () => {
   const [activeView, setActiveView] = useState<ViewType>('login');
+  const { isDark } = useTheme();
 
   const toggleView = () => {
     setActiveView((prev) => (prev === 'login' ? 'register' : 'login'));
@@ -373,7 +364,8 @@ export const Login: React.FC = () => {
       padding: '10px',
       width: '100%',
       boxSizing: 'border-box',
-      backgroundColor: '#f5f5f5'
+      backgroundColor: isDark ? '#0f172a' : '#f5f5f5',
+      transition: 'background-color 200ms ease'
     }}>
       <div className="card">
         <CardBackground activeView={activeView} />
