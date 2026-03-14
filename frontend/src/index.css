@@ -261,6 +261,40 @@ button:focus-visible {
   box-shadow: 0 0 24px -4px rgba(99, 102, 241, 0.4);
 }
 
+/* NProgress styles */
+#nprogress {
+  pointer-events: none;
+}
+
+#nprogress .bar {
+  background: linear-gradient(90deg, #4f46e5 0%, #7c3aed 100%);
+  position: fixed;
+  z-index: 1031;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+}
+
+#nprogress .peg {
+  display: block;
+  position: absolute;
+  right: 0px;
+  width: 100px;
+  height: 100%;
+  box-shadow: 0 0 10px #4f46e5, 0 0 5px #4f46e5;
+  opacity: 1;
+  transform: rotate(3deg) translate(0px, -4px);
+}
+
+.dark #nprogress .bar {
+  background: linear-gradient(90deg, #818cf8 0%, #a78bfa 100%);
+}
+
+.dark #nprogress .peg {
+  box-shadow: 0 0 10px #818cf8, 0 0 5px #818cf8;
+}
+
 /* Action icon styling */
 .action-icon {
   display: flex;
