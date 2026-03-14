@@ -27,7 +27,10 @@ async def add_bookmark(
     })
 
     if existing:
-        raise HTTPException(status_code=400, detail="Already bookmarked")
+        return {
+            "message": "Already bookmarked",
+            "bookmark_id": str(existing.get("_id")),
+        }
 
     data = bookmark.dict()
     data["user_id"] = user_id
@@ -99,7 +102,10 @@ async def get_bookmarks(
 
     async for item in cursor:
         item["_id"] = str(item["_id"])
-        bookmarks.append(BookmarkModel(**item))
+        bookmark = BookmarkModel(**item)
+        bookmarks.append(bookmark.model_dump(mode="json"))
+
+    logger.info("[BOOKMARKS] user_id=%s count=%s", user_id, len(bookmarks))
 
     return {
         "count": len(bookmarks),
