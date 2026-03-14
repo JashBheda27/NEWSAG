@@ -17,3 +17,13 @@ SUPPORTED_LANGUAGES = {
     "ko": "Korean",
     "it": "Italian",
 }
+
+NEWS_CATEGORIES = [
+    "general",
+    "nation",
+    "business",
+    "technology",
+    "sports",
+    "entertainment",
+    "health",
+]
