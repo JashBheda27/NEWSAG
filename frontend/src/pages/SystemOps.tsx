@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { AlertTriangle, Database, Eye, RefreshCcw, RotateCw, Server, Settings2 } from 'lucide-react';
 import { adminApi } from '../services/admin.service';
+import { notify } from '../lib/notify';
 
 interface SystemOpsProps {
-  showNotification: (msg: string, type?: 'error' | 'success') => void;
+  showNotification: (msg: string, type?: 'error' | 'success' | 'warning' | 'info') => void;
 }
 
 export const SystemOps: React.FC<SystemOpsProps> = ({ showNotification }) => {
+  void showNotification;
   const [refreshing, setRefreshing] = useState<string | null>(null);
   const [resetting, setResetting] = useState(false);
 
@@ -16,8 +19,8 @@ export const SystemOps: React.FC<SystemOpsProps> = ({ showNotification }) => {
       try {
         const sys = await adminApi.getSystemStatus();
         setSystemStatus(sys);
-      } catch (err) {
-        console.error('Admin dashboard fetch failed', err);
+      } catch {
+        notify.warning('System status is temporarily unavailable.');
       }
     };
 
@@ -27,14 +30,14 @@ export const SystemOps: React.FC<SystemOpsProps> = ({ showNotification }) => {
   const handleRefreshCache = async (category?: string) => {
     setRefreshing(category || 'all');
     try {
-      if (category) {
-        await adminApi.refreshCategoryCache(category);
-      } else {
-        await adminApi.refreshAllCache();
-      }
-      showNotification(`Cache ${category ? 'for ' + category : 'refresh'} triggered`, 'success');
-    } catch (err) {
-      showNotification(`Failed to refresh cache: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error');
+      const op = category ? adminApi.refreshCategoryCache(category) : adminApi.refreshAllCache();
+      await notify.promise(op, {
+        loading: `Refreshing ${category ? category : 'all'} cache...`,
+        success: `Cache ${category ? `for ${category}` : 'refresh'} triggered`,
+        error: 'Failed to refresh cache',
+      });
+    } catch {
+      // Toast is already handled by notify.promise.
     } finally {
       setRefreshing(null);
     }
@@ -43,10 +46,13 @@ export const SystemOps: React.FC<SystemOpsProps> = ({ showNotification }) => {
   const handleResetQuota = async () => {
     setResetting(true);
     try {
-      await adminApi.resetHitCounter();
-      showNotification('GNews quota reset', 'success');
-    } catch (err) {
-      showNotification(`Failed to reset quota: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error');
+      await notify.promise(adminApi.resetHitCounter(), {
+        loading: 'Resetting GNews quota...',
+        success: 'GNews quota reset',
+        error: 'Failed to reset quota',
+      });
+    } catch {
+      // Toast is already handled by notify.promise.
     } finally {
       setResetting(false);
     }
@@ -57,7 +63,7 @@ export const SystemOps: React.FC<SystemOpsProps> = ({ showNotification }) => {
       {/* Cache Management */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
         <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-          <span>🔄</span>
+          <RefreshCcw size={18} aria-hidden="true" />
           Cache Management
         </h3>
         <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
@@ -70,7 +76,7 @@ export const SystemOps: React.FC<SystemOpsProps> = ({ showNotification }) => {
             disabled={refreshing === 'all'}
             className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
           >
-            <span className={refreshing === 'all' ? 'animate-spin' : ''}>↻</span>
+            <RotateCw size={16} className={refreshing === 'all' ? 'animate-spin' : ''} aria-hidden="true" />
             {refreshing === 'all' ? 'Refreshing...' : 'Refresh All Categories'}
           </button>
 
@@ -92,7 +98,7 @@ export const SystemOps: React.FC<SystemOpsProps> = ({ showNotification }) => {
               >
                 {refreshing === category ? (
                   <>
-                    <span className="inline animate-spin mr-1">↻</span>
+                    <RotateCw size={14} className="inline animate-spin mr-1" aria-hidden="true" />
                     ...
                   </>
                 ) : (
@@ -107,7 +113,7 @@ export const SystemOps: React.FC<SystemOpsProps> = ({ showNotification }) => {
       {/* GNews API Management */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
         <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-          <span>🔄</span>
+          <Settings2 size={18} aria-hidden="true" />
           GNews API Quota Reset
         </h3>
         <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
@@ -135,7 +141,7 @@ export const SystemOps: React.FC<SystemOpsProps> = ({ showNotification }) => {
 
           <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
             <p className="text-sm font-medium text-amber-900 dark:text-amber-200 flex items-center gap-2 mb-2">
-              <span>⚠️</span>
+              <AlertTriangle size={16} aria-hidden="true" />
               Warning
             </p>
             <p className="text-xs text-amber-800 dark:text-amber-300">
@@ -156,7 +162,7 @@ export const SystemOps: React.FC<SystemOpsProps> = ({ showNotification }) => {
       {/* Monitoring & Logs */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
         <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-          <span>👁️</span>
+          <Eye size={18} aria-hidden="true" />
           Monitoring
         </h3>
         <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
@@ -166,6 +172,7 @@ export const SystemOps: React.FC<SystemOpsProps> = ({ showNotification }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
             <p className="text-sm font-medium text-slate-900 dark:text-white mb-3">
+              <Database size={14} className="inline mr-2" aria-hidden="true" />
               Database Status
             </p>
             <div className="space-y-2">
@@ -189,6 +196,7 @@ export const SystemOps: React.FC<SystemOpsProps> = ({ showNotification }) => {
 
           <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
             <p className="text-sm font-medium text-slate-900 dark:text-white mb-3">
+              <Server size={14} className="inline mr-2" aria-hidden="true" />
               Service Status
             </p>
             <div className="space-y-2">
