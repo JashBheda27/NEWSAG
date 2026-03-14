@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Clock3, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { ReadLaterItem } from '../types';
 import { userService } from '../services/user.service';
@@ -6,34 +7,45 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { Button } from '../components/ui/Button';
 import { SummaryModal } from '../components/news/SummaryModal';
 import { EmptyState } from '../components/ui/EmptyState';
+import { ErrorState } from '../components/ui/ErrorState';
+import { notify } from '../lib/notify';
 import { formatRelativeTime } from '../utils/timeUtils';
+import { useAsyncState } from '../hooks/useAsyncState';
 
 export const ReadLater: React.FC = () => {
-  const [items, setItems] = useState<ReadLaterItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const {
+    data: items,
+    loading: isLoading,
+    error: fetchError,
+    executeLatest,
+    setData: setItems,
+  } = useAsyncState<ReadLaterItem[]>({
+    initialData: [],
+    getErrorMessage: (err) => err instanceof Error ? err.message : 'Failed to fetch read later items',
+  });
+
+  const fetchReadLater = useCallback(async () => {
+    try {
+      await executeLatest(() => userService.getReadLater());
+    } catch (err) {
+      setItems([]);
+    }
+  }, [executeLatest, setItems]);
 
   useEffect(() => {
-    const fetch = async () => {
-      setIsLoading(true);
-      try {
-        const data = await userService.getReadLater();
-        setItems(data);
-      } catch (err) {
-        console.error('Failed to fetch read later items:', err);
-        setItems([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetch();
-  }, []);
+    fetchReadLater();
+  }, [fetchReadLater]);
 
   const handleRemove = async (id: string) => {
     try {
-      await userService.removeFromReadLater(id);
+      await notify.promise(userService.removeFromReadLater(id), {
+        loading: 'Removing from read later...',
+        success: 'Removed from read later',
+        error: 'Failed to remove article',
+      });
       setItems(prev => prev.filter(b => b.id !== id));
-    } catch (err) {
-      console.error(err);
+    } catch {
+      // Toast is already handled by notify.promise.
     }
   };
 
@@ -66,7 +78,7 @@ export const ReadLater: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
       >
-        ⏳ Read Later
+        <Clock3 size={30} aria-hidden="true" /> Read Later
         <motion.span 
           className="text-sm font-bold bg-gradient-to-r from-orange-100 to-amber-100 dark:from-orange-900/30 dark:to-amber-900/30 px-3 py-1 rounded-full text-orange-600 dark:text-orange-400"
           initial={{ scale: 0 }}
@@ -96,6 +108,12 @@ export const ReadLater: React.FC = () => {
                <Skeleton className="h-4 w-1/3" />
             </motion.div>
           ))
+        ) : fetchError ? (
+          <ErrorState
+            title="Unable to load read later list"
+            message={fetchError}
+            onRetry={fetchReadLater}
+          />
         ) : items.length > 0 ? (
           items.map((item, idx) => (
             <motion.div 
@@ -104,7 +122,6 @@ export const ReadLater: React.FC = () => {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: idx * 0.05, duration: 0.3 }}
-              whileHover={{ scale: 1.02 }}
             >
                <div>
                  <h3 className="font-bold text-lg leading-tight group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
@@ -121,12 +138,9 @@ export const ReadLater: React.FC = () => {
                    className="p-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-full transition-colors"
                    aria-label="Remove from Read Later"
                    title="Remove"
-                   whileHover={{ scale: 1.1 }}
-                   whileTap={{ scale: 0.9 }}
+                   whileTap={{ scale: 0.98 }}
                  >
-                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                     <path d="M9 3a1 1 0 00-1 1v1H4a1 1 0 100 2h16a1 1 0 100-2h-4V4a1 1 0 00-1-1H9zM7 8v11a2 2 0 002 2h6a2 2 0 002-2V8H7zm3 2a1 1 0 012 0v7a1 1 0 11-2 0V10zm4 0a1 1 0 012 0v7a1 1 0 11-2 0V10z" />
-                   </svg>
+                   <Trash2 size={20} aria-hidden="true" />
                  </motion.button>
                </div>
             </motion.div>
