@@ -15,13 +15,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.core.database import get_db
-from app.core.auth import get_current_user_optional
-from app.core.cache import get_from_cache
+from app.core.auth import get_current_user_optional, get_user_id
+from app.core.cache import get_from_cache, gnews_cache_key
+from app.core.constants import NEWS_CATEGORIES
 from app.services.summarizer import TextSummarizer
 from app.services.chat_llm import chat_llm, get_fallback_message
-
-# Categories matching the news feed cache keys
-NEWS_CATEGORIES = ["general", "nation", "business", "technology", "sports", "entertainment", "health"]
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -179,7 +177,7 @@ async def get_cached_news_articles(limit_per_category: int = 10) -> list:
     all_articles = []
     seen_ids = set()
     for category in NEWS_CATEGORIES:
-        cache_key = f"gnews:{category}"
+        cache_key = gnews_cache_key(category)
         cached = await get_from_cache(cache_key)
         if not cached:
             continue
@@ -195,7 +193,7 @@ async def find_article_in_cache(article_id: str) -> Optional[dict]:
     """Find a specific article in the Redis news cache."""
     logger.info("[CHATBOT] Searching cache for article_id=%s", article_id)
     for category in NEWS_CATEGORIES:
-        cache_key = f"gnews:{category}"
+        cache_key = gnews_cache_key(category)
         cached = await get_from_cache(cache_key)
         if not cached:
             continue
@@ -819,7 +817,7 @@ async def chat_message(
     3. Try LLM response first (Ollama)
     4. Fallback to rule-based generators if LLM unavailable
     """
-    user_id = user["user_id"]
+    user_id = get_user_id(user)
     message = request.message.strip()
     context = request.context or {}
     
@@ -975,7 +973,7 @@ async def get_chat_history(
     db=Depends(get_db),
 ):
     """Get recent chat history for the user."""
-    user_id = user["user_id"]
+    user_id = get_user_id(user)
     
     cursor = db.chat_messages.find(
         {"user_id": user_id}
