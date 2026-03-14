@@ -1,5 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { Pause, Play, Square, Volume2, VolumeX } from 'lucide-react';
 import { useAuth } from '@clerk/clerk-react';
+import { FormErrorMessage } from '../ui/FormErrorMessage';
 
 interface AudioPlayerProps {
   text: string;
@@ -52,9 +54,9 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, language, classN
 
       if (!response.ok) {
         if (response.status === 403) {
-          throw new Error('Please sign in to use audio');
+          throw new Error('Please sign in to use audio.');
         }
-        throw new Error('Failed to generate audio');
+        throw new Error('Failed to generate audio.');
       }
 
       const blob = await response.blob();
@@ -62,7 +64,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, language, classN
       setAudioUrl(url);
       return url;
     } catch (err: any) {
-      setError(err.message || 'Audio unavailable');
+      setError(err.message || 'Audio is unavailable.');
       return null;
     } finally {
       setIsLoading(false);
@@ -132,11 +134,11 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, language, classN
 
   if (error) {
     return (
-      <div className={`flex items-center gap-2 text-xs text-slate-500 italic ${className}`}>
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M5.586 15l-2.293 2.293a1 1 0 001.414 1.414L7 16.414V19a1 1 0 102 0v-4.586l9.293-9.293a1 1 0 00-1.414-1.414L7.586 13H3a1 1 0 100 2h2.586z" />
-        </svg>
-        <span>{error}</span>
+      <div className={className}>
+        <div className="inline-flex items-center gap-2">
+          <VolumeX size={16} className="text-slate-500" aria-hidden="true" />
+          <FormErrorMessage message={error} compact />
+        </div>
       </div>
     );
   }
@@ -162,13 +164,9 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, language, classN
         {isLoading ? (
           <div className="w-5 h-5 border-2 border-slate-600 border-t-transparent rounded-full animate-spin" />
         ) : isPlaying ? (
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M6 4h4v16H6zm8 0h4v16h-4z" />
-          </svg>
+          <Pause size={20} aria-hidden="true" />
         ) : (
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M8 5v14l11-7z" />
-          </svg>
+          <Play size={20} aria-hidden="true" />
         )}
       </button>
 
@@ -197,16 +195,12 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, language, classN
         title="Stop"
         style={{ color: '#333' }}
       >
-        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-          <rect x="6" y="6" width="12" height="12" />
-        </svg>
+        <Square size={16} aria-hidden="true" />
       </button>
 
       {/* Speaker icon */}
       <div className="text-slate-400" title="Text-to-Speech">
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-        </svg>
+        <Volume2 size={16} aria-hidden="true" />
       </div>
     </div>
   );
