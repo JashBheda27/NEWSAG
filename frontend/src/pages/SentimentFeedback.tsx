@@ -1,37 +1,48 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Download, Loader2 } from 'lucide-react';
 import { adminApi, type SentimentFeedback as SentimentFeedbackType } from '../services/admin.service';
+import { EmptyState } from '../components/ui/EmptyState';
+import { ErrorState } from '../components/ui/ErrorState';
+import { notify } from '../lib/notify';
+import { useAsyncState } from '../hooks/useAsyncState';
 
 interface SentimentFeedbackProps {
-  showNotification: (msg: string, type?: 'error' | 'success') => void;
+  showNotification: (msg: string, type?: 'error' | 'success' | 'warning' | 'info') => void;
 }
 
 export const SentimentFeedback: React.FC<SentimentFeedbackProps> = ({ showNotification }) => {
-  const [samples, setSamples] = useState<SentimentFeedbackType[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    data: samples,
+    loading,
+    error: fetchError,
+    executeLatest,
+  } = useAsyncState<SentimentFeedbackType[]>({
+    initialData: [],
+    getErrorMessage: (err) => err instanceof Error ? err.message : 'Unknown error',
+  });
   const [filter, setFilter] = useState<'all' | 'positive' | 'neutral' | 'negative'>('all');
   const [sentimentStats, setSentimentStats] = useState<any>(null);
+  void showNotification;
+
+  const fetchSamples = useCallback(async () => {
+    try {
+      await executeLatest(() => adminApi.getSentimentFeedback(100), (result) => result.feedback);
+
+      try {
+        const stats = await adminApi.getSentimentStats();
+        setSentimentStats(stats);
+      } catch {
+        notify.warning('Unable to load sentiment distribution stats right now.');
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      notify.error(`Failed to load sentiment samples: ${message}`);
+    }
+  }, [executeLatest]);
 
   useEffect(() => {
-    const fetchSamples = async () => {
-      try {
-        const data = await adminApi.getSentimentFeedback(100);
-        setSamples(data.feedback);
-        // fetch distribution stats
-        try {
-          const s = await adminApi.getSentimentStats();
-          setSentimentStats(s);
-        } catch (err) {
-          console.error('Failed to load sentiment stats', err);
-        }
-        setLoading(false);
-      } catch (err) {
-        showNotification(`Failed to load sentiment samples: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error');
-        setLoading(false);
-      }
-    };
-
     fetchSamples();
-  }, [showNotification]);
+  }, [fetchSamples]);
 
   const getSentimentColor = (label: string) => {
     switch (label) {
@@ -69,7 +80,7 @@ export const SentimentFeedback: React.FC<SentimentFeedbackProps> = ({ showNotifi
               <option value="negative">Negative Only</option>
             </select>
             <button className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium">
-              <span>⬇️</span>
+              <Download size={16} aria-hidden="true" />
               Export
             </button>
           </div>
@@ -80,12 +91,23 @@ export const SentimentFeedback: React.FC<SentimentFeedbackProps> = ({ showNotifi
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
         {loading ? (
           <div className="p-12 text-center text-slate-500 dark:text-slate-400">
-            Loading sentiment samples...
+            <span className="inline-flex items-center gap-2">
+              <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+              Loading sentiment samples...
+            </span>
           </div>
+        ) : fetchError ? (
+          <ErrorState
+            title="Unable to load sentiment feedback"
+            message={fetchError}
+            onRetry={fetchSamples}
+          />
         ) : filteredSamples.length === 0 ? (
-          <div className="p-12 text-center text-slate-500 dark:text-slate-400">
-            No sentiment feedback found
-          </div>
+          <EmptyState
+            title="No Sentiment Feedback"
+            description="No feedback samples match your current filter yet."
+            illustration="search"
+          />
         ) : (
           <div className="divide-y divide-slate-200 dark:divide-slate-800">
             {filteredSamples.slice(0, 50).map((sample) => (
