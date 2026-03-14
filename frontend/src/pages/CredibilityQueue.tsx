@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { Check, Clock3, X } from 'lucide-react';
 import { adminApi } from '../services/admin.service';
+import { notify } from '../lib/notify';
+import { EmptyState } from '../components/ui/EmptyState';
+import { ErrorState } from '../components/ui/ErrorState';
+import { useAsyncState } from '../hooks/useAsyncState';
 
 interface CredibilityQueueProps {
-  showNotification: (msg: string, type?: 'error' | 'success') => void;
+  showNotification: (msg: string, type?: 'error' | 'success' | 'warning' | 'info') => void;
 }
 
 interface CredibilityReport {
@@ -18,34 +23,43 @@ interface CredibilityReport {
 }
 
 export const CredibilityQueue: React.FC<CredibilityQueueProps> = ({ showNotification }) => {
-  const [reports, setReports] = useState<CredibilityReport[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    data: reports,
+    loading,
+    error: fetchError,
+    executeLatest,
+    setData: setReports,
+  } = useAsyncState<CredibilityReport[]>({
+    initialData: [],
+    getErrorMessage: (err) => err instanceof Error ? err.message : 'Unknown error',
+  });
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
   const [verifying, setVerifying] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchReports = async () => {
       try {
-        const data = await adminApi.getPendingReports(50);
-        setReports(data.reports);
-        setLoading(false);
+        await executeLatest(() => adminApi.getPendingReports(50), (result) => result.reports);
       } catch (err) {
-        showNotification(`Failed to load credibility reports: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error');
-        setLoading(false);
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        showNotification(`Failed to load credibility reports: ${message}`, 'error');
       }
     };
 
     fetchReports();
-  }, [showNotification]);
+  }, [executeLatest, showNotification]);
 
   const handleVerify = async (reportId: string) => {
     setVerifying(reportId);
     try {
-      await adminApi.verifyReport(reportId, true);
+      await notify.promise(adminApi.verifyReport(reportId, true), {
+        loading: 'Verifying report...',
+        success: 'Report verified',
+        error: 'Failed to verify report',
+      });
       setReports((prev) => prev.filter((r) => r.id !== reportId));
-      showNotification('Report verified', 'success');
-    } catch (err) {
-      showNotification(`Failed to verify report: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error');
+    } catch {
+      // Toast is already handled by notify.promise.
     } finally {
       setVerifying(null);
     }
@@ -54,18 +68,41 @@ export const CredibilityQueue: React.FC<CredibilityQueueProps> = ({ showNotifica
   const handleReject = async (reportId: string) => {
     setVerifying(reportId);
     try {
-      await adminApi.verifyReport(reportId, false);
+      await notify.promise(adminApi.verifyReport(reportId, false), {
+        loading: 'Rejecting report...',
+        success: 'Report rejected',
+        error: 'Failed to reject report',
+      });
       setReports((prev) => prev.filter((r) => r.id !== reportId));
-      showNotification('Report rejected', 'success');
-    } catch (err) {
-      showNotification(`Failed to reject report: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error');
+    } catch {
+      // Toast is already handled by notify.promise.
     } finally {
       setVerifying(null);
     }
   };
 
   if (loading) {
-    return <div className="text-center py-12">Loading credibility reports...</div>;
+    return (
+      <div className="text-center py-12 text-slate-600 dark:text-slate-400 inline-flex items-center gap-2">
+        <Clock3 size={18} className="animate-pulse" aria-hidden="true" />
+        Loading credibility reports...
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <ErrorState
+        title="Failed to load credibility queue"
+        message={fetchError}
+        onRetry={() => {
+          executeLatest(() => adminApi.getPendingReports(50), (result) => result.reports).catch((err) => {
+            const message = err instanceof Error ? err.message : 'Unknown error';
+            showNotification(`Failed to load credibility reports: ${message}`, 'error');
+          });
+        }}
+      />
+    );
   }
 
   return (
@@ -81,10 +118,12 @@ export const CredibilityQueue: React.FC<CredibilityQueueProps> = ({ showNotifica
         </div>
 
         {reports.length === 0 ? (
-          <div className="text-center py-12">
-            <span className="text-5xl mx-auto mb-3 block opacity-50">✅</span>
-            <p className="text-slate-500 dark:text-slate-400">No pending credibility reports</p>
-          </div>
+          <EmptyState
+            title="No Pending Reports"
+            description="All credibility reports are reviewed. New flagged items will appear here."
+            action={{ label: 'Go To Overview', href: '/admin/overview' }}
+            illustration="generic"
+          />
         ) : (
           <div className="space-y-4">
             {reports.map((report) => (
@@ -103,7 +142,7 @@ export const CredibilityQueue: React.FC<CredibilityQueueProps> = ({ showNotifica
                     </p>
                   </div>
                   <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded">
-                    <span className="inline mr-1">⏱️</span>
+                    <Clock3 size={12} className="inline mr-1" aria-hidden="true" />
                     {report.report_count} reports
                   </span>
                 </div>
@@ -130,7 +169,7 @@ export const CredibilityQueue: React.FC<CredibilityQueueProps> = ({ showNotifica
                         disabled={verifying === report.id}
                         className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center justify-center gap-2"
                       >
-                        <span>✓</span>
+                        <Check size={16} aria-hidden="true" />
                         {verifying === report.id ? 'Processing...' : 'Verify'}
                       </button>
                       <button
@@ -141,7 +180,7 @@ export const CredibilityQueue: React.FC<CredibilityQueueProps> = ({ showNotifica
                         disabled={verifying === report.id}
                         className="flex-1 px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center justify-center gap-2"
                       >
-                        <span>✗</span>
+                        <X size={16} aria-hidden="true" />
                         {verifying === report.id ? 'Processing...' : 'Reject'}
                       </button>
                     </div>
