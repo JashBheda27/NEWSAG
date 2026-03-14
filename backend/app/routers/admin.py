@@ -9,11 +9,12 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 from typing import Optional, List
 from app.core.database import get_db
-from app.core.auth import require_admin
+from app.core.auth import get_user_id, require_admin
 from app.services.training_data_service import TrainingDataService
 from app.services.model_fine_tuning_service import ModelFineTuningService
 from app.services.admin_audit_service import AdminAuditService
-from app.core.cache import get_redis, get_from_cache
+from app.core.cache import get_from_cache, get_redis, gnews_cache_key
+from app.core.constants import NEWS_CATEGORIES
 from app.core.gnews_counter import GNewsCounter
 from datetime import datetime, timedelta
 import time
@@ -139,7 +140,7 @@ async def fine_tune_sentiment_model(
         min_samples: Minimum samples required to start training
         epochs: Number of training epochs
     """
-    admin_id = user["user_id"]
+    admin_id = get_user_id(user)
     logger.info(f"[ADMIN] Fine-tune sentiment requested by user={admin_id}")
     
     result = await ModelFineTuningService.fine_tune_sentiment(
@@ -189,7 +190,7 @@ async def fine_tune_credibility_model(
         min_samples: Minimum samples required to start training
         epochs: Number of training epochs
     """
-    admin_id = user["user_id"]
+    admin_id = get_user_id(user)
     logger.info(f"[ADMIN] Fine-tune credibility requested by user={admin_id}")
     
     result = await ModelFineTuningService.fine_tune_credibility(
@@ -232,7 +233,7 @@ async def fine_tune_all_models(
     """
     Trigger fine-tuning of all ML models.
     """
-    logger.info(f"[ADMIN] Fine-tune all requested by user={user['user_id']}")
+    logger.info(f"[ADMIN] Fine-tune all requested by user={get_user_id(user)}")
     
     result = await ModelFineTuningService.fine_tune_all(db)
     
@@ -293,7 +294,7 @@ async def verify_report(
         report_id: Report document ID
         verified: True = confirmed misleading, False = rejected
     """
-    admin_id = user["user_id"]
+    admin_id = get_user_id(user)
     
     success = await TrainingDataService.verify_credibility_report(
         db=db,
@@ -420,7 +421,7 @@ async def get_admin_activity_summary(
         days: Number of days to look back
     """
     # If no admin_user_id provided, use current user
-    target_admin_id = admin_user_id or user["user_id"]
+    target_admin_id = admin_user_id or get_user_id(user)
     
     summary = await AdminAuditService.get_admin_activity_summary(
         db=db,
@@ -518,9 +519,8 @@ async def get_admin_metrics(
                             sentiment_count += 1
         else:
             # Fallback to cache-based calculation
-            CATEGORIES = ["general", "nation", "business", "technology", "sports", "entertainment", "health"]
-            for cat in CATEGORIES:
-                cache_key = f"gnews:{cat}"
+            for cat in NEWS_CATEGORIES:
+                cache_key = gnews_cache_key(cat)
                 cached = await get_from_cache(cache_key)
                 if cached and isinstance(cached, list):
                     articles_indexed += len(cached)
