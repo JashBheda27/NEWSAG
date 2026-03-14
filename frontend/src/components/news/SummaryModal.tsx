@@ -7,10 +7,7 @@ import { newsService } from '../../services/news.service';
 import type { SummaryData } from '../../types';
 import { CommentSection } from './commentSection';
 import { AudioPlayer } from './AudioPlayer';
-import { SUPPORTED_LANGUAGES } from '../../utils/constants';
-
-// Alias for backward compatibility
-const LANGUAGES = SUPPORTED_LANGUAGES;
+import { ERROR_MESSAGES, SUPPORTED_LANGUAGES } from '../../utils/constants';
 
 interface Props {
   isOpen: boolean;
@@ -46,7 +43,7 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
         setSummaryData(res);
       } catch (err: any) {
         if (!mounted) return;
-        setError(err.message || 'Failed to generate summary.');
+        setError(err.message || ERROR_MESSAGES.GENERATE_SUMMARY);
       } finally {
         if (!mounted) return;
         setIsLoading(false);
@@ -65,7 +62,7 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
       const res = await newsService.getSummary(url, content, description, selectedLang, title, source);
       setSummaryData(res);
     } catch (err: any) {
-      setError(err.message || 'Failed to generate summary.');
+      setError(err.message || ERROR_MESSAGES.GENERATE_SUMMARY);
     } finally {
       setIsLoading(false);
     }
@@ -81,7 +78,7 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
       const res = await newsService.getSummary(url, content, description, lang, title, source);
       setSummaryData(res);
     } catch (err: any) {
-      setError(err.message || 'Translation failed.');
+      setError(err.message || ERROR_MESSAGES.TRANSLATION_FAILED);
     } finally {
       setIsTranslating(false);
     }
@@ -138,7 +135,7 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
                  disabled={isTranslating}
                  className="text-xs border border-slate-400 dark:border-slate-500 rounded px-2 py-1 bg-transparent font-serif focus:outline-none focus:ring-1 focus:ring-indigo-400 disabled:opacity-50 text-slate-800 dark:text-slate-100"
                >
-                 {LANGUAGES.map((l) => (
+                 {SUPPORTED_LANGUAGES.map((l) => (
                    <option key={l.code} value={l.code}>
                      {l.name}
                    </option>
