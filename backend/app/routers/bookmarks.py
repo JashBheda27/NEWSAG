@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.core.database import get_db
 from app.models.bookmark import BookmarkModel
 from bson import ObjectId
-from app.core.auth import require_auth
+from app.core.auth import get_user_id, require_auth
 from app.services.training_data_service import TrainingDataService
 import logging
 
@@ -19,7 +19,7 @@ async def add_bookmark(
     user=Depends(require_auth),
     db=Depends(get_db),
 ):
-    user_id = user["user_id"]
+    user_id = get_user_id(user)
 
     existing = await db.bookmarks.find_one({
         "user_id": user_id,
@@ -93,7 +93,7 @@ async def get_bookmarks(
     user=Depends(require_auth),
     db=Depends(get_db),
 ):
-    user_id = user["user_id"]
+    user_id = get_user_id(user)
 
     bookmarks = []
     cursor = db.bookmarks.find(
@@ -122,7 +122,7 @@ async def delete_bookmark_by_article_id(
     user=Depends(require_auth),
     db=Depends(get_db),
 ):
-    user_id = user["user_id"]
+    user_id = get_user_id(user)
 
     result = await db.bookmarks.delete_one({
         "user_id": user_id,
@@ -148,7 +148,7 @@ async def delete_bookmark(
     user=Depends(require_auth),
     db=Depends(get_db),
 ):
-    user_id = user["user_id"]
+    user_id = get_user_id(user)
 
     result = await db.bookmarks.delete_one({
         "_id": ObjectId(bookmark_id),
