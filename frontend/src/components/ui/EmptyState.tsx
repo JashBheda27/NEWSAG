@@ -1,4 +1,5 @@
 import React from 'react';
+import { BookmarkX, ChevronRight, Inbox, SearchX } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 
@@ -19,11 +20,11 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   action,
   illustration = 'generic',
 }) => {
-  const illustrations = {
-    bookmarks: '🔖',
-    readlater: '📌',
-    search: '🔍',
-    generic: '📭',
+  const illustrations: Record<NonNullable<EmptyStateProps['illustration']>, React.ReactNode> = {
+    bookmarks: <BookmarkX size={56} aria-hidden="true" />,
+    readlater: <Inbox size={56} aria-hidden="true" />,
+    search: <SearchX size={56} aria-hidden="true" />,
+    generic: <Inbox size={56} aria-hidden="true" />,
   };
 
   const icon = illustrations[illustration];
@@ -36,7 +37,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       transition={{ duration: 0.4 }}
     >
       <motion.div 
-        className="text-6xl mb-4 inline-block"
+        className="mb-4 inline-flex text-slate-400 dark:text-slate-500"
         animate={{ y: [0, -10, 0] }}
         transition={{ duration: 3, repeat: Infinity }}
       >
@@ -61,9 +62,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
             className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-indigo-600/40 transition-all"
           >
             {action.label}
-            <svg className="w-4 h-4 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-            </svg>
+            <ChevronRight size={16} className="ml-2" aria-hidden="true" />
           </Link>
         </motion.div>
       )}
