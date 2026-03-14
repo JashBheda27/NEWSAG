@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from bson import ObjectId
 from datetime import datetime, timezone
 from app.core.database import get_db
-from app.core.auth import require_auth
+from app.core.auth import get_user_id, require_auth
 from app.core.cache import get_from_cache, set_in_cache, delete_from_cache
 from app.models.comment import CommentModel, CommentCreateRequest
 
@@ -24,9 +24,7 @@ async def add_comment(
     db=Depends(get_db),
 ):
     data = comment.dict()
-    user_id = user.get("user_id")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Invalid user context")
+    user_id = get_user_id(user)
 
     data["user_id"] = user_id
     data["user_email"] = user.get("email")
@@ -156,9 +154,10 @@ async def delete_comment(
     user=Depends(require_auth),
     db=Depends(get_db),
 ):
+    user_id = get_user_id(user)
     result = await db.comments.delete_one({
         "_id": ObjectId(comment_id),
-        "user_id": user["user_id"],
+        "user_id": user_id,
     })
 
     if result.deleted_count == 0:
