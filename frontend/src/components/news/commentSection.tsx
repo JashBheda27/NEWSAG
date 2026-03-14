@@ -3,6 +3,7 @@ import { useUser } from '@clerk/clerk-react';
 import { CircleAlert } from 'lucide-react';
 import type { Comment } from '../../types.ts';
 import { userService } from '../../services/user.service.ts';
+import { ERROR_MESSAGES } from '../../utils/constants.ts';
 import { Skeleton } from '../ui/Skeleton.tsx';
 import { Button } from '../ui/Button.tsx';
 import { FormErrorMessage } from '../ui/FormErrorMessage.tsx';
@@ -52,7 +53,7 @@ export const CommentSection = memo<CommentSectionProps>(({ articleId, articleTit
         const data = await userService.getComments(articleId);
         setComments(data);
       } catch (err: any) {
-        setError(err.message || 'Failed to load comments.');
+        setError(err.message || ERROR_MESSAGES.LOAD_COMMENTS);
         setComments([]);
       } finally {
         setIsLoading(false);
@@ -83,7 +84,7 @@ export const CommentSection = memo<CommentSectionProps>(({ articleId, articleTit
       setComments(prev => [comment, ...prev]);
       setNewComment('');
     } catch (err: any) {
-      setError(err.message || 'Failed to post comment.');
+      setError(err.message || ERROR_MESSAGES.POST_COMMENT);
     } finally {
       setIsSubmitting(false);
     }
