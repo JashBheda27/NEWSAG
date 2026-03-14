@@ -4,19 +4,17 @@ from fastapi import APIRouter, HTTPException, Depends
 from app.services.news_service import GNewsService
 from app.services.sentiment_ml import SentimentService  # ✅ Use new ML-based sentiment
 from app.services.credibility_service import analyze_credibility  # ✅ Fake news detection
-from app.core.cache import get_from_cache, set_in_cache, delete_from_cache
+from app.core.cache import delete_from_cache, get_from_cache, gnews_cache_key, set_in_cache
 from app.core.gnews_counter import GNewsCounter
-from app.core.auth import require_auth, require_admin
+from app.core.auth import get_current_user_optional, get_user_id, require_admin, require_auth
+from app.core.constants import NEWS_CATEGORIES
 from app.core.database import get_db
 from app.services.admin_audit_service import AdminAuditService
+from app.services.text_utils import get_article_category
 from datetime import datetime
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
-
-# Default categories
-CATEGORIES = ["general", "nation", "business", "technology", "sports", "entertainment", "health"]
-
 
 # -----------------------------
 # SEARCH SUGGESTIONS (CACHE ONLY)
@@ -36,8 +34,8 @@ async def get_search_suggestions(q: str):
     results = []
     seen_ids = set()
 
-    for category in CATEGORIES:
-        cache_key = f"gnews:{category}"
+    for category in NEWS_CATEGORIES:
+        cache_key = gnews_cache_key(category)
         cached = await get_from_cache(cache_key)
         if not cached:
             continue
@@ -183,7 +181,7 @@ async def add_sentiment_to_articles(articles):
 async def get_news_by_topic(topic: str, db=Depends(get_db)):
     """Fetch news by topic/category with caching"""
     # TODO: Future enhancement - include country/language/pagination in cache key
-    cache_key = f"gnews:{topic}"
+    cache_key = gnews_cache_key(topic)
 
     cached = await get_from_cache(cache_key)
     if cached:
@@ -288,7 +286,7 @@ async def reset_hit_counter(
     db=Depends(get_db),
 ):
     """Reset hit counter (ADMIN ONLY - for testing)"""
-    admin_id = user["user_id"]
+    admin_id = get_user_id(user)
     result = await GNewsCounter.reset_counter()
     
     # Log to audit trail
@@ -318,8 +316,8 @@ async def refresh_category(
     db=Depends(get_db),
 ):
     """Manually refresh news for a specific category (ADMIN ONLY)"""
-    admin_id = user["user_id"]
-    cache_key = f"gnews:{category}"
+    admin_id = get_user_id(user)
+    cache_key = gnews_cache_key(category)
     await delete_from_cache(cache_key)
 
     logger.warning(f"[MANUAL REFRESH] {category}")
@@ -374,7 +372,7 @@ async def _refresh_single_category(cat: str, semaphore: asyncio.Semaphore, db) -
     """Refresh a single category with semaphore for rate limiting."""
     async with semaphore:  # Limit concurrent API calls
         try:
-            await delete_from_cache(f"gnews:{cat}")
+            await delete_from_cache(gnews_cache_key(cat))
             articles = await GNewsService.fetch_category(cat)
             # Add sentiment BEFORE caching (computed once, cached with articles)
             articles = await add_sentiment_to_articles(articles)
@@ -402,7 +400,7 @@ async def _refresh_single_category(cat: str, semaphore: asyncio.Semaphore, db) -
             except Exception:
                 logger.warning("[DB] Error while persisting articles to DB")
 
-            await set_in_cache(f"gnews:{cat}", articles)
+            await set_in_cache(gnews_cache_key(cat), articles)
             return {"category": cat, "count": len(articles), "error": None}
         except Exception as e:
             logger.error(f"Error refreshing {cat}: {str(e)}")
@@ -422,8 +420,8 @@ async def refresh_all(
     """
     import asyncio
     
-    admin_id = user["user_id"]
-    categories = CATEGORIES
+    admin_id = get_user_id(user)
+    categories = NEWS_CATEGORIES
     
     # Semaphore to limit concurrent API calls (avoid rate limiting)
     semaphore = asyncio.Semaphore(3)  # Max 3 concurrent fetches
@@ -463,38 +461,9 @@ async def refresh_all(
 # -----------------------------
 # SENTIMENT RATING (User Feedback)
 # -----------------------------
-from fastapi import Depends
-from app.core.database import get_db
-from app.core.auth import require_auth, require_admin, get_current_user_optional
 from app.models.sentiment_training import SentimentRatingRequest
 from app.models.credibility_training import CredibilityReportRequest
 from app.services.training_data_service import TrainingDataService
-
-
-async def get_article_category(article_id: str | None, article_url: str | None) -> str | None:
-    """
-    Find and return the category of an article by checking all cached categories.
-    Returns 'general', another category, or None if not found.
-    """
-    if not article_id and not article_url:
-        return None
-    
-    for category in CATEGORIES:
-        cache_key = f"gnews:{category}"
-        try:
-            cached_articles = await get_from_cache(cache_key)
-            if not cached_articles:
-                continue
-            
-            for article in cached_articles:
-                if (article_id and article.get("id") == article_id) or \
-                   (article_url and article.get("url") == article_url):
-                    return category
-        except Exception as e:
-            logger.warning(f"[CACHE] Error checking category {category}: {e}")
-            continue
-    
-    return None
 
 
 @router.post("/rate")
@@ -515,7 +484,7 @@ async def rate_article_sentiment(
         Confirmation of feedback submission
     """
     is_demo = user.get("is_demo", False)
-    user_id = user["user_id"]
+    user_id = get_user_id(user)
     
     # Check category for anonymous users - block non-general
     if is_demo:
@@ -575,7 +544,7 @@ async def report_misleading_article(
         Report submission status
     """
     is_demo = user.get("is_demo", False)
-    user_id = user["user_id"]
+    user_id = get_user_id(user)
     
     # Check category for anonymous users - block non-general
     if is_demo:
