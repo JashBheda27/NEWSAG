@@ -10,20 +10,13 @@ import { newsService } from '../services/news.service';
 import { getErrorMessage } from '../services/api';
 import { ErrorState } from '../components/ui/ErrorState';
 import { LoginRequiredModal } from '../components/ui/LoginRequiredModal';
+import { NEWS_CATEGORY_IDS } from '../utils/constants';
 
 interface HomeProps {
   showNotification: (msg: string, type?: 'error' | 'success' | 'warning' | 'info') => void;
 }
 
-const categories: { id: Topic; label: string }[] = [
-  { id: 'general', label: 'General' },
-  { id: 'nation', label: 'Nation' },
-  { id: 'business', label: 'Business' },
-  { id: 'technology', label: 'Technology' },
-  { id: 'sports', label: 'Sports' },
-  { id: 'entertainment', label: 'Entertainment' },
-  { id: 'health', label: 'Health' },
-];
+const categories = NEWS_CATEGORY_IDS as { id: Topic; label: string }[];
 
 export const Home: React.FC<HomeProps> = ({ showNotification }) => {
   const [searchParams, setSearchParams] = useSearchParams();
