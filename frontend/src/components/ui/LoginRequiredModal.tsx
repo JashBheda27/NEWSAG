@@ -1,4 +1,5 @@
 import React from 'react';
+import { CheckCircle2, Lock, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface LoginRequiredModalProps {
@@ -45,9 +46,7 @@ export const LoginRequiredModal: React.FC<LoginRequiredModalProps> = ({
             
             <div className="relative">
               <div className="w-14 h-14 bg-white/95 rounded-xl flex items-center justify-center mx-auto mb-2 shadow-lg shadow-indigo-500/30">
-                <svg className="w-7 h-7 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
+                <Lock size={28} className="text-indigo-600" aria-hidden="true" />
               </div>
               <h2 className="text-lg font-black text-white mb-0">Login Required</h2>
               <p className="text-indigo-200/80 text-xs mt-1">Unlock NewsAura features</p>
@@ -66,21 +65,15 @@ export const LoginRequiredModal: React.FC<LoginRequiredModalProps> = ({
             {/* Features */}
             <div className="space-y-1.5 mb-3">
               <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-50/80 dark:bg-slate-800/50">
-                <svg className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
+                <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" aria-hidden="true" />
                 <span className="text-xs text-slate-700 dark:text-slate-300 font-medium">Access all categories</span>
               </div>
               <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-50/80 dark:bg-slate-800/50">
-                <svg className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
+                <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" aria-hidden="true" />
                 <span className="text-xs text-slate-700 dark:text-slate-300 font-medium">Save articles</span>
               </div>
               <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-50/80 dark:bg-slate-800/50">
-                <svg className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
+                <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" aria-hidden="true" />
                 <span className="text-xs text-slate-700 dark:text-slate-300 font-medium">AI recommendations</span>
               </div>
             </div>
@@ -105,7 +98,10 @@ export const LoginRequiredModal: React.FC<LoginRequiredModalProps> = ({
           {/* Footer */}
           <div className="px-6 py-2 bg-slate-50/80 dark:bg-slate-800/30 border-t border-slate-200/50 dark:border-slate-700/50 text-center">
             <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug">
-              🔒 Your privacy protected
+              <span className="inline-flex items-center gap-1">
+                <Shield size={12} aria-hidden="true" />
+                Your privacy protected
+              </span>
             </p>
           </div>
         </div>
