@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { AlertTriangle, Download, Filter, Loader2, RefreshCw } from 'lucide-react';
 import { adminApi } from '../services/admin.service';
 
 interface AuditLog {
@@ -142,7 +143,7 @@ export const AdminAuditLog: React.FC<AdminAuditLogProps> = ({ showNotification }
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <Loader2 size={32} className="animate-spin text-primary" aria-hidden="true" />
       </div>
     );
   }
@@ -162,7 +163,7 @@ export const AdminAuditLog: React.FC<AdminAuditLogProps> = ({ showNotification }
             onClick={() => setShowFilters(!showFilters)}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-input bg-background hover:bg-accent transition-colors"
           >
-            <span>🔍</span>
+            <Filter size={16} aria-hidden="true" />
             Filters
           </button>
           <button
@@ -170,7 +171,7 @@ export const AdminAuditLog: React.FC<AdminAuditLogProps> = ({ showNotification }
             disabled={logs.length === 0}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <span>⬇️</span>
+            <Download size={16} aria-hidden="true" />
             Export CSV
           </button>
           <button
@@ -178,7 +179,7 @@ export const AdminAuditLog: React.FC<AdminAuditLogProps> = ({ showNotification }
             disabled={loading}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-input bg-background hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <span className={loading ? 'animate-spin' : ''}>↻</span>
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -244,7 +245,7 @@ export const AdminAuditLog: React.FC<AdminAuditLogProps> = ({ showNotification }
       <div className="bg-card border border-input rounded-lg overflow-hidden">
         {logs.length === 0 ? (
           <div className="p-8 text-center">
-            <span className="text-6xl block mx-auto mb-4">⚠️</span>
+            <AlertTriangle size={40} className="mx-auto mb-4 text-amber-500" aria-hidden="true" />
             <p className="text-muted-foreground">No audit logs found</p>
           </div>
         ) : (
