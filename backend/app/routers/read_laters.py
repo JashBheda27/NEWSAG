@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from bson import ObjectId
 from app.core.database import get_db
-from app.core.auth import require_auth
+from app.core.auth import get_user_id, require_auth
 from app.models.read_later import ReadLaterModel
 from app.services.training_data_service import TrainingDataService
 import logging
@@ -16,7 +16,7 @@ async def add_read_later(
     user=Depends(require_auth),
     db=Depends(get_db),
 ):
-    user_id = user["user_id"]
+    user_id = get_user_id(user)
 
     exists = await db.read_later.find_one({
         "user_id": user_id,
@@ -95,7 +95,7 @@ async def get_read_later(
     user=Depends(require_auth),
     db=Depends(get_db),
 ):
-    user_id = user["user_id"]
+    user_id = get_user_id(user)
 
     items = []
     cursor = db.read_later.find(
@@ -121,7 +121,7 @@ async def remove_read_later(
     user=Depends(require_auth),
     db=Depends(get_db),
 ):
-    user_id = user["user_id"]
+    user_id = get_user_id(user)
 
     result = await db.read_later.delete_one({
         "_id": ObjectId(item_id),
@@ -147,7 +147,7 @@ async def remove_read_later_by_article(
     Remove read-later entry by logical article identifier (article_id/url).
     This keeps frontend toggles stable when item ObjectId is not available in card state.
     """
-    user_id = user["user_id"]
+    user_id = get_user_id(user)
 
     result = await db.read_later.delete_one({
         "user_id": user_id,
