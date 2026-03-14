@@ -132,3 +132,8 @@ async def clear_pattern(pattern: str):
     except Exception as e:
         print(f"[REDIS CLEAR ERROR] {pattern}: {e}")
 
+
+def gnews_cache_key(category: str) -> str:
+    """Return the standard cache key for a GNews category."""
+    return f"gnews:{category}"
+
