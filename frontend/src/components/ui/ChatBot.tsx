@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, memo, useMemo } from 'react';
+import { BookCheck, BookText, Bot, ChartColumn, Newspaper, Send, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { chatService, type ChatMessage, type ChatContext } from '../../services/chat.service';
 
@@ -121,7 +122,7 @@ export const ChatBot: React.FC<ChatBotProps> = ({ articleContext: initialContext
         // Add welcome message
         setMessages([{
           role: 'assistant',
-          content: `👋 **Hi! I'm your NewsAura AI assistant.**\n\nI can help you with:\n• Summarizing your saved articles\n• Giving you a daily briefing\n• Analyzing your reading patterns\n• Recommending what to read next\n\nTry asking: "What should I read first?"`,
+          content: `**Hi! I'm your NewsAura AI assistant.**\n\nI can help you with:\n• Summarizing your saved articles\n• Giving you a daily briefing\n• Analyzing your reading patterns\n• Recommending what to read next\n\nTry asking: "What should I read first?"`,
         }]);
       }
       setHasLoadedHistory(true);
@@ -129,7 +130,7 @@ export const ChatBot: React.FC<ChatBotProps> = ({ articleContext: initialContext
       // Silently fail and show welcome message
       setMessages([{
         role: 'assistant',
-        content: `👋 **Hello! I'm your NewsAura AI assistant.**\n\nHow can I help you today?`,
+        content: `**Hello! I'm your NewsAura AI assistant.**\n\nHow can I help you today?`,
       }]);
       setHasLoadedHistory(true);
     }
@@ -164,7 +165,7 @@ export const ChatBot: React.FC<ChatBotProps> = ({ articleContext: initialContext
       // Add error message with friendly fallback
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: "⚠️ **AI assistant is temporarily unavailable.**\n\nThis can happen if the AI service is starting up or is under heavy load. Please try again in a moment.\n\n_Tip: Basic features like bookmarking and read-later still work normally._",
+        content: "**AI assistant is temporarily unavailable.**\n\nThis can happen if the AI service is starting up or is under heavy load. Please try again in a moment.\n\n_Tip: Basic features like bookmarking and read-later still work normally._",
       }]);
     } finally {
       setIsLoading(false);
@@ -180,10 +181,10 @@ export const ChatBot: React.FC<ChatBotProps> = ({ articleContext: initialContext
 
   // Memoize quick actions to prevent recreation
   const quickActions = useMemo(() => [
-    { label: '📰 Daily Briefing', action: "Give me today's briefing" },
-    { label: '📚 Summarize Saved', action: 'Summarize my saved articles' },
-    { label: '📊 Reading Patterns', action: 'What topics do I read the most?' },
-    { label: '📖 What to Read', action: 'What should I read first?' },
+    { label: 'Daily Briefing', icon: Newspaper, action: "Give me today's briefing" },
+    { label: 'Summarize Saved', icon: BookText, action: 'Summarize my saved articles' },
+    { label: 'Reading Patterns', icon: ChartColumn, action: 'What topics do I read the most?' },
+    { label: 'What to Read', icon: BookCheck, action: 'What should I read first?' },
   ], []);
 
   const handleQuickAction = useCallback((action: string) => {
@@ -229,10 +230,7 @@ export const ChatBot: React.FC<ChatBotProps> = ({ articleContext: initialContext
         transition={{ duration: 2, repeat: Infinity, type: "easeInOut" }}
       >
         <div className="relative">
-          {/* NA Bot Icon */}
-          <svg className="w-7 h-7" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-4h2v2h-2zm1.61-9.96c-2.06-.3-3.88.97-4.43 2.79-.18.58.26 1.17.87 1.17h.2c.41 0 .74-.29.88-.67.32-.89 1.27-1.5 2.3-1.28.95.2 1.65 1.13 1.57 2.1-.1 1.34-1.62 1.63-2.45 2.88 0 .01-.01.01-.01.02-.01.02-.02.03-.03.05-.09.15-.18.32-.25.5-.01.03-.03.05-.04.08-.01.02-.01.04-.02.07-.12.34-.2.75-.2 1.25h2c0-.42.11-.77.28-1.07.02-.03.03-.06.05-.09.08-.14.18-.27.28-.39.01-.01.02-.03.03-.04.1-.12.21-.23.33-.34.96-.91 2.26-1.65 1.99-3.56-.24-1.74-1.61-3.21-3.35-3.47z" />
-          </svg>
+          <Bot size={28} aria-hidden="true" />
           {/* Pulse indicator */}
           <motion.span 
             className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full"
@@ -284,10 +282,9 @@ export const ChatBot: React.FC<ChatBotProps> = ({ articleContext: initialContext
                   className="p-2.5 hover:bg-white/20 rounded-xl transition-colors"
                   whileHover={{ scale: 1.1, rotate: 90 }}
                   whileTap={{ scale: 0.9 }}
+                  aria-label="Close AI chat"
                 >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <X size={20} aria-hidden="true" />
                 </motion.button>
               </div>
 
@@ -310,7 +307,10 @@ export const ChatBot: React.FC<ChatBotProps> = ({ articleContext: initialContext
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                         >
-                          {qa.label}
+                          <span className="inline-flex items-center gap-1.5">
+                            <qa.icon size={14} aria-hidden="true" />
+                            {qa.label}
+                          </span>
                         </motion.button>
                       ))}
                     </div>
@@ -328,7 +328,7 @@ export const ChatBot: React.FC<ChatBotProps> = ({ articleContext: initialContext
                     exit={{ opacity: 0 }}
                   >
                     <div className="flex items-center gap-2">
-                      <span className="text-purple-600 dark:text-purple-400">📰</span>
+                      <Newspaper size={14} className="text-purple-600 dark:text-purple-400" aria-hidden="true" />
                       <p className="text-xs text-purple-700 dark:text-purple-300 truncate">
                         Asking about: <strong>{currentArticleTitle}</strong>
                       </p>
@@ -339,9 +339,7 @@ export const ChatBot: React.FC<ChatBotProps> = ({ articleContext: initialContext
                         whileHover={{ scale: 1.2 }}
                         whileTap={{ scale: 0.9 }}
                       >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                        <X size={16} aria-hidden="true" />
                       </motion.button>
                     </div>
                   </motion.div>
@@ -420,10 +418,9 @@ export const ChatBot: React.FC<ChatBotProps> = ({ articleContext: initialContext
                     className="p-3 bg-gradient-to-br from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 disabled:from-slate-300 disabled:to-slate-400 disabled:cursor-not-allowed text-white rounded-full transition-all shadow-lg shadow-indigo-500/30 disabled:shadow-none"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.9 }}
+                    aria-label="Send message"
                   >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                    </svg>
+                    <Send size={20} aria-hidden="true" />
                   </motion.button>
                 </div>
                 <p className="text-[10px] text-slate-400 dark:text-slate-500 text-center mt-3">
