@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
+import { BarChart3, BookOpen, Bookmark, CalendarDays, Clock3, Files, Layers } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, useUser } from '@clerk/clerk-react';
 import { Button } from '../components/ui/Button.tsx';
@@ -106,22 +107,22 @@ export const Profile: React.FC = () => {
                 <StatCard
                   label="Articles Read"
                   value={valueOr(analytics?.tier1.articles_read ?? '—')}
-                  icon={<svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M4 5a2 2 0 012-2h8a2 2 0 012 2v16l-6-3-6 3V5z" /></svg>}
+                  icon={<BookOpen size={16} aria-hidden="true" />}
                 />
                 <StatCard
                   label="Bookmarks"
                   value={valueOr(analytics?.tier1.bookmarks ?? '—')}
-                  icon={<svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>}
+                  icon={<Bookmark size={16} aria-hidden="true" />}
                 />
                 <StatCard
                   label="Read Later"
                   value={valueOr(analytics?.tier1.read_later ?? '—')}
-                  icon={<svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+                  icon={<Clock3 size={16} aria-hidden="true" />}
                 />
                 <StatCard
                   label="Total Saved"
                   value={valueOr(analytics?.tier1.total_saved ?? '—')}
-                  icon={<svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16v4H4zM4 10h16v10H4z" /></svg>}
+                  icon={<Files size={16} aria-hidden="true" />}
                 />
               </div>
 
@@ -129,18 +130,18 @@ export const Profile: React.FC = () => {
                 <StatCard
                   label="Top Category"
                   value={valueOr(analytics?.tier2.top_category ?? '—')}
-                  icon={<svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M4 6h16v12H4z" /></svg>}
+                  icon={<Layers size={16} aria-hidden="true" />}
                 />
                 <StatCard
                   label="Engagement"
                   value={valueOr(<span className="text-sm font-bold">{analytics?.tier3.engagement_label ?? '—'}</span>)}
-                  icon={<svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M3 12h3v8H3zM9 8h3v12H9zM15 4h3v16h-3z" /></svg>}
+                  icon={<BarChart3 size={16} aria-hidden="true" />}
                   highlight={true}
                 />
                 <StatCard
                   label="Last Active"
                   value={valueOr(analytics?.tier1.last_active_at ? new Date(analytics.tier1.last_active_at).toLocaleDateString() : '—')}
-                  icon={<svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M7 2v2H5a2 2 0 00-2 2v2h18V6a2 2 0 00-2-2h-2V2h-2v2H9V2H7zm14 8H3v10a2 2 0 002 2h14a2 2 0 002-2V10z" /></svg>}
+                  icon={<CalendarDays size={16} aria-hidden="true" />}
                 />
               </div>
 
