@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from 'react';
+import { Activity, BookOpenText, TrendingUp, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { adminApi } from '../services/admin.service';
+import { EmptyState } from '../components/ui/EmptyState';
+import { notify } from '../lib/notify';
 
 interface AdminOverviewProps {
-  showNotification: (msg: string, type?: 'error' | 'success') => void;
+  showNotification: (msg: string, type?: 'error' | 'success' | 'warning' | 'info') => void;
 }
 
 interface KPICard {
@@ -16,29 +19,30 @@ interface KPICard {
 
 export const AdminOverview: React.FC<AdminOverviewProps> = ({ showNotification }) => {
   const navigate = useNavigate();
+  void showNotification;
   const [kpis, setKpis] = useState<KPICard[]>([
     {
       label: 'Total Users',
       value: '—',
-      icon: <span className="text-2xl">👥</span>,
+      icon: <Users size={24} aria-hidden="true" />,
       color: 'indigo',
     },
     {
       label: 'Active This Week',
       value: '—',
-      icon: <span className="text-2xl">📈</span>,
+      icon: <TrendingUp size={24} aria-hidden="true" />,
       color: 'emerald',
     },
     {
       label: 'Articles Indexed',
       value: '—',
-      icon: <span className="text-2xl">📚</span>,
+      icon: <BookOpenText size={24} aria-hidden="true" />,
       color: 'amber',
     },
     {
       label: 'Avg Sentiment (Pos)',
       value: '—',
-      icon: <span className="text-2xl">📊</span>,
+      icon: <Activity size={24} aria-hidden="true" />,
       color: 'rose',
     },
   ]);
@@ -66,16 +70,16 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ showNotification }
         try {
           const history = await adminApi.getHitHistory(7);
           setHitHistory(history.history || []);
-        } catch (err) {
-          console.error('Failed to fetch hit history', err);
+        } catch {
+          notify.warning('Hit history is temporarily unavailable.');
         }
 
         // Fetch system status (redis/db/gnews)
         try {
           const sys = await adminApi.getSystemStatus();
           setSystemStatus(sys);
-        } catch (err) {
-          console.error('Failed to fetch system status', err);
+        } catch {
+          notify.warning('System status could not be loaded.');
         }
 
         // (sentiment distribution shown on Sentiment Feedback page)
@@ -124,7 +128,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ showNotification }
             }
           }
         } catch (err) {
-          console.error('Failed to fetch admin metrics', err);
+          notify.error('Failed to fetch admin metrics.');
           setMetricsError(err instanceof Error ? err.message : 'Failed to load metrics');
         } finally {
           setMetricsLoading(false);
@@ -132,7 +136,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ showNotification }
 
         setLoading(false);
       } catch (err) {
-        showNotification(`Error loading metrics: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error');
+        notify.error(`Error loading metrics: ${err instanceof Error ? err.message : 'Unknown error'}`);
         setLoading(false);
       }
     };
@@ -190,12 +194,11 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ showNotification }
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <button 
             onClick={async () => {
-              try {
-                await adminApi.refreshAllCache();
-                showNotification('Cache refresh started', 'success');
-              } catch (err) {
-                showNotification(`Error: ${err instanceof Error ? err.message : 'Failed to refresh cache'}`, 'error');
-              }
+              await notify.promise(adminApi.refreshAllCache(), {
+                loading: 'Refreshing all cache categories...',
+                success: 'Cache refresh started',
+                error: 'Failed to refresh cache',
+              });
             }}
             className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-left"
           >
@@ -204,12 +207,11 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ showNotification }
           </button>
           <button 
             onClick={async () => {
-              try {
-                await adminApi.resetHitCounter();
-                showNotification('Hit counter reset', 'success');
-              } catch (err) {
-                showNotification(`Error: ${err instanceof Error ? err.message : 'Failed to reset quota'}`, 'error');
-              }
+              await notify.promise(adminApi.resetHitCounter(), {
+                loading: 'Resetting daily GNews quota...',
+                success: 'Hit counter reset',
+                error: 'Failed to reset quota',
+              });
             }}
             className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-left"
           >
@@ -307,7 +309,12 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ showNotification }
             })()}
           </div>
         ) : (
-          <div className="text-sm text-slate-500">No history available</div>
+          <EmptyState
+            title="No Hit History"
+            description="We do not have enough GNews usage data yet. Check back after traffic starts flowing."
+            action={{ label: 'Open System Ops', href: '/admin/ops' }}
+            illustration="generic"
+          />
         )}
       </div>
       {/* Sentiment distribution is shown on the Sentiment Feedback page */}
