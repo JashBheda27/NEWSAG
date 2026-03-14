@@ -258,7 +258,8 @@
   flex-wrap: wrap;
 }
 
-.sso a {
+.sso a,
+.sso button {
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -275,22 +276,26 @@
   min-height: 40px;
 }
 
-.sso a:hover {
+.sso a:hover,
+.sso button:hover {
   background-color: rgba(255, 255, 255, 0.3);
   transform: translateY(-3px);
 }
 
-.sso a:active {
+.sso a:active,
+.sso button:active {
   transform: translateY(0);
 }
 
-.dark .sso a {
+.dark .sso a,
+.dark .sso button {
   background-color: rgba(255, 255, 255, 0.1);
 }
 
 /* Ensure touch-friendly sizes on mobile */
 @media (max-width: 768px) {
-  .sso a {
+  .sso a,
+  .sso button {
     min-width: 44px;
     min-height: 44px;
   }
@@ -350,7 +355,8 @@
     margin: 12px 0;
   }
 
-  .sso a {
+  .sso a,
+  .sso button {
     width: 35px;
     height: 35px;
     font-size: 16px;
