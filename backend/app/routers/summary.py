@@ -3,11 +3,11 @@ import logging
 import re
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, Depends
-from app.core.cache import get_from_cache, set_in_cache
+from app.core.cache import get_from_cache, gnews_cache_key, set_in_cache
 from app.core.constants import SUPPORTED_LANGUAGES
 from app.services.summarizer import TextSummarizer
-from app.services.text_utils import extract_article_text, translate_text
-from app.core.auth import require_auth, get_current_user_optional
+from app.services.text_utils import extract_article_text, get_article_category, translate_text
+from app.core.auth import get_current_user_optional, get_user_id, require_auth
 from app.core.database import get_db
 from app.core.tts_config import is_language_supported as is_tts_supported, get_voice_for_language
 
@@ -15,35 +15,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 summarizer = TextSummarizer()
-
-# Categories for anonymous access check
-CATEGORIES = ["general", "nation", "business", "technology", "sports", "entertainment", "health"]
-
-
-async def get_article_category(article_id: str | None, article_url: str | None) -> str | None:
-    """
-    Find and return the category of an article by checking all cached categories.
-    Returns 'general', another category, or None if not found.
-    """
-    if not article_id and not article_url:
-        return None
-    
-    for category in CATEGORIES:
-        cache_key = f"gnews:{category}"
-        try:
-            cached_articles = await get_from_cache(cache_key)
-            if not cached_articles:
-                continue
-            
-            for article in cached_articles:
-                if (article_id and article.get("id") == article_id) or \
-                   (article_url and article.get("url") == article_url):
-                    return category
-        except Exception as e:
-            logger.warning(f"[CACHE] Error checking category {category}: {e}")
-            continue
-    
-    return None
 
 # ──────────────────────────────────────────────────────────
 # Helpers
@@ -119,7 +90,7 @@ async def generate_summary(
     - Anonymous users: general category only (or unknown category)
     """
     is_demo = user.get("is_demo", False)
-    user_id = user.get("user_id")
+    user_id = get_user_id(user)
 
     article_url = payload.get("url")
     article_id = payload.get("article_id")
@@ -146,7 +117,7 @@ async def generate_summary(
     if cached:
         try:
             await db.summary_logs.insert_one({
-                "user_id": user["user_id"],
+                "user_id": user_id,
                 "url": article_url,
                 "source": "cache",
                 "created_at": datetime.utcnow(),
@@ -275,7 +246,7 @@ async def generate_summary(
 
     try:
         await db.summary_logs.insert_one({
-            "user_id": user["user_id"],
+            "user_id": user_id,
             "url": article_url,
             "source": source,
             "created_at": datetime.utcnow(),
