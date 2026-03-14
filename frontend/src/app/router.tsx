@@ -31,7 +31,7 @@ const PageSkeleton = () => (
 );
 
 interface AppRouterProps {
-  showNotification: (msg: string, type?: 'error' | 'success') => void;
+  showNotification: (msg: string, type?: 'error' | 'success' | 'warning' | 'info') => void;
 }
 
 export const AppRouter: React.FC<AppRouterProps> = ({ showNotification }) => {
