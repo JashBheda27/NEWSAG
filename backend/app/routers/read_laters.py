@@ -104,7 +104,10 @@ async def get_read_later(
 
     async for item in cursor:
         item["_id"] = str(item["_id"])
-        items.append(ReadLaterModel(**item))
+        read_later_item = ReadLaterModel(**item)
+        items.append(read_later_item.model_dump(mode="json"))
+
+    logger.info("[READ_LATER] user_id=%s count=%s", user_id, len(items))
 
     return {
         "count": len(items),
