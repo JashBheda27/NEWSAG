@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Search } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import type { Article } from '../../types';
 import { newsService } from '../../services/news.service';
@@ -86,19 +87,11 @@ export const SearchBar: React.FC = () => {
         placeholder="Search news..."
         className="w-full px-4 py-2.5 pl-10 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm text-gray-900 dark:text-slate-200 placeholder-gray-500 dark:placeholder-slate-500 transition-all"
       />
-      <svg
-        className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-        />
-      </svg>
+      <Search
+        size={16}
+        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
+        aria-hidden="true"
+      />
 
       {isOpen && (loading || inputValue.trim().length >= 2) && (
         <div className="absolute left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl shadow-lg z-50 max-h-64 overflow-auto">
