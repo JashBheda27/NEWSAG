@@ -49,20 +49,27 @@ export const ReadLater: React.FC = () => {
     }
   };
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalUrl, setModalUrl] = useState<string>('');
-  const [modalTitle, setModalTitle] = useState<string | undefined>(undefined);
-  const [modalDescription, setModalDescription] = useState<string | undefined>(undefined);
-  const [modalArticleId, setModalArticleId] = useState<string | undefined>(undefined);
-  const [modalSource, setModalSource] = useState<string | undefined>(undefined);
+  const [summaryModal, setSummaryModal] = useState<{
+    isOpen: boolean;
+    url: string;
+    title?: string;
+    description?: string;
+    articleId?: string;
+    source?: string;
+  }>({
+    isOpen: false,
+    url: '',
+  });
 
   const openSummary = (item: ReadLaterItem) => {
-    setModalUrl(item.url);
-    setModalTitle(item.title);
-    setModalDescription(undefined);
-    setModalArticleId(item.article_id || item.id);
-    setModalSource(item.source);
-    setIsModalOpen(true);
+    setSummaryModal({
+      isOpen: true,
+      url: item.url,
+      title: item.title,
+      description: undefined,
+      articleId: item.article_id || item.id,
+      source: item.source,
+    });
   };
 
   return (
@@ -154,13 +161,13 @@ export const ReadLater: React.FC = () => {
           />
         )}
         <SummaryModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          url={modalUrl}
-          title={modalTitle}
-          description={modalDescription}
-          articleId={modalArticleId}
-          source={modalSource}
+          isOpen={summaryModal.isOpen}
+          onClose={() => setSummaryModal((prev) => ({ ...prev, isOpen: false }))}
+          url={summaryModal.url}
+          title={summaryModal.title}
+          description={summaryModal.description}
+          articleId={summaryModal.articleId}
+          source={summaryModal.source}
         />
       </motion.div>
     </motion.div>
