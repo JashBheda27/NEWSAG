@@ -1,27 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
+import { Grid3X3, Rows3 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { Topic, Article } from '../types';
 import { NewsGrid } from '../components/news/NewsGrid';
 import { TrendingBulletin } from '../components/news/TrendingBulletin';
 import { newsService } from '../services/news.service';
 import { getErrorMessage } from '../services/api';
-import { Button } from '../components/ui/Button';
+import { ErrorState } from '../components/ui/ErrorState';
 import { LoginRequiredModal } from '../components/ui/LoginRequiredModal';
 
 interface HomeProps {
-  showNotification: (msg: string, type?: 'error' | 'success') => void;
+  showNotification: (msg: string, type?: 'error' | 'success' | 'warning' | 'info') => void;
 }
 
 const categories: { id: Topic; label: string }[] = [
-  { id: 'general', label: '🇮🇳 General' },
-  { id: 'nation', label: '🏛️ Nation' },
-  { id: 'business', label: '💼 Business' },
-  { id: 'technology', label: '🚀 Technology' },
-  { id: 'sports', label: '⚽ Sports' },
-  { id: 'entertainment', label: '🎬 Entertainment' },
-  { id: 'health', label: '🏥 Health' },
+  { id: 'general', label: 'General' },
+  { id: 'nation', label: 'Nation' },
+  { id: 'business', label: 'Business' },
+  { id: 'technology', label: 'Technology' },
+  { id: 'sports', label: 'Sports' },
+  { id: 'entertainment', label: 'Entertainment' },
+  { id: 'health', label: 'Health' },
 ];
 
 export const Home: React.FC<HomeProps> = ({ showNotification }) => {
@@ -51,7 +52,7 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
 
     if (!isSignedIn && categoryFromUrl !== 'general') {
       const selected = categories.find((cat) => cat.id === categoryFromUrl);
-      setSelectedCategoryName(selected?.label?.split(' ')[1] || 'this category');
+      setSelectedCategoryName(selected?.label || 'this category');
       setShowLoginModal(true);
       setSearchParams({ category: 'general' });
     }
@@ -134,7 +135,7 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
           {/* Section Header with accent bar */}
           <div className="relative pl-4 border-l-4 border-gradient-to-b from-indigo-500 to-purple-600" style={{ borderImage: 'linear-gradient(180deg, #6366f1 0%, #8b5cf6 100%) 1' }}>
             <h2 className="text-3xl sm:text-4xl font-black mb-1 flex items-center gap-4 text-gray-900 dark:text-white">
-              {queryFromUrl.length >= 2 ? 'Search Results' : `${categories.find(c => c.id === category)?.label.split(' ')[1]} Feed`}
+              {queryFromUrl.length >= 2 ? 'Search Results' : `${categories.find(c => c.id === category)?.label} Feed`}
               <motion.span 
                 className="inline-flex items-center justify-center px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full text-sm font-bold"
                 initial={{ scale: 0 }}
@@ -174,9 +175,7 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
                     transition={{ type: "spring", stiffness: 400, damping: 30 }}
                   />
                 )}
-                <svg className="w-4 h-4 relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                </svg>
+                <Grid3X3 size={16} className="relative z-10" aria-hidden="true" />
                 <span className="hidden sm:inline relative z-10">Grid</span>
               </motion.button>
               <motion.button
@@ -196,9 +195,7 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
                     transition={{ type: "spring", stiffness: 400, damping: 30 }}
                   />
                 )}
-                <svg className="w-4 h-4 relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
+                <Rows3 size={16} className="relative z-10" aria-hidden="true" />
                 <span className="hidden sm:inline relative z-10">List</span>
               </motion.button>
             </div>
@@ -228,15 +225,12 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
           <p className="text-xs text-gray-600 dark:text-slate-400">Thank you for your patience</p>
         </motion.div>
       ) : error ? (
-        <motion.div 
-          className="max-w-xl mx-auto py-20 px-8 bg-white dark:bg-slate-800 rounded-[2.5rem] shadow-lg border border-rose-200 dark:border-rose-900/20 text-center"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4 }}
-        >
-          <h3 className="text-2xl font-black mb-4 text-gray-900 dark:text-white">Feed Unavailable</h3>
-          <p className="text-gray-700 dark:text-slate-400 mb-8">{error}</p>
-          <Button size="lg" onClick={() => fetchNews(category)}>Try Again</Button>
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4 }}>
+          <ErrorState
+            title="Feed Unavailable"
+            message={error}
+            onRetry={() => fetchNews(category)}
+          />
         </motion.div>
       ) : (
         <motion.div
