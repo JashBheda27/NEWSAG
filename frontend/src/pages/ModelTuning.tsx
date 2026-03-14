@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
+import { Ban, CheckCircle2, Clock3, Loader2, Play, XCircle } from 'lucide-react';
 import { adminApi } from '../services/admin.service';
+import { EmptyState } from '../components/ui/EmptyState';
+import { notify } from '../lib/notify';
 
 interface ModelTuningProps {
-  showNotification: (msg: string, type?: 'error' | 'success') => void;
+  showNotification: (msg: string, type?: 'error' | 'success' | 'warning' | 'info') => void;
 }
 
 export const ModelTuning: React.FC<ModelTuningProps> = ({ showNotification }) => {
-  const [_loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [tuning, setTuning] = useState<'sentiment' | 'credibility' | null>(null);
   const [trainingStats, setTrainingStats] = useState<any>(null);
+  void showNotification;
   const jobs = (trainingStats?.recent_jobs || []).map((job: any, idx: number) => ({
     ...job,
     id: idx,
@@ -21,7 +25,7 @@ export const ModelTuning: React.FC<ModelTuningProps> = ({ showNotification }) =>
         setTrainingStats(stats);
         setLoading(false);
       } catch (err) {
-        showNotification(`Failed to load tuning jobs: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error');
+        notify.error(`Failed to load tuning jobs: ${err instanceof Error ? err.message : 'Unknown error'}`);
         setLoading(false);
       }
     };
@@ -32,14 +36,17 @@ export const ModelTuning: React.FC<ModelTuningProps> = ({ showNotification }) =>
   const handleTriggerTune = async (model: 'sentiment' | 'credibility') => {
     setTuning(model);
     try {
-      if (model === 'sentiment') {
-        await adminApi.fineTuneSentiment(50, 3);
-      } else {
-        await adminApi.finetuneCredibility(30, 3);
-      }
-      showNotification(`${model} model fine-tuning started`, 'success');
-    } catch (err) {
-      showNotification(`Failed to start fine-tuning: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error');
+      const operation = model === 'sentiment'
+        ? adminApi.fineTuneSentiment(50, 3)
+        : adminApi.finetuneCredibility(30, 3);
+
+      await notify.promise(operation, {
+        loading: `Starting ${model} fine-tuning...`,
+        success: `${model} model fine-tuning started`,
+        error: 'Failed to start fine-tuning',
+      });
+    } catch {
+      // Toast is already handled by notify.promise.
     } finally {
       setTuning(null);
     }
@@ -48,17 +55,17 @@ export const ModelTuning: React.FC<ModelTuningProps> = ({ showNotification }) =>
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'running':
-        return <span className="text-amber-500 animate-spin">⏳</span>;
+        return <Loader2 size={16} className="text-amber-500 animate-spin" aria-hidden="true" />;
       case 'completed':
       case 'success':
-        return <span className="text-emerald-500">✓</span>;
+        return <CheckCircle2 size={16} className="text-emerald-500" aria-hidden="true" />;
       case 'failed':
       case 'error':
-        return <span className="text-rose-500">✗</span>;
+        return <XCircle size={16} className="text-rose-500" aria-hidden="true" />;
       case 'skipped':
-        return <span className="text-slate-500">⊘</span>;
+        return <Ban size={16} className="text-slate-500" aria-hidden="true" />;
       default:
-        return <span className="text-slate-400">⏳</span>;
+        return <Clock3 size={16} className="text-slate-400" aria-hidden="true" />;
     }
   };
 
@@ -85,7 +92,7 @@ export const ModelTuning: React.FC<ModelTuningProps> = ({ showNotification }) =>
             disabled={tuning === 'sentiment'}
             className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
           >
-            <span>▶</span>
+            <Play size={16} aria-hidden="true" />
             {tuning === 'sentiment' ? 'Starting...' : 'Start Fine-Tuning'}
           </button>
           <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 space-y-2">
@@ -112,7 +119,7 @@ export const ModelTuning: React.FC<ModelTuningProps> = ({ showNotification }) =>
             disabled={tuning === 'credibility'}
             className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
           >
-            <span>▶</span>
+            <Play size={16} aria-hidden="true" />
             {tuning === 'credibility' ? 'Starting...' : 'Start Fine-Tuning'}
           </button>
           <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 space-y-2">
@@ -133,14 +140,19 @@ export const ModelTuning: React.FC<ModelTuningProps> = ({ showNotification }) =>
         <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
           Recent Fine-Tuning Jobs
         </h3>
-        {_loading ? (
+        {loading ? (
           <div className="text-center py-12 text-slate-500 dark:text-slate-400">
-            Loading jobs...
+            <span className="inline-flex items-center gap-2">
+              <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+              Loading jobs...
+            </span>
           </div>
         ) : jobs.length === 0 ? (
-          <div className="text-center py-12 text-slate-500 dark:text-slate-400">
-            No tuning jobs yet. Start by clicking a button above.
-          </div>
+          <EmptyState
+            title="No Tuning Jobs Yet"
+            description="Start a sentiment or credibility fine-tuning run to see job history here."
+            illustration="generic"
+          />
         ) : (
           <div className="space-y-3">
             {jobs.map((job: any) => (
