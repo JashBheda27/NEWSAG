@@ -2,10 +2,22 @@ import logging
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends
 from app.core.database import get_db
-from app.core.auth import require_auth
+from app.core.auth import get_user_id, require_auth
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+async def _get_user_counts(db, user_id: str) -> dict:
+    """Return frequently used profile counters for a user."""
+    bookmarks = await db.bookmarks.count_documents({"user_id": user_id})
+    read_later = await db.read_later.count_documents({"user_id": user_id})
+    summaries = await db.summary_logs.count_documents({"user_id": user_id})
+    return {
+        "bookmarks": bookmarks,
+        "read_later": read_later,
+        "summaries": summaries,
+    }
 
 
 @router.get("/stats")
@@ -13,13 +25,12 @@ async def get_profile_stats(
     user=Depends(require_auth),
     db=Depends(get_db),
 ):
-    user_id = user["user_id"]
-
-    bookmarks_count = await db.bookmarks.count_documents({"user_id": user_id})
-    read_later_count = await db.read_later.count_documents({"user_id": user_id})
+    user_id = get_user_id(user)
+    counts = await _get_user_counts(db, user_id)
+    bookmarks_count = counts["bookmarks"]
+    read_later_count = counts["read_later"]
     total_saved = bookmarks_count + read_later_count
-
-    articles_read = await db.summary_logs.count_documents({"user_id": user_id})
+    articles_read = counts["summaries"]
 
     logger.info(
         "[PROFILE STATS] user_id=%s bookmarks=%s read_later=%s articles_read=%s",
@@ -42,13 +53,12 @@ async def get_profile_analytics(
     user=Depends(require_auth),
     db=Depends(get_db),
 ):
-    user_id = user["user_id"]
-
-    bookmarks_count = await db.bookmarks.count_documents({"user_id": user_id})
-    read_later_count = await db.read_later.count_documents({"user_id": user_id})
+    user_id = get_user_id(user)
+    counts = await _get_user_counts(db, user_id)
+    bookmarks_count = counts["bookmarks"]
+    read_later_count = counts["read_later"]
     total_saved = bookmarks_count + read_later_count
-
-    articles_read = await db.summary_logs.count_documents({"user_id": user_id})
+    articles_read = counts["summaries"]
 
     latest_bookmark = await db.bookmarks.find_one(
         {"user_id": user_id},
