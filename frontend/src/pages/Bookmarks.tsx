@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { BookmarkX } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { Bookmark } from '../types';
 import { userService } from '../services/user.service';
@@ -6,33 +7,44 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { Button } from '../components/ui/Button';
 import { SummaryModal } from '../components/news/SummaryModal';
 import { EmptyState } from '../components/ui/EmptyState';
+import { ErrorState } from '../components/ui/ErrorState';
+import { notify } from '../lib/notify';
+import { useAsyncState } from '../hooks/useAsyncState';
 
 export const Bookmarks: React.FC = () => {
-  const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const {
+    data: bookmarks,
+    loading: isLoading,
+    error: fetchError,
+    executeLatest,
+    setData: setBookmarks,
+  } = useAsyncState<Bookmark[]>({
+    initialData: [],
+    getErrorMessage: (err) => err instanceof Error ? err.message : 'Failed to fetch bookmarks',
+  });
+
+  const fetchBookmarks = useCallback(async () => {
+    try {
+      await executeLatest(() => userService.getBookmarks());
+    } catch (err) {
+      setBookmarks([]);
+    }
+  }, [executeLatest, setBookmarks]);
 
   useEffect(() => {
-    const fetch = async () => {
-      setIsLoading(true);
-      try {
-        const data = await userService.getBookmarks();
-        setBookmarks(data);
-      } catch (err) {
-        console.error('Failed to fetch bookmarks:', err);
-        setBookmarks([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetch();
-  }, []);
+    fetchBookmarks();
+  }, [fetchBookmarks]);
 
   const handleRemove = async (id: string) => {
     try {
-      await userService.removeBookmark(id);
+      await notify.promise(userService.removeBookmark(id), {
+        loading: 'Removing bookmark...',
+        success: 'Bookmark removed',
+        error: 'Failed to remove bookmark',
+      });
       setBookmarks(prev => prev.filter(b => b.id !== id));
-    } catch (err) {
-      console.error(err);
+    } catch {
+      // Toast is already handled by notify.promise.
     }
   };
 
@@ -65,7 +77,7 @@ export const Bookmarks: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
       >
-        🔖 Saved Stories
+        <BookmarkX size={30} aria-hidden="true" /> Saved Stories
         <motion.span 
           className="text-sm font-bold bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 px-3 py-1 rounded-full text-indigo-600 dark:text-indigo-400"
           initial={{ scale: 0 }}
@@ -98,6 +110,12 @@ export const Bookmarks: React.FC = () => {
                </div>
             </motion.div>
           ))
+        ) : fetchError ? (
+          <ErrorState
+            title="Unable to load bookmarks"
+            message={fetchError}
+            onRetry={fetchBookmarks}
+          />
         ) : bookmarks.length > 0 ? (
           bookmarks.map((item, idx) => (
             <motion.div 
@@ -106,7 +124,6 @@ export const Bookmarks: React.FC = () => {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: idx * 0.05, duration: 0.3 }}
-              whileHover={{ scale: 1.02 }}
             >
                {item.image_url && (
                  <motion.div 
@@ -127,9 +144,7 @@ export const Bookmarks: React.FC = () => {
                  )}
                  <div className="flex gap-2">
                    <Button size="sm" variant="ghost" onClick={() => openSummary(item)}>View</Button>
-                   <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                     <Button size="sm" variant="ghost" className="text-rose-500" onClick={() => handleRemove(item.id)}>Remove</Button>
-                   </motion.div>
+                   <Button size="sm" variant="ghost" className="text-rose-500" onClick={() => handleRemove(item.id)}>Remove</Button>
                  </div>
                </div>
             </motion.div>
