@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Pause, Play, Square, Volume2, VolumeX } from 'lucide-react';
 import { useAuth } from '@clerk/clerk-react';
+import { ERROR_MESSAGES } from '../../utils/constants';
 import { FormErrorMessage } from '../ui/FormErrorMessage';
 
 interface AudioPlayerProps {
@@ -64,7 +65,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, language, classN
       setAudioUrl(url);
       return url;
     } catch (err: any) {
-      setError(err.message || 'Audio is unavailable.');
+      setError(err.message || ERROR_MESSAGES.AUDIO_UNAVAILABLE);
       return null;
     } finally {
       setIsLoading(false);
