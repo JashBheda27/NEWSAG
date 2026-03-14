@@ -8,7 +8,7 @@ import { userService } from '../../services/user.service';
 import { Modal } from '../ui/Modal';
 import { formatRelativeTime, getReadTimeText } from '../../utils/timeUtils';
 import { openChatWithArticle } from '../../utils/chatEvents';
-import { SUPPORTED_LANGUAGES } from '../../utils/constants';
+import { ERROR_MESSAGES, SUPPORTED_LANGUAGES } from '../../utils/constants';
 import { AlertTriangle, Bookmark, Bot, Check, Clock3, Heart, MessageCircle, RefreshCw, Sparkles, ThumbsUp, TriangleAlert } from 'lucide-react';
 
 // Lazy load heavy components
@@ -16,9 +16,6 @@ const CommentSection = lazy(() => import('./commentSection').then(m => ({ defaul
 const AudioPlayer = lazy(() => import('./AudioPlayer').then(m => ({ default: m.AudioPlayer })));
 
 const SENTIMENT_OPTIONS = ['Positive', 'Neutral', 'Negative'] as const;
-
-// Alias for backward compatibility
-const LANGUAGES = SUPPORTED_LANGUAGES;
 
 const ACTION_BTN_BASE = 'relative inline-flex items-center justify-center p-2.5 rounded-xl transition-all duration-200 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900';
 const ACTION_BTN_INACTIVE = 'text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-105';
@@ -142,7 +139,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
         setSummaryData(res);
       } catch (err: any) {
         console.error("Summary failed", err);
-        setSummaryError(err.message || "Failed to generate summary.");
+        setSummaryError(err.message || ERROR_MESSAGES.GENERATE_SUMMARY);
       } finally {
         setIsLoadingSummary(false);
       }
@@ -168,7 +165,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
       setSummaryData(res);
     } catch (err: any) {
       console.error("Summary retry failed", err);
-      setSummaryError(err.message || "Failed to generate summary.");
+      setSummaryError(err.message || ERROR_MESSAGES.GENERATE_SUMMARY);
     } finally {
       setIsLoadingSummary(false);
     }
@@ -192,7 +189,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
       setSummary(res.summary);
       setSummaryData(res);
     } catch (err: any) {
-      setSummaryError(err.message || 'Translation failed.');
+      setSummaryError(err.message || ERROR_MESSAGES.TRANSLATION_FAILED);
     } finally {
       setIsTranslating(false);
     }
@@ -217,7 +214,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
       }
       setIsBookmarked(!isBookmarked);
     } catch (err: any) {
-      onError?.(err.message || "Action failed. Check your connection.");
+      onError?.(err.message || ERROR_MESSAGES.ACTION_FAILED);
     }
   }, [article.url, article.id, article.title, article.description, article.image_url, article.category, sourceValue, isBookmarked, onError]);
 
@@ -238,7 +235,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
       }
       setIsInReadLater(!isInReadLater);
     } catch (err: any) {
-      onError?.(err.message || "Action failed. Check your connection.");
+      onError?.(err.message || ERROR_MESSAGES.ACTION_FAILED);
     }
   }, [article.url, article.id, article.title, article.category, sourceValue, isInReadLater, onError]);
 
@@ -435,7 +432,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
                      disabled={isTranslating}
                      className="text-xs border border-slate-400 dark:border-slate-500 rounded px-2 py-1 bg-transparent font-serif focus:outline-none focus:ring-1 focus:ring-indigo-400 disabled:opacity-50 text-slate-800 dark:text-slate-100"
                    >
-                     {LANGUAGES.map((l) => (
+                     {SUPPORTED_LANGUAGES.map((l) => (
                        <option key={l.code} value={l.code}>
                          {l.name}
                        </option>
@@ -748,7 +745,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
                    disabled={isTranslating}
                    className="text-xs border border-slate-400 dark:border-slate-500 rounded px-2 py-1 bg-transparent font-serif focus:outline-none focus:ring-1 focus:ring-indigo-400 disabled:opacity-50 text-slate-800 dark:text-slate-100"
                  >
-                   {LANGUAGES.map((l) => (
+                   {SUPPORTED_LANGUAGES.map((l) => (
                      <option key={l.code} value={l.code}>
                        {l.name}
                      </option>
