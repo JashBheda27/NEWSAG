@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import { AlertTriangle, Heart, MessageCircle, RefreshCw } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
+import { FormErrorMessage } from '../ui/FormErrorMessage';
 import { newsService } from '../../services/news.service';
 import type { SummaryData } from '../../types';
 import { CommentSection } from './commentSection';
@@ -96,7 +98,9 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
       ) : error ? (
         <div className="py-8 text-center font-serif">
           <h4 className="font-serif text-2xl mb-4">DISPATCH ERROR</h4>
-          <p className="text-slate-600 mb-6">{error}</p>
+          <div className="mb-6 max-w-xl mx-auto">
+            <FormErrorMessage message={error} />
+          </div>
           <Button onClick={onClose}>Close Bulletin</Button>
         </div>
       ) : (
@@ -166,14 +170,15 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
             {summaryData?.is_fallback && (
               <div className="mt-2 flex items-center justify-between px-3 py-1.5 rounded border" style={{ backgroundColor: '#fffbe6', borderColor: '#ffe58f' }}>
                 <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: '#ad6800' }}>
-                  ⚠ {summaryData.source === 'description' ? 'Limited summary (from description)' : summaryData.source === 'placeholder' ? 'Summary unavailable' : 'Partial summary'}
+                    <AlertTriangle size={12} className="inline mr-1" aria-hidden="true" />
+                    {summaryData.source === 'description' ? 'Limited summary (from description)' : summaryData.source === 'placeholder' ? 'Summary unavailable' : 'Partial summary'}
                 </span>
                 <button
                   onClick={handleRetry}
                   className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded hover:bg-amber-100 transition-colors"
                   style={{ color: '#ad6800' }}
                 >
-                  ↻ Retry
+                    <RefreshCw size={12} className="inline mr-1" aria-hidden="true" /> Retry
                 </button>
               </div>
             )}
@@ -203,9 +208,7 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
                   title="Comments"
                   style={{color: '#333'}}
                 >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
+                  <MessageCircle size={20} aria-hidden="true" />
                 </button>
                 <button 
                   onClick={() => setIsLiked(!isLiked)}
@@ -213,9 +216,7 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
                   title="Like"
                   style={{color: '#333'}}
                 >
-                  <svg className="w-5 h-5" fill={isLiked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                  </svg>
+                  <Heart size={20} fill={isLiked ? 'currentColor' : 'none'} aria-hidden="true" />
                 </button>
               </div>
 
@@ -242,7 +243,7 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
       )}
     </Modal>
     {isCommentsOpen && articleId && (
-      <Modal isOpen={isCommentsOpen} onClose={() => setIsCommentsOpen(false)} title="💬 Comments" accent="comments">
+      <Modal isOpen={isCommentsOpen} onClose={() => setIsCommentsOpen(false)} title="Comments" accent="comments">
         <CommentSection articleId={articleId} articleTitle={title || ''} />
       </Modal>
     )}
