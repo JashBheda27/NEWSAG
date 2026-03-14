@@ -5,7 +5,8 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from bs4 import BeautifulSoup
 from deep_translator import GoogleTranslator
-from app.core.constants import SUPPORTED_LANGUAGES
+from app.core.cache import get_from_cache
+from app.core.constants import NEWS_CATEGORIES, SUPPORTED_LANGUAGES
 
 logger = logging.getLogger(__name__)
 
@@ -114,3 +115,25 @@ async def extract_article_text(url: str) -> str:
         return ""
 
     return text
+
+
+async def get_article_category(article_id: str | None, article_url: str | None) -> str | None:
+    """Find the category for an article by scanning cached GNews buckets."""
+    if not article_id and not article_url:
+        return None
+
+    for category in NEWS_CATEGORIES:
+        try:
+            cached_articles = await get_from_cache(f"gnews:{category}")
+            if not cached_articles:
+                continue
+            for article in cached_articles:
+                if (article_id and article.get("id") == article_id) or (
+                    article_url and article.get("url") == article_url
+                ):
+                    return category
+        except Exception as e:
+            logger.warning("[CACHE] Error checking category %s: %s", category, e)
+            continue
+
+    return None
