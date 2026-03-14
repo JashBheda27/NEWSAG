@@ -344,3 +344,11 @@ async def get_current_user_optional(
             "is_admin": False,
             "is_demo": True,
         }
+
+
+def get_user_id(user: dict) -> str:
+    """Extract user_id from auth context, raising 401 if missing."""
+    user_id = user.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user context")
+    return user_id
