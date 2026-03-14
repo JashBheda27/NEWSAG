@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback, memo } from 'react';
 import { useUser } from '@clerk/clerk-react';
+import { CircleAlert } from 'lucide-react';
 import type { Comment } from '../../types.ts';
 import { userService } from '../../services/user.service.ts';
 import { Skeleton } from '../ui/Skeleton.tsx';
 import { Button } from '../ui/Button.tsx';
+import { FormErrorMessage } from '../ui/FormErrorMessage.tsx';
 
 interface CommentSectionProps {
   articleId: string;
@@ -35,6 +37,7 @@ CommentItem.displayName = 'CommentItem';
 // Optimized CommentSection with memo
 export const CommentSection = memo<CommentSectionProps>(({ articleId, articleTitle }) => {
   const { user } = useUser();
+  const formErrorId = `comment-form-error-${articleId}`;
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [newComment, setNewComment] = useState('');
@@ -49,7 +52,7 @@ export const CommentSection = memo<CommentSectionProps>(({ articleId, articleTit
         const data = await userService.getComments(articleId);
         setComments(data);
       } catch (err: any) {
-        setError(err.message || 'Failed to load comments');
+        setError(err.message || 'Failed to load comments.');
         setComments([]);
       } finally {
         setIsLoading(false);
@@ -80,7 +83,7 @@ export const CommentSection = memo<CommentSectionProps>(({ articleId, articleTit
       setComments(prev => [comment, ...prev]);
       setNewComment('');
     } catch (err: any) {
-      setError(err.message || 'Failed to post comment');
+      setError(err.message || 'Failed to post comment.');
     } finally {
       setIsSubmitting(false);
     }
@@ -97,17 +100,23 @@ export const CommentSection = memo<CommentSectionProps>(({ articleId, articleTit
           <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Share your thoughts</h4>
           <span className="text-[10px] uppercase tracking-wider text-indigo-600 dark:text-indigo-400 font-semibold">Community</span>
         </div>
-        {error && (
-          <div className="p-3 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-lg">
-            <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>
+        {error && comments.length > 0 && (
+          <div id={formErrorId}>
+            <FormErrorMessage message={error} />
           </div>
         )}
+        <label htmlFor={`comment-input-${articleId}`} className="sr-only">
+          Add your comment
+        </label>
         <textarea
+          id={`comment-input-${articleId}`}
           value={newComment}
           onChange={handleCommentChange}
           placeholder="What do you think?"
           className="w-full p-4 bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500/60 focus:border-indigo-400 dark:focus:border-indigo-500 outline-none resize-none h-24 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-shadow"
           disabled={isSubmitting}
+          aria-label="Write a comment"
+          aria-describedby={error && comments.length > 0 ? formErrorId : undefined}
         />
         <div className="flex justify-end">
           <Button type="submit" isLoading={isSubmitting} disabled={!newComment.trim() || isSubmitting} className="px-6">
@@ -138,11 +147,9 @@ export const CommentSection = memo<CommentSectionProps>(({ articleId, articleTit
         ) : error && comments.length === 0 ? (
           <div className="text-center py-8">
             <div className="w-12 h-12 bg-rose-50 dark:bg-rose-900/20 rounded-full flex items-center justify-center mx-auto mb-3">
-              <svg className="w-6 h-6 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+              <CircleAlert size={24} className="text-rose-500" aria-hidden="true" />
             </div>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">{error}</p>
+            <FormErrorMessage message={error} compact className="justify-center" />
           </div>
         ) : comments.length > 0 ? (
           comments.map((comment) => (
