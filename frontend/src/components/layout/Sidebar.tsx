@@ -1,7 +1,25 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
+import {
+  BriefcaseBusiness,
+  Check,
+  Clapperboard,
+  Cpu,
+  Globe,
+  HeartPulse,
+  Landmark,
+  Lock,
+  Trophy,
+  type LucideIcon,
+} from 'lucide-react';
 import { LoginRequiredModal } from '../ui/LoginRequiredModal';
+
+interface CategoryItem {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+}
 
 export const Sidebar: React.FC = () => {
   const location = useLocation();
@@ -11,76 +29,41 @@ export const Sidebar: React.FC = () => {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [selectedCategoryName, setSelectedCategoryName] = useState('');
 
-  const categories = [
+  const categories: CategoryItem[] = [
     {
       id: 'general',
       label: 'General',
-      emoji: '🇮🇳',
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      ),
+      icon: Globe,
     },
     {
       id: 'nation',
       label: 'Nation',
-      emoji: '🏛️',
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-        </svg>
-      ),
+      icon: Landmark,
     },
     {
       id: 'business',
       label: 'Business',
-      emoji: '💼',
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-        </svg>
-      ),
+      icon: BriefcaseBusiness,
     },
     {
       id: 'technology',
       label: 'Technology',
-      emoji: '🚀',
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-        </svg>
-      ),
+      icon: Cpu,
     },
     {
       id: 'sports',
       label: 'Sports',
-      emoji: '⚽',
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      ),
+      icon: Trophy,
     },
     {
       id: 'entertainment',
       label: 'Entertainment',
-      emoji: '🎬',
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
-        </svg>
-      ),
+      icon: Clapperboard,
     },
     {
       id: 'health',
       label: 'Health',
-      emoji: '🏥',
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-        </svg>
-      ),
+      icon: HeartPulse,
     },
   ];
 
@@ -99,6 +82,7 @@ export const Sidebar: React.FC = () => {
             {/* Category Icons */}
             {categories.map((cat) => {
               const isCategoryActive = location.pathname === '/' && currentCategory === cat.id;
+              const CategoryIcon = cat.icon;
               
               const handleCategoryClick = (e: React.MouseEvent) => {
                 // Allow public access to 'general' category
@@ -114,16 +98,23 @@ export const Sidebar: React.FC = () => {
                   <Link
                     to={`/?category=${cat.id}`}
                     onClick={handleCategoryClick}
+                    aria-label={`Browse ${cat.label}${cat.id !== 'general' && !isSignedIn ? ' (login required)' : ''}`}
+                    title={`${cat.label}${cat.id !== 'general' && !isSignedIn ? ' (login required)' : ''}`}
                     className={`sidebar-icon-btn sidebar-category-btn ${isCategoryActive ? 'active' : ''} ${
                       cat.id !== 'general' && !isSignedIn ? 'opacity-50 cursor-not-allowed' : ''
                     }`}
                   >
                     {isCategoryActive && (
-                      <span className="sidebar-active-indicator">{cat.emoji}</span>
+                      <span className="sidebar-active-indicator" aria-hidden="true">
+                        <Check size={12} />
+                      </span>
                     )}
-                    {cat.icon}
+                    <CategoryIcon size={20} aria-hidden="true" />
+                    <span className="sr-only">{cat.label}</span>
                   </Link>
-                  <div className="sidebar-tooltip">{cat.label} {cat.id !== 'general' && !isSignedIn ? '🔒' : ''}</div>
+                  <div className="sidebar-tooltip">
+                    {cat.label} {cat.id !== 'general' && !isSignedIn ? '(Locked)' : ''}
+                  </div>
                 </div>
               );
             })}
@@ -147,6 +138,7 @@ export const Sidebar: React.FC = () => {
 
               {categories.map((cat) => {
                 const isCategoryActive = location.pathname === '/' && currentCategory === cat.id;
+                const CategoryIcon = cat.icon;
                 
                 const handleCategoryClick = (e: React.MouseEvent) => {
                   if (cat.id !== 'general' && !isSignedIn) {
@@ -161,17 +153,26 @@ export const Sidebar: React.FC = () => {
                     key={cat.id}
                     to={`/?category=${cat.id}`}
                     onClick={handleCategoryClick}
+                    aria-label={`Browse ${cat.label}${cat.id !== 'general' && !isSignedIn ? ' (login required)' : ''}`}
                     className={`sidebar-nav-btn ${isCategoryActive ? 'active' : ''} ${
                       cat.id !== 'general' && !isSignedIn ? 'opacity-50 cursor-not-allowed' : ''
                     }`}
                   >
-                    <span className="sidebar-nav-icon">{cat.icon}</span>
+                    <span className="sidebar-nav-icon">
+                      <CategoryIcon size={20} aria-hidden="true" />
+                    </span>
                     <span className="sidebar-nav-label">
                       {cat.label}
-                      {cat.id !== 'general' && !isSignedIn && <span>🔒</span>}
+                      {cat.id !== 'general' && !isSignedIn && (
+                        <span className="inline-flex items-center" aria-label="Login required">
+                          <Lock size={14} aria-hidden="true" />
+                        </span>
+                      )}
                     </span>
                     {isCategoryActive && (
-                      <span className="sidebar-category-badge">{cat.emoji}</span>
+                      <span className="sidebar-category-badge" aria-hidden="true">
+                        <Check size={14} />
+                      </span>
                     )}
                   </Link>
                 );
