@@ -12,12 +12,14 @@ Dependencies:
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+import asyncio
 import jwt
 import os
 import httpx
 import json
 import logging
 from datetime import datetime
+import time
 
 from app.core.database import get_db
 
@@ -46,31 +48,62 @@ ADMIN_USER_IDS = [
 ]
 
 _jwks_cache = None
+_jwks_lock = asyncio.Lock()
+_jwks_retry_after_ts = 0.0
+_jwks_last_error = ""
+_jwks_failure_cooldown_seconds = int(os.getenv("JWKS_FAILURE_COOLDOWN_SECONDS", "30"))
+_missing_aud_warning_logged = False
 
 
 async def get_jwks():
-    global _jwks_cache
+    global _jwks_cache, _jwks_retry_after_ts, _jwks_last_error
     if _jwks_cache:
         return _jwks_cache
+
+    now = time.time()
+    if _jwks_retry_after_ts > now:
+        wait_seconds = int(_jwks_retry_after_ts - now)
+        logger.debug(f"[AUTH] Skipping JWKS fetch during cooldown ({wait_seconds}s remaining)")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication provider temporarily unavailable",
+        )
 
     # Defensive checks and logging for JWKS fetch
     if not CLERK_JWKS_URL:
         logger.error("[AUTH] CLERK_JWKS_URL is not configured (CLERK_ISSUER missing)")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Clerk issuer not configured")
 
-    logger.debug(f"[AUTH] Fetching JWKS from {CLERK_JWKS_URL}")
-    try:
-        async with httpx.AsyncClient() as client:
-            res = await client.get(CLERK_JWKS_URL, timeout=10)
-            res.raise_for_status()
-            _jwks_cache = res.json()
+    async with _jwks_lock:
+        if _jwks_cache:
             return _jwks_cache
-    except httpx.HTTPStatusError as he:
-        logger.warning(f"[AUTH] Failed to fetch JWKS from {CLERK_JWKS_URL}: {he}")
-        raise
-    except Exception as e:
-        logger.warning(f"[AUTH] Failed to fetch JWKS from {CLERK_JWKS_URL}: {e}")
-        raise
+
+        now = time.time()
+        if _jwks_retry_after_ts > now:
+            wait_seconds = int(_jwks_retry_after_ts - now)
+            logger.debug(f"[AUTH] Skipping JWKS fetch during cooldown ({wait_seconds}s remaining)")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Authentication provider temporarily unavailable",
+            )
+
+        logger.debug(f"[AUTH] Fetching JWKS from {CLERK_JWKS_URL}")
+        try:
+            async with httpx.AsyncClient() as client:
+                res = await client.get(CLERK_JWKS_URL, timeout=10)
+                res.raise_for_status()
+                _jwks_cache = res.json()
+                _jwks_last_error = ""
+                _jwks_retry_after_ts = 0.0
+                return _jwks_cache
+        except Exception as e:
+            _jwks_last_error = str(e) or e.__class__.__name__
+            _jwks_retry_after_ts = time.time() + max(_jwks_failure_cooldown_seconds, 1)
+            logger.warning(f"[AUTH] Failed to fetch JWKS from {CLERK_JWKS_URL}: {_jwks_last_error}")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Authentication provider temporarily unavailable",
+            )
 
 
 async def _validate_token(token: str) -> dict:
@@ -81,6 +114,7 @@ async def _validate_token(token: str) -> dict:
     - Fallback: check Clerk metadata/custom claims for admin role
     Raises HTTPException on failure.
     """
+    global _missing_aud_warning_logged
     try:
         jwks = await get_jwks()
         header = jwt.get_unverified_header(token)
@@ -107,7 +141,11 @@ async def _validate_token(token: str) -> dict:
         except jwt.MissingRequiredClaimError as exc:
             if getattr(exc, "claim", None) != "aud":
                 raise
-            logger.warning("[AUTH] Token missing aud claim; decoding without audience check")
+            if not _missing_aud_warning_logged:
+                logger.warning("[AUTH] Token missing aud claim; decoding without audience check")
+                _missing_aud_warning_logged = True
+            else:
+                logger.debug("[AUTH] Token missing aud claim; decoding without audience check")
             payload = jwt.decode(
                 token,
                 key,
@@ -177,6 +215,8 @@ async def _validate_token(token: str) -> dict:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token issuer",
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.warning(f"[AUTH] Token validation failed: {str(e)}")
         raise HTTPException(
