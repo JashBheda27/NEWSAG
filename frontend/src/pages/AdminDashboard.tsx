@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { BarChart3, Bot, CheckCircle2, ClipboardList, LogOut, Menu, Settings, Smile, X } from 'lucide-react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import { useClerk } from '@clerk/clerk-react';
 import AdminOverview from './AdminOverview.tsx';
@@ -9,7 +10,7 @@ import SystemOps from './SystemOps.tsx';
 import AdminAuditLog from './AdminAuditLog.tsx';
 
 interface AdminLayoutProps {
-  showNotification: (msg: string, type?: 'error' | 'success') => void;
+  showNotification: (msg: string, type?: 'error' | 'success' | 'warning' | 'info') => void;
 }
 
 export const AdminDashboard: React.FC<AdminLayoutProps> = ({ showNotification }) => {
@@ -18,12 +19,12 @@ export const AdminDashboard: React.FC<AdminLayoutProps> = ({ showNotification })
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const navItems = [
-    { path: '/admin/overview', label: 'Overview', icon: '📊' },
-    { path: '/admin/credibility', label: 'Credibility Queue', icon: '✓' },
-    { path: '/admin/sentiment', label: 'Sentiment Feedback', icon: '😊' },
-    { path: '/admin/tuning', label: 'Model Tuning', icon: '🤖' },
-    { path: '/admin/ops', label: 'System Ops', icon: '⚙️' },
-    { path: '/admin/audit', label: 'Audit Log', icon: '📋' },
+    { path: '/admin/overview', label: 'Overview', icon: BarChart3 },
+    { path: '/admin/credibility', label: 'Credibility Queue', icon: CheckCircle2 },
+    { path: '/admin/sentiment', label: 'Sentiment Feedback', icon: Smile },
+    { path: '/admin/tuning', label: 'Model Tuning', icon: Bot },
+    { path: '/admin/ops', label: 'System Ops', icon: Settings },
+    { path: '/admin/audit', label: 'Audit Log', icon: ClipboardList },
   ];
 
   const handleLogout = async () => {
@@ -45,7 +46,7 @@ export const AdminDashboard: React.FC<AdminLayoutProps> = ({ showNotification })
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center gap-3 p-6 border-b border-slate-200 dark:border-slate-800">
-            <span className="text-2xl">📊</span>
+            <BarChart3 size={24} className="text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
             <div>
               <h1 className="text-base font-bold text-slate-900 dark:text-white">Admin</h1>
               <p className="text-xs text-slate-500 dark:text-slate-400">Dashboard</p>
@@ -53,14 +54,18 @@ export const AdminDashboard: React.FC<AdminLayoutProps> = ({ showNotification })
             <button
               onClick={() => setSidebarOpen(false)}
               className="ml-auto lg:hidden text-slate-500 hover:text-slate-700"
+              aria-label="Close sidebar"
             >
-              <span className="text-xl">✕</span>
+              <X size={20} aria-hidden="true" />
             </button>
           </div>
 
           {/* Nav Items */}
           <nav className="flex-1 overflow-y-auto p-4 space-y-2">
-            {navItems.map((item) => (
+            {navItems.map((item) => {
+              const Icon = item.icon;
+
+              return (
               <Link
                 key={item.path}
                 to={item.path}
@@ -71,10 +76,10 @@ export const AdminDashboard: React.FC<AdminLayoutProps> = ({ showNotification })
                     : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
-                <span className="text-lg">{item.icon}</span>
+                <Icon size={18} aria-hidden="true" />
                 {item.label}
               </Link>
-            ))}
+            );})}
           </nav>
 
           {/* Footer */}
@@ -83,7 +88,7 @@ export const AdminDashboard: React.FC<AdminLayoutProps> = ({ showNotification })
               onClick={handleLogout}
               className="w-full flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             >
-              <span className="text-sm">🚪</span>
+              <LogOut size={16} aria-hidden="true" />
               Logout
             </button>
             <p className="text-xs text-slate-500 dark:text-slate-400 px-4 py-2">
@@ -100,8 +105,9 @@ export const AdminDashboard: React.FC<AdminLayoutProps> = ({ showNotification })
           <button
             onClick={() => setSidebarOpen(true)}
             className="lg:hidden text-slate-600 dark:text-slate-400"
+            aria-label="Open sidebar"
           >
-            <span className="text-2xl">☰</span>
+            <Menu size={24} aria-hidden="true" />
           </button>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
             {navItems.find((item) => item.path === location.pathname)?.label || 'Admin Dashboard'}
