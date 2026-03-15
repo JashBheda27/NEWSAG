@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { TrendingHeadline } from '../../services/news.service';
 import { newsService } from '../../services/news.service';
+import { Skeleton } from '../ui/Skeleton';
 
 interface TrendingBulletinProps {
   onError?: (msg: string) => void;
@@ -54,8 +55,8 @@ export const TrendingBulletin: React.FC<TrendingBulletinProps> = ({ onError }) =
 
   if (isLoading) {
     return (
-      <div className="mb-4 animate-pulse">
-        <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded" />
+      <div className="mb-4">
+        <Skeleton variant="shimmer" className="h-8 w-full" />
       </div>
     );
   }
