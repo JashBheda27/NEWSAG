@@ -5,6 +5,7 @@ import { notify } from '../lib/notify';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState } from '../components/ui/ErrorState';
 import { useAsyncState } from '../hooks/useAsyncState';
+import { BookmarkSkeleton } from '../components/ui/skeletons/BookmarkSkeleton';
 
 interface CredibilityQueueProps {
   showNotification: (msg: string, type?: 'error' | 'success' | 'warning' | 'info') => void;
@@ -83,9 +84,8 @@ export const CredibilityQueue: React.FC<CredibilityQueueProps> = ({ showNotifica
 
   if (loading) {
     return (
-      <div className="text-center py-12 text-slate-600 dark:text-slate-400 inline-flex items-center gap-2">
-        <Clock3 size={18} className="animate-pulse" aria-hidden="true" />
-        Loading credibility reports...
+      <div className="py-4">
+        <BookmarkSkeleton rows={4} />
       </div>
     );
   }
