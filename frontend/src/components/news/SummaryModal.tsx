@@ -8,6 +8,7 @@ import type { SummaryData } from '../../types';
 import { CommentSection } from './commentSection';
 import { AudioPlayer } from './AudioPlayer';
 import { ERROR_MESSAGES, SUPPORTED_LANGUAGES } from '../../utils/constants';
+import { ArticleSkeleton } from '../ui/skeletons/ArticleSkeleton';
 
 interface Props {
   isOpen: boolean;
@@ -88,10 +89,7 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
     <>
     <Modal isOpen={isOpen} onClose={onClose}>
       {isLoading ? (
-        <div className="py-20 flex flex-col items-center justify-center">
-          <div className="w-12 h-12 border-4 border-slate-900 border-t-transparent rounded-full animate-spin mb-4"></div>
-          <p className="text-slate-500 font-serif italic animate-pulse">Consulting the archives...</p>
-        </div>
+        <ArticleSkeleton />
       ) : error ? (
         <div className="py-8 text-center font-serif">
           <h4 className="font-serif text-2xl mb-4">DISPATCH ERROR</h4>
