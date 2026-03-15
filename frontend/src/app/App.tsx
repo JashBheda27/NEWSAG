@@ -43,7 +43,7 @@ const AppLayout: React.FC<{ showNotification: (msg: string, type?: 'error' | 'su
   }, [getToken, isLoaded, isSignedIn]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 transition-colors duration-200">
+    <div className="min-h-screen flex flex-col overflow-x-hidden bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 transition-colors duration-200">
       <RouteProgress />
 
       {!isAdminPage && (
@@ -55,9 +55,32 @@ const AppLayout: React.FC<{ showNotification: (msg: string, type?: 'error' | 'su
 
       {!isAuthPage && !isAdminPage && <Sidebar />}
 
-      <main className={`flex-grow overflow-x-hidden ${isAuthPage || isAdminPage ? '' : 'lg:pl-28 max-sm:pb-24'}`}>
+      <main className={`app-main flex-grow overflow-x-hidden ${isAuthPage || isAdminPage ? '' : 'news-shell-main'}`}>
         <AppRouter showNotification={showNotification} />
       </main>
+
+      {!isAuthPage && !isAdminPage && (
+        <style>{`
+          .news-shell-main {
+            margin-left: 0;
+            padding-bottom: 128px;
+          }
+
+          @media (min-width: 640px) and (max-width: 1023px) {
+            .news-shell-main {
+              margin-left: 0;
+              padding-bottom: 0;
+            }
+          }
+
+          @media (min-width: 1024px) {
+            .news-shell-main {
+              margin-left: 182px;
+              padding-bottom: 0;
+            }
+          }
+        `}</style>
+      )}
 
       {!isAdminPage && <Footer />}
       
