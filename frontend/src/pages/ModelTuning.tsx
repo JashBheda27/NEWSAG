@@ -3,6 +3,7 @@ import { Ban, CheckCircle2, Clock3, Loader2, Play, XCircle } from 'lucide-react'
 import { adminApi } from '../services/admin.service';
 import { EmptyState } from '../components/ui/EmptyState';
 import { notify } from '../lib/notify';
+import { Skeleton } from '../components/ui/Skeleton';
 
 interface ModelTuningProps {
   showNotification: (msg: string, type?: 'error' | 'success' | 'warning' | 'info') => void;
@@ -141,11 +142,16 @@ export const ModelTuning: React.FC<ModelTuningProps> = ({ showNotification }) =>
           Recent Fine-Tuning Jobs
         </h3>
         {loading ? (
-          <div className="text-center py-12 text-slate-500 dark:text-slate-400">
-            <span className="inline-flex items-center gap-2">
-              <Loader2 size={16} className="animate-spin" aria-hidden="true" />
-              Loading jobs...
-            </span>
+          <div className="space-y-3 py-2">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                <div className="space-y-2 flex-1">
+                  <Skeleton variant="shimmer" className="h-4 w-36" />
+                  <Skeleton variant="shimmer" className="h-3 w-28" />
+                </div>
+                <Skeleton variant="shimmer" className="h-4 w-16" />
+              </div>
+            ))}
           </div>
         ) : jobs.length === 0 ? (
           <EmptyState
