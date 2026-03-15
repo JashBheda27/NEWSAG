@@ -145,7 +145,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, language, classN
   }
 
   return (
-    <div className={`flex items-center gap-3 py-2 ${className}`}>
+    <div className={`w-full flex items-center gap-2 py-2 min-w-0 ${className}`}>
       {/* Hidden audio element */}
       <audio
         ref={audioRef}
@@ -158,7 +158,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, language, classN
       <button
         onClick={isPlaying ? handlePause : handlePlay}
         disabled={isLoading}
-        className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors disabled:opacity-50"
+        className="p-1.5 shrink-0 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors disabled:opacity-50"
         title={isPlaying ? 'Pause' : 'Listen to summary'}
         style={{ color: '#333' }}
       >
@@ -172,7 +172,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, language, classN
       </button>
 
       {/* Progress Bar */}
-      <div className="flex-1 flex items-center gap-2">
+      <div className="flex-1 min-w-0 flex items-center gap-2">
         <input
           type="range"
           min={0}
@@ -180,10 +180,10 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, language, classN
           value={progress}
           onChange={handleSeek}
           disabled={!audioUrl}
-          className="flex-1 h-1 bg-slate-300 dark:bg-slate-600 rounded-lg appearance-none cursor-pointer accent-indigo-600 disabled:opacity-50"
+          className="flex-1 min-w-0 h-1 bg-slate-300 dark:bg-slate-600 rounded-lg appearance-none cursor-pointer accent-indigo-600 disabled:opacity-50"
           style={{ accentColor: '#4f46e5' }}
         />
-        <span className="text-[10px] font-mono text-slate-500 min-w-[70px] text-right">
+        <span className="text-[9px] sm:text-[10px] font-mono text-slate-500 min-w-[58px] sm:min-w-[70px] text-right shrink-0">
           {formatTime(progress)} / {formatTime(duration || 0)}
         </span>
       </div>
@@ -192,7 +192,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, language, classN
       <button
         onClick={handleStop}
         disabled={!audioUrl || (!isPlaying && progress === 0)}
-        className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors disabled:opacity-30"
+        className="hidden sm:inline-flex p-1.5 shrink-0 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors disabled:opacity-30"
         title="Stop"
         style={{ color: '#333' }}
       >
@@ -200,7 +200,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, language, classN
       </button>
 
       {/* Speaker icon */}
-      <div className="text-slate-400" title="Text-to-Speech">
+      <div className="hidden sm:block text-slate-400 shrink-0" title="Text-to-Speech">
         <Volume2 size={16} aria-hidden="true" />
       </div>
     </div>
