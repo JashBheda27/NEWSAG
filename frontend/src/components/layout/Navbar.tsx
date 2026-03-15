@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth, useUser } from '@clerk/clerk-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { Clock3, Search, User } from 'lucide-react';
 import { SearchBar } from '../ui/SearchBar';
 import { Skeleton } from '../ui/Skeleton';
+import { GlassDropdown } from '../ui/GlassDropdown';
 
 interface NavbarProps {
   onThemeToggle: () => void;
@@ -14,7 +16,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onThemeToggle, isDark }) => {
   const { isSignedIn, signOut } = useAuth();
   const { user, isLoaded } = useUser();
   const navigate = useNavigate();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const [showCompactMenu, setShowCompactMenu] = useState(false);
+  const profileFirstName = user?.firstName || user?.username || 'Profile';
 
   const handleLogout = async () => {
     await signOut();
@@ -23,7 +27,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onThemeToggle, isDark }) => {
 
   return (
     <nav className="sticky top-0 z-50 bg-white dark:bg-slate-900/80 dark:backdrop-blur-xl border-b border-gray-200 dark:border-slate-700/50 px-4 md:px-8 py-4 transition-all duration-300 shadow-sm">
-      <div className="w-full flex items-center justify-between gap-4">
+      <div className="w-full flex items-center justify-between gap-3 sm:gap-4">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-3 group flex-shrink-0">
           <motion.div 
@@ -41,7 +45,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onThemeToggle, isDark }) => {
 
         {/* Center - Search & Nav */}
         <div className="flex-1 min-w-0 flex items-center gap-3">
-          <SearchBar />
+          <div className="hidden sm:block flex-1 min-w-0">
+            <SearchBar />
+          </div>
 
           {/* Nav Links */}
           <div className="hidden md:flex items-center gap-1">
@@ -64,9 +70,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onThemeToggle, isDark }) => {
             <motion.div whileHover={{ y: -2 }} transition={{ type: "spring", stiffness: 400 }}>
               <Link
                 to="/read-later"
-                className="px-3 py-2 rounded-xl text-sm font-bold text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-all whitespace-nowrap"
+                className="px-3 py-2 rounded-xl text-sm font-bold text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-all whitespace-nowrap inline-flex items-center gap-2"
               >
-                Read Later
+                <Clock3 size={16} aria-hidden="true" className="hidden lg:inline" />
+                <span>Read Later</span>
               </Link>
             </motion.div>
           </div>
@@ -74,24 +81,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onThemeToggle, isDark }) => {
 
         {/* Actions */}
         <div className="flex items-center gap-4">
-          {/* Mobile Menu Toggle */}
           <motion.button
-            onClick={() => setMobileMenuOpen(prev => !prev)}
-            aria-expanded={mobileMenuOpen}
-            className="md:hidden p-2.5 rounded-2xl bg-gray-100 dark:bg-slate-700/50 hover:bg-gray-200 dark:hover:bg-slate-600/50 transition-all"
-            aria-label="Toggle menu"
+            onClick={() => setShowMobileSearch((prev) => !prev)}
+            className="sm:hidden p-2.5 rounded-2xl bg-gray-100 dark:bg-slate-700/50 hover:bg-gray-200 dark:hover:bg-slate-600/50 transition-all"
+            aria-label="Toggle search"
             whileTap={{ scale: 0.9 }}
           >
-            <motion.svg 
-              className="w-5 h-5 text-gray-700 dark:text-slate-200" 
-              fill="none" 
-              viewBox="0 0 24 24" 
-              stroke="currentColor"
-              animate={{ rotate: mobileMenuOpen ? 90 : 0 }}
-              transition={{ type: "spring", stiffness: 300 }}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </motion.svg>
+            <Search className="w-5 h-5 text-gray-700 dark:text-slate-200" aria-hidden="true" />
           </motion.button>
 
           <motion.button 
@@ -123,6 +119,19 @@ export const Navbar: React.FC<NavbarProps> = ({ onThemeToggle, isDark }) => {
               </motion.svg>
             )}
           </motion.button>
+
+          <GlassDropdown
+            isOpen={showCompactMenu}
+            onToggle={() => setShowCompactMenu((prev) => !prev)}
+            onClose={() => setShowCompactMenu(false)}
+            isSignedIn={!!isSignedIn}
+            username={user?.username || 'Profile'}
+            handle={user?.primaryEmailAddress?.emailAddress || `@${user?.username || 'newsaura'}`}
+            onLogout={async () => {
+              setShowCompactMenu(false);
+              await handleLogout();
+            }}
+          />
           
           {!isLoaded ? (
             <div className="flex items-center gap-2 p-0.5 pr-3 rounded-full bg-slate-200/50 dark:bg-slate-700/50">
@@ -130,24 +139,28 @@ export const Navbar: React.FC<NavbarProps> = ({ onThemeToggle, isDark }) => {
               <Skeleton variant="shimmer" className="h-3 w-20 hidden sm:block" />
             </div>
           ) : isSignedIn ? (
-            <div className="flex items-center gap-2">
+            <>
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Link to="/profile" className="flex items-center gap-2 group p-0.5 pr-3 rounded-full bg-slate-200/50 dark:bg-slate-700/50 hover:bg-slate-300/50 dark:hover:bg-slate-600/50 transition-all">
-                  <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-indigo-600 shadow-md">
-                    <img src={user?.imageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.username || 'user'}`} alt="User" />
-                  </div>
-                  <span className="text-xs font-black hidden sm:inline">{user?.username || 'Profile'}</span>
+                <Link
+                  to="/profile"
+                  className="hidden md:inline-flex items-center gap-2 px-2.5 py-2 rounded-xl text-sm font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/35 transition-all whitespace-nowrap"
+                >
+                  <span className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 inline-flex items-center justify-center shadow-sm shadow-indigo-500/30">
+                    <User size={15} className="text-white" aria-hidden="true" />
+                  </span>
+                  <span>{profileFirstName}</span>
                 </Link>
               </motion.div>
+
               <motion.button
                 onClick={handleLogout}
-                className="px-3 py-2 rounded-xl text-sm font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all whitespace-nowrap"
+                className="hidden lg:inline-flex px-3 py-2 rounded-xl text-sm font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all whitespace-nowrap"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
                 Logout
               </motion.button>
-            </div>
+            </>
           ) : (
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Link to="/login" className="px-4 py-2 rounded-xl text-sm font-bold bg-gradient-to-r from-indigo-600 to-indigo-700 text-white hover:shadow-lg hover:shadow-indigo-600/40 transition-all">
@@ -157,37 +170,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onThemeToggle, isDark }) => {
           )}
         </div>
 
-        {/* Mobile menu panel */}
-        <AnimatePresence>
-          {typeof window !== 'undefined' && mobileMenuOpen && (
-            <MobileMenuPanel setMobileMenuOpen={setMobileMenuOpen} />
-          )}
-        </AnimatePresence>
-
       </div>
+
+      {showMobileSearch && (
+        <div className="sm:hidden mt-3">
+          <SearchBar />
+        </div>
+      )}
     </nav>
   );
-
-  // Local small component to avoid cluttering main markup
-  function MobileMenuPanel({ setMobileMenuOpen } : { setMobileMenuOpen: (v:boolean) => void }) {
-    return (
-      <motion.div 
-        className="md:hidden absolute top-full right-4 mt-2 w-44 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-xl shadow-2xl border border-slate-200/50 dark:border-slate-700/50 p-2 z-50"
-        initial={{ opacity: 0, y: -10, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: -10, scale: 0.95 }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      >
-        <motion.div whileHover={{ x: 4 }} transition={{ type: "spring", stiffness: 400 }}>
-          <Link to="/" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">Home</Link>
-        </motion.div>
-        <motion.div whileHover={{ x: 4 }} transition={{ type: "spring", stiffness: 400 }}>
-          <Link to="/bookmarks" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">Bookmarks</Link>
-        </motion.div>
-        <motion.div whileHover={{ x: 4 }} transition={{ type: "spring", stiffness: 400 }}>
-          <Link to="/read-later" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">Read Later</Link>
-        </motion.div>
-      </motion.div>
-    );
-  }
 };
