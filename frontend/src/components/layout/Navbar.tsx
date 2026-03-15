@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth, useUser } from '@clerk/clerk-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SearchBar } from '../ui/SearchBar';
+import { Skeleton } from '../ui/Skeleton';
 
 interface NavbarProps {
   onThemeToggle: () => void;
@@ -11,7 +12,7 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ onThemeToggle, isDark }) => {
   const { isSignedIn, signOut } = useAuth();
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -123,7 +124,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onThemeToggle, isDark }) => {
             )}
           </motion.button>
           
-          {isSignedIn ? (
+          {!isLoaded ? (
+            <div className="flex items-center gap-2 p-0.5 pr-3 rounded-full bg-slate-200/50 dark:bg-slate-700/50">
+              <Skeleton variant="shimmer" className="w-8 h-8 rounded-full" />
+              <Skeleton variant="shimmer" className="h-3 w-20 hidden sm:block" />
+            </div>
+          ) : isSignedIn ? (
             <div className="flex items-center gap-2">
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Link to="/profile" className="flex items-center gap-2 group p-0.5 pr-3 rounded-full bg-slate-200/50 dark:bg-slate-700/50 hover:bg-slate-300/50 dark:hover:bg-slate-600/50 transition-all">
