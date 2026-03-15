@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import type { Article } from '../../types';
 import { newsService } from '../../services/news.service';
 import { useDebounce } from '../../hooks/useDebounce';
+import { Skeleton } from './Skeleton';
 
 export const SearchBar: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
@@ -96,7 +97,17 @@ export const SearchBar: React.FC = () => {
       {isOpen && (loading || inputValue.trim().length >= 2) && (
         <div className="absolute left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl shadow-lg z-50 max-h-64 overflow-auto">
           {loading ? (
-            <div className="px-4 py-3 text-sm text-gray-600">Loading...</div>
+            <div className="p-3 space-y-2">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <Skeleton variant="shimmer" className="w-10 h-10 rounded-lg flex-shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton variant="shimmer" className="h-3 w-full" />
+                    <Skeleton variant="shimmer" className="h-3 w-2/3" />
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : suggestions.length === 0 ? (
             <div className="px-4 py-3 text-sm text-gray-600">No results found</div>
           ) : (
