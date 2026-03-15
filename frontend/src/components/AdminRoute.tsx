@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
 import { LoginRequiredModal } from './ui/LoginRequiredModal';
+import { Skeleton } from './ui/Skeleton';
 
 interface AdminRouteProps {
   children: React.ReactNode;
@@ -40,12 +41,9 @@ export const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
   if (!isLoaded || isCheckingAdmin) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="relative w-16 h-16">
-          <div
-            className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full animate-spin"
-            style={{ maskImage: 'conic-gradient(transparent 25%, black 75%)' }}
-          ></div>
-          <div className="absolute inset-2 bg-white dark:bg-slate-950 rounded-full"></div>
+        <div className="flex items-center gap-3 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+          <Skeleton variant="shimmer" className="w-10 h-10 rounded-full" />
+          <Skeleton variant="shimmer" className="h-4 w-44" />
         </div>
       </div>
     );
