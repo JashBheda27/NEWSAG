@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { BookmarkX } from 'lucide-react';
+import { BookmarkX, Eye, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { Bookmark } from '../types';
 import { userService } from '../services/user.service';
@@ -79,7 +79,7 @@ export const Bookmarks: React.FC = () => {
       transition={{ duration: 0.4 }}
     >
       <motion.h2 
-        className="text-3xl font-black mb-8 flex items-center gap-4"
+        className="text-lg sm:text-xl lg:text-2xl font-black mb-8 flex items-center gap-4"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
@@ -113,14 +113,14 @@ export const Bookmarks: React.FC = () => {
           bookmarks.map((item, idx) => (
             <motion.div 
               key={item.id} 
-              className="group bg-white dark:bg-slate-800 p-4 rounded-3xl flex gap-4 border border-slate-100 dark:border-slate-700 hover:shadow-lg hover:border-indigo-200 dark:hover:border-indigo-800 transition-all"
+              className="group bg-white dark:bg-slate-800 p-4 rounded-3xl flex flex-col sm:flex-row gap-4 border border-slate-100 dark:border-slate-700 hover:shadow-lg hover:border-indigo-200 dark:hover:border-indigo-800 transition-all"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: idx * 0.05, duration: 0.3 }}
             >
                {item.image_url && (
                  <motion.div 
-                   className="w-24 h-24 rounded-2xl overflow-hidden flex-shrink-0"
+                   className="w-full h-44 sm:w-24 sm:h-24 rounded-2xl overflow-hidden flex-shrink-0"
                    whileHover={{ scale: 1.05 }}
                  >
                     <img src={item.image_url} className="w-full h-full object-cover" alt="" />
@@ -136,8 +136,14 @@ export const Bookmarks: React.FC = () => {
                    </p>
                  )}
                  <div className="flex gap-2">
-                   <Button size="sm" variant="ghost" onClick={() => openSummary(item)}>View</Button>
-                   <Button size="sm" variant="ghost" className="text-rose-500" onClick={() => handleRemove(item.id)}>Remove</Button>
+                   <Button size="sm" variant="ghost" className="sm:hidden h-10 w-10 !px-0" onClick={() => openSummary(item)} aria-label="View article">
+                     <Eye size={18} aria-hidden="true" />
+                   </Button>
+                   <Button size="sm" variant="ghost" className="sm:hidden h-10 w-10 !px-0 text-rose-500" onClick={() => handleRemove(item.id)} aria-label="Remove bookmark">
+                     <Trash2 size={18} aria-hidden="true" />
+                   </Button>
+                   <Button size="sm" variant="ghost" className="hidden sm:inline-flex" onClick={() => openSummary(item)}>View</Button>
+                   <Button size="sm" variant="ghost" className="hidden sm:inline-flex text-rose-500" onClick={() => handleRemove(item.id)}>Remove</Button>
                  </div>
                </div>
             </motion.div>
