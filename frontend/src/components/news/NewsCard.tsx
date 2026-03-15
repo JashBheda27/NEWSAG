@@ -10,6 +10,7 @@ import { formatRelativeTime, getReadTimeText } from '../../utils/timeUtils';
 import { openChatWithArticle } from '../../utils/chatEvents';
 import { ERROR_MESSAGES, SUPPORTED_LANGUAGES } from '../../utils/constants';
 import { AlertTriangle, Bookmark, Bot, Check, Clock3, Heart, MessageCircle, RefreshCw, Sparkles, ThumbsUp, TriangleAlert } from 'lucide-react';
+import { ArticleSkeleton } from '../ui/skeletons/ArticleSkeleton';
 
 // Lazy load heavy components
 const CommentSection = lazy(() => import('./commentSection').then(m => ({ default: m.CommentSection })));
@@ -383,10 +384,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
 
         <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
           {isLoadingSummary ? (
-            <div className="py-20 flex flex-col items-center justify-center">
-              <div className="w-12 h-12 border-4 border-slate-900 border-t-transparent rounded-full animate-spin mb-4"></div>
-              <p className="text-slate-500 font-serif italic animate-pulse">Consulting the archives...</p>
-            </div>
+            <ArticleSkeleton />
           ) : summaryError ? (
             <div className="py-8 text-center font-serif">
                <h4 className="font-serif text-2xl mb-4">DISPATCH ERROR</h4>
@@ -696,10 +694,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
         {isLoadingSummary ? (
-          <div className="py-20 flex flex-col items-center justify-center">
-            <div className="w-12 h-12 border-4 border-slate-900 border-t-transparent rounded-full animate-spin mb-4"></div>
-            <p className="text-slate-500 font-serif italic animate-pulse">Consulting the archives...</p>
-          </div>
+          <ArticleSkeleton />
         ) : summaryError ? (
           <div className="py-8 text-center font-serif">
              <h4 className="font-serif text-2xl mb-4">DISPATCH ERROR</h4>
