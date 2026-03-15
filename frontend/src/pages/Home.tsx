@@ -17,6 +17,12 @@ interface HomeProps {
 }
 
 const categories = NEWS_CATEGORY_IDS as { id: Topic; label: string }[];
+const COLD_START_STEPS = ['Model loaded', 'Sources indexed', 'Summarising', 'Ranking', 'Ready'];
+const COLD_START_DELAY_MS = 2000;
+const COLD_START_FAST_PROGRESS_MS = 3000;
+const COLD_START_SLOW_PROGRESS_MS = 3000;
+const GENERAL_FEED_POLL_MS = 3000;
+const READY_TRANSITION_MS = 600;
 
 export const Home: React.FC<HomeProps> = ({ showNotification }) => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -32,6 +38,10 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
   const [retryCount, setRetryCount] = useState(0);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [selectedCategoryName, setSelectedCategoryName] = useState('');
+  const [showColdStartProgress, setShowColdStartProgress] = useState(false);
+  const [coldStartProgress, setColdStartProgress] = useState(0);
+  const [coldStartStep, setColdStartStep] = useState(0);
+  const [isCompletingFeedLoad, setIsCompletingFeedLoad] = useState(false);
   
   // ✅ UI-only state: NEVER add to useEffect dependency array
   const [viewType, setViewType] = useState<'grid' | 'list'>('grid');
@@ -55,9 +65,11 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
     setIsLoading(true);
     setError(null);
     try {
-      const articles = await newsService.getNewsByTopic(cat);
-      setArticles(articles);
-      setIsFirstLoad(false);
+      const nextArticles = await newsService.getNewsByTopic(cat);
+      setArticles(nextArticles);
+      if (!(cat === 'general' && nextArticles.length === 0 && queryFromUrl.length < 2)) {
+        setIsFirstLoad(false);
+      }
       setRetryCount(0);
     } catch (err: any) {
       const errorMsg = getErrorMessage(err);
@@ -101,6 +113,107 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
     if (!isSignedIn && category !== 'general') return;
     fetchNews(category);
   }, [category, isLoaded, isSignedIn, queryFromUrl]);
+
+  useEffect(() => {
+    const shouldShowTimedProgress = isFirstLoad
+      && category === 'general'
+      && queryFromUrl.length < 2
+      && (isLoading || isCompletingFeedLoad || articles.length === 0);
+
+    if (!shouldShowTimedProgress) {
+      setShowColdStartProgress(false);
+      setColdStartProgress(0);
+      setColdStartStep(0);
+      return;
+    }
+
+    let progressInterval: ReturnType<typeof setInterval> | null = null;
+    const delayTimer = setTimeout(() => {
+      setShowColdStartProgress(true);
+      const progressStart = Date.now();
+
+      progressInterval = setInterval(() => {
+        const elapsed = Date.now() - progressStart;
+        const fastProgress = Math.min((elapsed / COLD_START_FAST_PROGRESS_MS) * 88, 88);
+        const slowElapsed = Math.max(elapsed - COLD_START_FAST_PROGRESS_MS, 0);
+        const slowProgress = Math.min((slowElapsed / COLD_START_SLOW_PROGRESS_MS) * 8, 8);
+        const nextProgress = Math.min(fastProgress + slowProgress, 96);
+        setColdStartProgress(nextProgress);
+
+        const normalized = nextProgress / 96;
+        const nextStep = Math.min(
+          COLD_START_STEPS.length - 1,
+          Math.floor(normalized * COLD_START_STEPS.length)
+        );
+        setColdStartStep(nextStep);
+      }, 80);
+    }, COLD_START_DELAY_MS);
+
+    return () => {
+      clearTimeout(delayTimer);
+      if (progressInterval) {
+        clearInterval(progressInterval);
+      }
+    };
+  }, [isFirstLoad, isLoading, isCompletingFeedLoad, category, queryFromUrl.length, articles.length]);
+
+  useEffect(() => {
+    const shouldPollGeneralFeed = isFirstLoad
+      && !isLoading
+      && !error
+      && !isCompletingFeedLoad
+      && category === 'general'
+      && queryFromUrl.length < 2
+      && articles.length === 0;
+
+    if (!shouldPollGeneralFeed) {
+      return;
+    }
+
+    const pollTimer = setTimeout(() => {
+      fetchNews(category);
+    }, GENERAL_FEED_POLL_MS);
+
+    return () => clearTimeout(pollTimer);
+  }, [isFirstLoad, isLoading, error, isCompletingFeedLoad, category, queryFromUrl.length, articles.length]);
+
+  useEffect(() => {
+    const shouldCompleteFeedLoad = isFirstLoad
+      && category === 'general'
+      && queryFromUrl.length < 2
+      && articles.length > 0;
+
+    if (!shouldCompleteFeedLoad) {
+      setIsCompletingFeedLoad(false);
+      return;
+    }
+
+    setShowColdStartProgress(true);
+    setColdStartProgress(100);
+    setColdStartStep(COLD_START_STEPS.length - 1);
+    setIsCompletingFeedLoad(true);
+
+    const readyTimer = setTimeout(() => {
+      setIsCompletingFeedLoad(false);
+      setIsFirstLoad(false);
+      setShowColdStartProgress(false);
+    }, READY_TRANSITION_MS);
+
+    return () => clearTimeout(readyTimer);
+  }, [isFirstLoad, category, queryFromUrl.length, articles.length]);
+
+  const shouldKeepWaitingForGeneralFeed = isFirstLoad
+    && !error
+    && category === 'general'
+    && queryFromUrl.length < 2
+    && articles.length === 0;
+
+  const effectiveIsLoading = isLoading || isCompletingFeedLoad || shouldKeepWaitingForGeneralFeed;
+  const loadingVariant: 'feed' | 'category' | 'search' = queryFromUrl.length >= 2
+    ? 'search'
+    : category === 'general'
+      ? 'feed'
+      : 'category';
 
   return (
     <motion.div 
@@ -196,28 +309,7 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
         </div>
       </motion.header>
 
-      {isFirstLoad && isLoading ? (
-        <motion.div 
-          className="max-w-xl mx-auto py-20 px-8 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-[2.5rem] shadow-2xl border border-blue-100 dark:border-indigo-800 text-center"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4 }}
-        >
-          <div className="mb-6 flex justify-center">
-            <motion.div 
-              className="relative w-16 h-16"
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-600 rounded-full" style={{maskImage: 'conic-gradient(transparent 25%, black 75%)'}}></div>
-              <div className="absolute inset-2 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-full"></div>
-            </motion.div>
-          </div>
-          <h3 className="text-2xl font-black mb-2 text-gray-900 dark:text-white">Warming up AI Engine</h3>
-          <p className="text-gray-700 dark:text-slate-300 mb-2 text-sm">First load may take a few seconds while the model initializes...</p>
-          <p className="text-xs text-gray-600 dark:text-slate-400">Thank you for your patience</p>
-        </motion.div>
-      ) : error ? (
+      {error ? (
         <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4 }}>
           <ErrorState
             title="Feed Unavailable"
@@ -233,8 +325,12 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
         >
           <NewsGrid 
             articles={articles} 
-            isLoading={isLoading} 
+            isLoading={effectiveIsLoading} 
             viewType={viewType}
+            loadingVariant={loadingVariant}
+            showColdStartProgress={effectiveIsLoading && showColdStartProgress}
+            coldStartProgress={coldStartProgress}
+            coldStartStep={coldStartStep}
             onError={(msg) => showNotification(msg, 'error')} 
           />
         </motion.div>
