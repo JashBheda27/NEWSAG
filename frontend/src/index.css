@@ -154,10 +154,10 @@ button:focus-visible {
   animation-play-state: paused;
 }
 
-/* Mobile: even faster */
+/* Mobile: slower for readability */
 @media (max-width: 640px) {
   .animate-scroll-x {
-    animation-duration: 10s;
+    animation-duration: 100s;
   }
 }
 
