@@ -3,13 +3,13 @@ import { BookmarkX } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { Bookmark } from '../types';
 import { userService } from '../services/user.service';
-import { Skeleton } from '../components/ui/Skeleton';
 import { Button } from '../components/ui/Button';
 import { SummaryModal } from '../components/news/SummaryModal';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState } from '../components/ui/ErrorState';
 import { notify } from '../lib/notify';
 import { useAsyncState } from '../hooks/useAsyncState';
+import { BookmarkSkeleton } from '../components/ui/skeletons/BookmarkSkeleton';
 
 export const Bookmarks: React.FC = () => {
   const {
@@ -102,21 +102,7 @@ export const Bookmarks: React.FC = () => {
         transition={{ delay: 0.1, duration: 0.4 }}
       >
         {isLoading ? (
-          [...Array(3)].map((_, i) => (
-            <motion.div 
-              key={i} 
-              className="bg-white dark:bg-slate-800 p-4 rounded-3xl flex gap-4 border border-slate-100 dark:border-slate-700"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: i * 0.1 }}
-            >
-               <Skeleton className="w-24 h-24 rounded-2xl flex-shrink-0" />
-               <div className="flex-1 space-y-3 pt-2">
-                 <Skeleton className="h-6 w-full" />
-                 <Skeleton className="h-4 w-2/3" />
-               </div>
-            </motion.div>
-          ))
+          <BookmarkSkeleton rows={5} variant="bookmarks" />
         ) : fetchError ? (
           <ErrorState
             title="Unable to load bookmarks"
