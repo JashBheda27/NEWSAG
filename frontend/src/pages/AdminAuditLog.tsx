@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, Download, Filter, Loader2, RefreshCw } from 'lucide-react';
+import { AlertTriangle, Download, Filter, RefreshCw } from 'lucide-react';
 import { adminApi } from '../services/admin.service';
+import { Skeleton } from '../components/ui/Skeleton';
 
 interface AuditLog {
   id: string;
@@ -142,8 +143,17 @@ export const AdminAuditLog: React.FC<AdminAuditLogProps> = ({ showNotification }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 size={32} className="animate-spin text-primary" aria-hidden="true" />
+      <div className="space-y-3 py-4">
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="grid grid-cols-6 gap-3 p-4 border border-input rounded-lg">
+            <Skeleton variant="shimmer" className="h-4 w-full" />
+            <Skeleton variant="shimmer" className="h-4 w-full" />
+            <Skeleton variant="shimmer" className="h-4 w-full" />
+            <Skeleton variant="shimmer" className="h-4 w-full" />
+            <Skeleton variant="shimmer" className="h-4 w-full" />
+            <Skeleton variant="shimmer" className="h-4 w-full" />
+          </div>
+        ))}
       </div>
     );
   }
