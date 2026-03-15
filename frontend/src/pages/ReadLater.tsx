@@ -3,7 +3,6 @@ import { Clock3, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { ReadLaterItem } from '../types';
 import { userService } from '../services/user.service';
-import { Skeleton } from '../components/ui/Skeleton';
 import { Button } from '../components/ui/Button';
 import { SummaryModal } from '../components/news/SummaryModal';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -11,6 +10,7 @@ import { ErrorState } from '../components/ui/ErrorState';
 import { notify } from '../lib/notify';
 import { formatRelativeTime } from '../utils/timeUtils';
 import { useAsyncState } from '../hooks/useAsyncState';
+import { BookmarkSkeleton } from '../components/ui/skeletons/BookmarkSkeleton';
 
 export const ReadLater: React.FC = () => {
   const {
@@ -103,18 +103,7 @@ export const ReadLater: React.FC = () => {
         transition={{ delay: 0.1, duration: 0.4 }}
       >
         {isLoading ? (
-          [...Array(3)].map((_, i) => (
-            <motion.div 
-              key={i} 
-              className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-700"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: i * 0.1 }}
-            >
-               <Skeleton className="h-6 w-full mb-2" />
-               <Skeleton className="h-4 w-1/3" />
-            </motion.div>
-          ))
+          <BookmarkSkeleton rows={4} variant="readLater" />
         ) : fetchError ? (
           <ErrorState
             title="Unable to load read later list"
