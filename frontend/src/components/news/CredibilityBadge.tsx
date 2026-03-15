@@ -18,20 +18,20 @@ export const CredibilityBadge = memo<CredibilityBadgeProps>(({ credibility }) =>
     let iconChar: string;
 
     if (label === 'Trusted Source' || score >= 0.75) {
-      bgColor = 'bg-green-100 dark:bg-green-900/30';
-      textColor = 'text-green-700 dark:text-green-400';
+      bgColor = 'bg-green-50 dark:bg-green-500/15';
+      textColor = 'text-green-600 dark:text-green-300';
       iconChar = '✓';
     } else if (score >= 0.5) {
-      bgColor = 'bg-blue-100 dark:bg-blue-900/30';
-      textColor = 'text-blue-700 dark:text-blue-400';
+      bgColor = 'bg-blue-50 dark:bg-blue-500/15';
+      textColor = 'text-blue-600 dark:text-blue-300';
       iconChar = '○';
     } else if (score >= 0.35) {
-      bgColor = 'bg-yellow-100 dark:bg-yellow-900/30';
-      textColor = 'text-yellow-700 dark:text-yellow-400';
+      bgColor = 'bg-yellow-50 dark:bg-yellow-500/15';
+      textColor = 'text-yellow-600 dark:text-yellow-300';
       iconChar = '?';
     } else {
-      bgColor = 'bg-red-100 dark:bg-red-900/30';
-      textColor = 'text-red-700 dark:text-red-400';
+      bgColor = 'bg-rose-50 dark:bg-rose-500/15';
+      textColor = 'text-rose-600 dark:text-rose-300';
       iconChar = '!';
     }
 
@@ -61,10 +61,10 @@ export const CredibilityBadge = memo<CredibilityBadgeProps>(({ credibility }) =>
 
   return (
     <span 
-      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${bg} ${text} transform-gpu transition-transform duration-200 hover:scale-105`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wide border border-current/20 ${bg} ${text}`}
       title={tooltipText}
     >
-      <span className="mr-1">{icon}</span>
+      <span>{icon}</span>
       {displayLabel}
     </span>
   );
