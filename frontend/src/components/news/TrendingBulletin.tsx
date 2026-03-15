@@ -69,7 +69,7 @@ export const TrendingBulletin: React.FC<TrendingBulletinProps> = ({ onError }) =
         <div className="border-t border-white/20 overflow-hidden">
           {/* SINGLE headline → static */}
           {headlines.length === 1 ? (
-            <div className="py-3 px-6 text-white/90 text-lg truncate">
+            <div className="py-3 px-6 text-white/90 text-base sm:text-lg leading-snug">
               ● {headlines[0].title}
             </div>
           ) : (
@@ -84,7 +84,7 @@ export const TrendingBulletin: React.FC<TrendingBulletinProps> = ({ onError }) =
                     className="inline-flex items-center gap-3 px-6 text-white/90 hover:text-white transition-colors"
                   >
                     <span className="text-white/70">●</span>
-                    <span className="truncate max-w-[240px] sm:max-w-[420px] md:max-w-[600px] lg:max-w-[900px]">
+                    <span className="max-w-none sm:truncate sm:max-w-[420px] md:max-w-[600px] lg:max-w-[900px]">
                       {headline.title}
                     </span>
                     <span className="text-white/40">|</span>
