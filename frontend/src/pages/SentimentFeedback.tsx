@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Download, Loader2 } from 'lucide-react';
+import { Download } from 'lucide-react';
 import { adminApi, type SentimentFeedback as SentimentFeedbackType } from '../services/admin.service';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState } from '../components/ui/ErrorState';
 import { notify } from '../lib/notify';
 import { useAsyncState } from '../hooks/useAsyncState';
+import { SearchSkeleton } from '../components/ui/skeletons/SearchSkeleton';
 
 interface SentimentFeedbackProps {
   showNotification: (msg: string, type?: 'error' | 'success' | 'warning' | 'info') => void;
@@ -90,11 +91,8 @@ export const SentimentFeedback: React.FC<SentimentFeedbackProps> = ({ showNotifi
       {/* Samples List */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
         {loading ? (
-          <div className="p-12 text-center text-slate-500 dark:text-slate-400">
-            <span className="inline-flex items-center gap-2">
-              <Loader2 size={16} className="animate-spin" aria-hidden="true" />
-              Loading sentiment samples...
-            </span>
+          <div className="p-4">
+            <SearchSkeleton />
           </div>
         ) : fetchError ? (
           <ErrorState
