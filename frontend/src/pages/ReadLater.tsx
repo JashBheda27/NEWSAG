@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Clock3, Trash2 } from 'lucide-react';
+import { Clock3, Eye, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { ReadLaterItem } from '../types';
 import { userService } from '../services/user.service';
@@ -80,7 +80,7 @@ export const ReadLater: React.FC = () => {
       transition={{ duration: 0.4 }}
     >
       <motion.h2 
-        className="text-3xl font-black mb-8 flex items-center gap-4"
+        className="text-lg sm:text-xl lg:text-2xl font-black mb-8 flex items-center gap-4"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
@@ -127,16 +127,20 @@ export const ReadLater: React.FC = () => {
                    Added {formatRelativeTime(item.created_at)}
                  </span>
                </div>
-               <div className="flex gap-2">
-                 <Button size="sm" variant="ghost" onClick={() => openSummary(item)}>Read</Button>
+               <div className="flex gap-2 shrink-0">
+                 <Button size="sm" variant="ghost" className="sm:hidden h-10 w-10 !px-0" onClick={() => openSummary(item)} aria-label="Read article">
+                   <Eye size={18} aria-hidden="true" />
+                 </Button>
+                 <Button size="sm" variant="ghost" className="hidden sm:inline-flex" onClick={() => openSummary(item)}>Read</Button>
                  <motion.button 
                    onClick={() => handleRemove(item.id)}
-                   className="p-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-full transition-colors"
+                   className="h-10 w-10 inline-flex items-center justify-center bg-rose-100 dark:bg-rose-900/30 border border-rose-300 dark:border-rose-700/60 hover:bg-rose-200 dark:hover:bg-rose-900/40 rounded-full transition-colors"
+                   style={{ padding: 0, color: '#be123c' }}
                    aria-label="Remove from Read Later"
                    title="Remove"
                    whileTap={{ scale: 0.98 }}
                  >
-                   <Trash2 size={20} aria-hidden="true" />
+                   <Trash2 size={18} strokeWidth={2.5} aria-hidden="true" style={{ color: '#be123c' }} />
                  </motion.button>
                </div>
             </motion.div>
