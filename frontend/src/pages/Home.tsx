@@ -42,9 +42,27 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
   const [coldStartProgress, setColdStartProgress] = useState(0);
   const [coldStartStep, setColdStartStep] = useState(0);
   const [isCompletingFeedLoad, setIsCompletingFeedLoad] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth < 640;
+  });
   
   // ✅ UI-only state: NEVER add to useEffect dependency array
   const [viewType, setViewType] = useState<'grid' | 'list'>('grid');
+
+  useEffect(() => {
+    const onResize = () => {
+      const isMobile = window.innerWidth < 640;
+      setIsMobileViewport(isMobile);
+      if (isMobile) {
+        setViewType('grid');
+      }
+    };
+
+    onResize();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   useEffect(() => {
     setCategory(categoryFromUrl);
@@ -240,7 +258,7 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           {/* Section Header with accent bar */}
           <div className="relative pl-4 border-l-4 border-gradient-to-b from-indigo-500 to-purple-600" style={{ borderImage: 'linear-gradient(180deg, #6366f1 0%, #8b5cf6 100%) 1' }}>
-            <h2 className="text-3xl sm:text-4xl font-black mb-1 flex items-center gap-4 text-gray-900 dark:text-white">
+            <h2 className="text-lg sm:text-xl lg:text-2xl font-black mb-1 flex items-center gap-4 text-gray-900 dark:text-white">
               {queryFromUrl.length >= 2 ? 'Search Results' : `${categories.find(c => c.id === category)?.label} Feed`}
               <motion.span 
                 className="inline-flex items-center justify-center px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full text-sm font-bold"
@@ -286,11 +304,12 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
               </motion.button>
               <motion.button
                 onClick={() => setViewType('list')}
+                disabled={isMobileViewport}
                 className={`relative px-4 py-2 rounded-full transition-all duration-200 font-semibold text-sm flex items-center gap-2 ${
                   viewType === 'list'
                     ? 'text-white'
                     : 'text-gray-600 hover:text-gray-800 dark:text-slate-400 dark:hover:text-slate-300'
-                }`}
+                } ${isMobileViewport ? 'hidden' : ''}`}
                 title="List View"
                 whileTap={{ scale: 0.95 }}
               >
