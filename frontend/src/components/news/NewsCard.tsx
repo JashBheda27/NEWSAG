@@ -243,7 +243,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
   // ✅ List View Layout (Horizontal)
   if (viewType === 'list') {
     return (
-      <div className="group relative bg-white dark:bg-slate-800/90 rounded-2xl overflow-hidden border border-gray-200 dark:border-slate-700/50 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col sm:flex-row hover:-translate-y-0.5">
+      <div className={`group relative bg-white dark:bg-slate-800/90 rounded-2xl overflow-hidden border border-gray-200 dark:border-slate-700/50 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col sm:flex-row hover:-translate-y-0.5 ${showFeedbackMenu ? 'z-20' : ''}`}>
         {/* Image Section - Adaptive for small screens */}
         <div className="relative w-full sm:w-52 h-[180px] sm:h-44 overflow-hidden flex-shrink-0">
           <img 
@@ -282,7 +282,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
             {article.description}
           </p>
 
-          <div className="mt-auto flex items-center gap-2 overflow-x-auto no-scrollbar">
+          <div className="mt-auto flex flex-wrap sm:flex-nowrap items-center gap-2">
             <div className="flex gap-1.5 shrink-0">
               <button 
                 onClick={toggleBookmark}
@@ -307,7 +307,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
               </button>
               
               {/* ✅ ML Feedback Button (List View) */}
-              <div className="relative">
+              <div className="relative z-30">
                 <button 
                   onClick={() => setShowFeedbackMenu(!showFeedbackMenu)}
                   className={`${ACTION_BTN_BASE} ${
@@ -325,7 +325,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
                 </button>
                 
                 {showFeedbackMenu && !feedbackSubmitted && (
-                  <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-slate-800/95 backdrop-blur-xl rounded-xl shadow-xl border border-gray-200 dark:border-slate-600/50 py-2 z-50 min-w-[140px] animate-slide-up">
+                  <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-slate-800/95 backdrop-blur-xl rounded-xl shadow-xl border border-gray-200 dark:border-slate-600/50 py-2 z-[70] min-w-[140px] animate-slide-up">
                     <div className="px-3 py-1.5 text-[9px] uppercase tracking-widest text-gray-500 dark:text-slate-500 font-bold">
                       Rate Sentiment
                     </div>
@@ -547,7 +547,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
 
   // ✅ Grid View Layout (Vertical - Default)
   return (
-    <div className="group relative bg-white dark:bg-slate-800/90 rounded-2xl overflow-hidden border border-gray-200 dark:border-slate-700/50 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-slate-600 transition-all duration-200 flex flex-col hover:-translate-y-1">
+    <div className={`group relative bg-white dark:bg-slate-800/90 rounded-2xl overflow-hidden border border-gray-200 dark:border-slate-700/50 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-slate-600 transition-all duration-200 flex flex-col hover:-translate-y-1 ${showFeedbackMenu ? 'z-20' : ''}`}>
       {/* Image Section */}
       <div className="relative h-[180px] sm:h-52 overflow-hidden">
         <img 
@@ -601,7 +601,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
           {article.description}
         </p>
 
-        <div className="mt-auto pt-4 flex items-center gap-2 overflow-x-auto no-scrollbar border-t border-gray-200 dark:border-slate-700/50">
+        <div className="mt-auto pt-4 flex flex-wrap sm:flex-nowrap items-center gap-2 border-t border-gray-200 dark:border-slate-700/50">
           <div className="flex gap-1.5 shrink-0">
             <button 
               onClick={toggleBookmark}
@@ -626,7 +626,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
             </button>
             
             {/* ✅ ML Feedback Dropdown */}
-            <div className="relative">
+            <div className="relative z-30">
               <button 
                 onClick={() => setShowFeedbackMenu(!showFeedbackMenu)}
                 className={`${ACTION_BTN_BASE} ${
@@ -645,7 +645,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
               
               {/* Feedback Dropdown Menu */}
               {showFeedbackMenu && !feedbackSubmitted && (
-                <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-slate-800/95 backdrop-blur-xl rounded-xl shadow-xl border border-gray-200 dark:border-slate-600/50 py-2 z-50 min-w-[140px] animate-slide-up">
+                <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-slate-800/95 backdrop-blur-xl rounded-xl shadow-xl border border-gray-200 dark:border-slate-600/50 py-2 z-[70] min-w-[140px] animate-slide-up">
                   <div className="px-3 py-1.5 text-[9px] uppercase tracking-widest text-gray-500 dark:text-slate-500 font-bold">
                     Rate Sentiment
                   </div>
