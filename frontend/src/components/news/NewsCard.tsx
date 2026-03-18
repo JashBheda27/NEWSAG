@@ -28,6 +28,7 @@ const ACTION_ICON_CLASS = 'w-[17px] h-[17px] stroke-[1.9] transition-transform d
 interface NewsCardProps {
   article: Article;
   viewType?: 'grid' | 'list';
+  timeTick?: number;
   isBookmarked?: boolean;
   isInReadLater?: boolean;
   onError?: (message: string) => void;
@@ -37,6 +38,7 @@ interface NewsCardProps {
 export const NewsCard: React.FC<NewsCardProps> = memo(({ 
   article, 
   viewType = 'grid',
+  timeTick,
   isBookmarked: initialIsBookmarked, 
   isInReadLater: initialIsInReadLater, 
   onError 
@@ -71,6 +73,10 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
   const imageUrl = useMemo(() => {
     return article.image_url || `https://picsum.photos/seed/${article.title.length}/600/400`;
   }, [article.image_url, article.title.length]);
+
+  const relativePublishedTime = useMemo(() => {
+    return formatRelativeTime(article.published_at);
+  }, [article.published_at, timeTick]);
 
   const handleSentimentFeedback = useCallback(async (userLabel: string) => {
     setIsSubmittingFeedback(true);
@@ -267,7 +273,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
               {article.source}
             </span>
             <div className="flex items-center gap-3 text-[11px] text-gray-600 dark:text-slate-500">
-              <span>{formatRelativeTime(article.published_at)}</span>
+              <span>{relativePublishedTime}</span>
               {(article.description || article.content) && (
                 <span className="text-gray-400 dark:text-slate-600">• {getReadTimeText(article.description || article.content)}</span>
               )}
@@ -583,7 +589,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
             {article.source}
           </span>
           <div className="flex items-center gap-2 text-[11px] text-gray-600 dark:text-slate-500">
-            <span>{formatRelativeTime(article.published_at)}</span>
+            <span>{relativePublishedTime}</span>
             {(article.description || article.content) && (
               <>
                 <span className="text-gray-400 dark:text-slate-600">•</span>
