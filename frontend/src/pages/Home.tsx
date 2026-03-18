@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 import { Grid3X3, Rows3 } from 'lucide-react';
@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import type { Topic, Article } from '../types';
 import { NewsGrid } from '../components/news/NewsGrid';
 import { TrendingBulletin } from '../components/news/TrendingBulletin';
-import { newsService } from '../services/news.service';
+import { mergeArticlesByNewest, newsService } from '../services/news.service';
 import { getErrorMessage } from '../services/api';
 import { ErrorState } from '../components/ui/ErrorState';
 import { LoginRequiredModal } from '../components/ui/LoginRequiredModal';
@@ -23,6 +23,7 @@ const COLD_START_FAST_PROGRESS_MS = 3000;
 const COLD_START_SLOW_PROGRESS_MS = 3000;
 const GENERAL_FEED_POLL_MS = 3000;
 const READY_TRANSITION_MS = 600;
+const BACKGROUND_REFRESH_COOLDOWN_MS = 60_000;
 
 export const Home: React.FC<HomeProps> = ({ showNotification }) => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -49,6 +50,9 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
   
   // ✅ UI-only state: NEVER add to useEffect dependency array
   const [viewType, setViewType] = useState<'grid' | 'list'>('grid');
+  const activeNewsRequestIdRef = useRef(0);
+  const lastBackgroundRefreshAtRef = useRef<Partial<Record<Topic, number>>>({});
+  const backgroundRefreshInFlightRef = useRef<Partial<Record<Topic, boolean>>>({});
 
   useEffect(() => {
     const onResize = () => {
@@ -80,16 +84,49 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
   }, [categoryFromUrl, isLoaded, isSignedIn, setSearchParams]);
 
   const fetchNews = async (cat: Topic) => {
+    const requestId = ++activeNewsRequestIdRef.current;
     setIsLoading(true);
     setError(null);
+
+    const handleBackgroundRefresh = (requestIdForRefresh: number) => {
+      const now = Date.now();
+      const lastRefreshAt = lastBackgroundRefreshAtRef.current[cat] ?? 0;
+      const isInFlight = backgroundRefreshInFlightRef.current[cat] === true;
+      if (isInFlight || now - lastRefreshAt < BACKGROUND_REFRESH_COOLDOWN_MS) {
+        return;
+      }
+
+      lastBackgroundRefreshAtRef.current[cat] = now;
+      backgroundRefreshInFlightRef.current[cat] = true;
+
+      void newsService
+        .getNewsByTopic(cat, { refresh: true })
+        .then((freshArticles) => {
+          if (requestIdForRefresh !== activeNewsRequestIdRef.current) return;
+          setArticles((currentArticles) => mergeArticlesByNewest(currentArticles, freshArticles));
+        })
+        .catch(() => {
+          // Keep current rendered cache if background refresh fails.
+        })
+        .finally(() => {
+          backgroundRefreshInFlightRef.current[cat] = false;
+        });
+    };
+
     try {
-      const nextArticles = await newsService.getNewsByTopic(cat);
+      const initialResponse = await newsService.getNewsByTopicResponse(cat);
+      if (requestId !== activeNewsRequestIdRef.current) return;
+
+      const nextArticles = initialResponse.articles;
       setArticles(nextArticles);
       if (!(cat === 'general' && nextArticles.length === 0 && queryFromUrl.length < 2)) {
         setIsFirstLoad(false);
       }
       setRetryCount(0);
+
+      handleBackgroundRefresh(requestId);
     } catch (err: any) {
+      if (requestId !== activeNewsRequestIdRef.current) return;
       const errorMsg = getErrorMessage(err);
       // On first load, retry once after a delay instead of showing error immediately
       if (isFirstLoad && retryCount < 1) {
@@ -102,7 +139,9 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
         setIsFirstLoad(false);
       }
     } finally {
-      setIsLoading(false);
+      if (requestId === activeNewsRequestIdRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
