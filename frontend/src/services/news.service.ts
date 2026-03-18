@@ -2,6 +2,57 @@ import { api, getErrorMessage } from './api';
 import type { Article, SentimentData, SummaryData } from '../types';
 import type { Topic } from '../types';
 
+export interface TopicNewsResponse {
+  articles: Article[];
+  count: number;
+  source: string;
+}
+
+interface TopicFetchOptions {
+  refresh?: boolean;
+}
+
+const getArticleIdentity = (article: Article): string => {
+  return article.id || article.url;
+};
+
+const toTimestamp = (value?: string): number | null => {
+  if (!value) return null;
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
+export const mergeArticlesByNewest = (current: Article[], fresh: Article[]): Article[] => {
+  const ordered: Article[] = [];
+  const seen = new Set<string>();
+
+  // Fresh items are considered first so ties prefer latest payload.
+  for (const article of fresh) {
+    const key = getArticleIdentity(article);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    ordered.push(article);
+  }
+
+  for (const article of current) {
+    const key = getArticleIdentity(article);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    ordered.push(article);
+  }
+
+  return ordered
+    .map((article, index) => ({ article, index, timestamp: toTimestamp(article.published_at) }))
+    .sort((a, b) => {
+      if (a.timestamp === null && b.timestamp === null) return a.index - b.index;
+      if (a.timestamp === null) return 1;
+      if (b.timestamp === null) return -1;
+      if (a.timestamp === b.timestamp) return a.index - b.index;
+      return b.timestamp - a.timestamp;
+    })
+    .map((entry) => entry.article);
+};
+
 // Trending headline type (lightweight for ticker)
 export interface TrendingHeadline {
   id: string;
@@ -44,21 +95,28 @@ export const newsService = {
   // --------------------------------------------------
   // INDIA TOPIC-BASED NEWS
   // --------------------------------------------------
-  getNewsByTopic: async (
-    topic: Topic
-  ): Promise<Article[]> => {
+  getNewsByTopicResponse: async (
+    topic: Topic,
+    options?: TopicFetchOptions
+  ): Promise<TopicNewsResponse> => {
     try {
-      const response = await api.get<{
-        articles: Article[];
-        count: number;
-        source: string;
-      }>(`/api/news/topic/${topic}`);
+      const response = await api.get<TopicNewsResponse>(`/api/news/topic/${topic}`, {
+        params: options?.refresh ? { refresh: true } : undefined,
+      });
 
-      return response.data.articles;
+      return response.data;
     } catch (err: unknown) {
       console.error(`Failed to fetch news for topic ${topic}:`, err);
       throw new Error(getErrorMessage(err));
     }
+  },
+
+  getNewsByTopic: async (
+    topic: Topic,
+    options?: TopicFetchOptions
+  ): Promise<Article[]> => {
+    const response = await newsService.getNewsByTopicResponse(topic, options);
+    return response.articles;
   },
 
   // --------------------------------------------------
