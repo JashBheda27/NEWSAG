@@ -1,11 +1,12 @@
 ﻿import asyncio
 import logging
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from app.services.news_service import GNewsService
 from app.services.sentiment_ml import SentimentService  # ✅ Use new ML-based sentiment
 from app.services.credibility_service import analyze_credibility  # ✅ Fake news detection
 from app.core.cache import delete_from_cache, get_from_cache, gnews_cache_key, set_in_cache
 from app.core.gnews_counter import GNewsCounter
+from app.core.config import settings
 from app.core.auth import get_current_user_optional, get_user_id, require_admin, require_auth
 from app.core.constants import NEWS_CATEGORIES
 from app.core.database import get_db
@@ -15,6 +16,45 @@ from datetime import datetime
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+def _gnews_refresh_guard_key(topic: str) -> str:
+    return f"gnews:refresh_guard:{topic}"
+
+
+async def _mark_gnews_refresh(topic: str):
+    await set_in_cache(
+        _gnews_refresh_guard_key(topic),
+        {"active": True},
+        ttl=settings.GNEWS_REFRESH_INTERVAL_SEC,
+    )
+
+
+async def _get_cached_topic_response(topic: str, cache_key: str, log_cache_hit: bool = True):
+    cached = await get_from_cache(cache_key)
+    if not cached:
+        return None
+
+    updated = False
+    for article in cached:
+        if "content_is_full" not in article:
+            content_value = article.get("content")
+            article["content_is_full"] = GNewsService.is_content_complete(content_value)
+            updated = True
+
+    if updated:
+        await set_in_cache(cache_key, cached, ttl=settings.CACHE_TTL_NEWS_TOPIC)
+        logger.info(f"[CACHE UPDATE] {topic} | added content_is_full")
+
+    if log_cache_hit:
+        logger.info(f"[CACHE HIT] {topic}")
+    hit_status = await GNewsCounter.get_hit_status()
+    return {
+        "source": "cache",
+        "count": len(cached),
+        "articles": cached,
+        "hits": hit_status,
+    }
 
 # -----------------------------
 # SEARCH SUGGESTIONS (CACHE ONLY)
@@ -178,32 +218,34 @@ async def add_sentiment_to_articles(articles):
 # GET NEWS BY TOPIC (CACHE FIRST)
 # -----------------------------
 @router.get("/topic/{topic}")
-async def get_news_by_topic(topic: str, db=Depends(get_db)):
+async def get_news_by_topic(
+    topic: str,
+    refresh: bool = Query(False, description="Force fresh fetch and bypass cache read"),
+    db=Depends(get_db),
+):
     """Fetch news by topic/category with caching"""
     # TODO: Future enhancement - include country/language/pagination in cache key
     cache_key = gnews_cache_key(topic)
 
-    cached = await get_from_cache(cache_key)
-    if cached:
-        updated = False
-        for article in cached:
-            if "content_is_full" not in article:
-                content_value = article.get("content")
-                article["content_is_full"] = GNewsService.is_content_complete(content_value)
-                updated = True
-        if updated:
-            await set_in_cache(cache_key, cached)
-            logger.info(f"[CACHE UPDATE] {topic} | added content_is_full")
-        logger.info(f"[CACHE HIT] {topic}")
-        # Cached articles ALREADY have sentiment - do NOT recompute
-        # (Sentiment was added before caching, see API fetch branch below)
-        hit_status = await GNewsCounter.get_hit_status()
-        return {
-            "source": "cache",
-            "count": len(cached),
-            "articles": cached,
-            "hits": hit_status,
-        }
+    if not refresh:
+        cached_response = await _get_cached_topic_response(topic, cache_key)
+        if cached_response:
+            # Cached articles ALREADY have sentiment - do NOT recompute
+            # (Sentiment was added before caching, see API fetch branch below)
+            return cached_response
+    else:
+        refresh_guard = await get_from_cache(_gnews_refresh_guard_key(topic))
+        if refresh_guard:
+            cached_response = await _get_cached_topic_response(topic, cache_key, log_cache_hit=False)
+            if cached_response:
+                logger.info(
+                    "[REFRESH THROTTLED] %s | served cache (interval=%ds)",
+                    topic,
+                    settings.GNEWS_REFRESH_INTERVAL_SEC,
+                )
+                return cached_response
+
+        logger.info(f"[CACHE BYPASS] {topic} | forced refresh=true")
 
     logger.info(f"[GNEWS HIT] {topic}")
     try:
@@ -240,7 +282,8 @@ async def get_news_by_topic(topic: str, db=Depends(get_db)):
     except Exception:
         logger.warning("[DB] Error while persisting articles to DB")
     
-    await set_in_cache(cache_key, articles)
+    await set_in_cache(cache_key, articles, ttl=settings.CACHE_TTL_NEWS_TOPIC)
+    await _mark_gnews_refresh(topic)
     full_count = sum(1 for article in articles if article.get("content_is_full"))
     partial_count = sum(1 for article in articles if article.get("content") and not article.get("content_is_full"))
     missing_count = sum(1 for article in articles if not article.get("content"))
@@ -345,7 +388,8 @@ async def refresh_category(
     # ✅ Add credibility/fake news detection
     articles = await analyze_credibility(articles)
     
-    await set_in_cache(cache_key, articles)
+    await set_in_cache(cache_key, articles, ttl=settings.CACHE_TTL_NEWS_TOPIC)
+    await _mark_gnews_refresh(category)
     
     # Log success to audit trail
     await AdminAuditService.log_action(
@@ -400,7 +444,8 @@ async def _refresh_single_category(cat: str, semaphore: asyncio.Semaphore, db) -
             except Exception:
                 logger.warning("[DB] Error while persisting articles to DB")
 
-            await set_in_cache(gnews_cache_key(cat), articles)
+            await set_in_cache(gnews_cache_key(cat), articles, ttl=settings.CACHE_TTL_NEWS_TOPIC)
+            await _mark_gnews_refresh(cat)
             return {"category": cat, "count": len(articles), "error": None}
         except Exception as e:
             logger.error(f"Error refreshing {cat}: {str(e)}")
