@@ -43,7 +43,7 @@ const AppLayout: React.FC<{ showNotification: (msg: string, type?: 'error' | 'su
   }, [getToken, isLoaded, isSignedIn]);
 
   return (
-    <div className="min-h-screen flex flex-col overflow-x-hidden bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 transition-colors duration-200">
+    <div className="min-h-screen flex flex-col bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 transition-colors duration-200">
       <RouteProgress />
 
       {!isAdminPage && (
@@ -55,7 +55,7 @@ const AppLayout: React.FC<{ showNotification: (msg: string, type?: 'error' | 'su
 
       {!isAuthPage && !isAdminPage && <Sidebar />}
 
-      <main className={`app-main flex-grow overflow-x-hidden ${isAuthPage || isAdminPage ? '' : 'news-shell-main'}`}>
+      <main className={`app-main flex-grow overflow-x-hidden ${isAuthPage || isAdminPage ? '' : 'news-shell-main app-main-with-navbar-offset'}`}>
         <AppRouter showNotification={showNotification} />
       </main>
 
@@ -64,6 +64,10 @@ const AppLayout: React.FC<{ showNotification: (msg: string, type?: 'error' | 'su
           .news-shell-main {
             margin-left: 0;
             padding-bottom: 128px;
+          }
+
+          .app-main-with-navbar-offset {
+            padding-top: 88px;
           }
 
           @media (min-width: 640px) and (max-width: 1023px) {
@@ -77,6 +81,12 @@ const AppLayout: React.FC<{ showNotification: (msg: string, type?: 'error' | 'su
             .news-shell-main {
               margin-left: 182px;
               padding-bottom: 0;
+            }
+          }
+
+          @media (max-width: 639px) {
+            .app-main-with-navbar-offset {
+              padding-top: 84px;
             }
           }
         `}</style>
