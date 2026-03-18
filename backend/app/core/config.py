@@ -43,6 +43,8 @@ class Settings:
     # CACHE TTL (STRICT)
     # -----------------------------
     CACHE_TTL_NEWS: int = 60 * 15  # 15 minutes (DO NOT LOWER)
+    CACHE_TTL_NEWS_TOPIC: int = int(os.getenv("CACHE_TTL_NEWS_TOPIC", str(60 * 60 * 24 * 5)))  # 5 days
+    GNEWS_REFRESH_INTERVAL_SEC: int = int(os.getenv("GNEWS_REFRESH_INTERVAL_SEC", str(15 * 60)))
 
     # -----------------------------
     # OLLAMA LLM CONFIG (CHATBOT ONLY)
