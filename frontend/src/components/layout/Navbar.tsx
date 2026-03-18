@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth, useUser } from '@clerk/clerk-react';
 import { motion } from 'framer-motion';
@@ -18,7 +18,32 @@ export const Navbar: React.FC<NavbarProps> = ({ onThemeToggle, isDark }) => {
   const navigate = useNavigate();
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [showCompactMenu, setShowCompactMenu] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const profileFirstName = user?.firstName || user?.username || 'Profile';
+
+  useEffect(() => {
+    let ticking = false;
+
+    const updateScrollState = () => {
+      const scrollTop = window.scrollY || document.documentElement.scrollTop || 0;
+      setIsScrolled(scrollTop > 16);
+      ticking = false;
+    };
+
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(updateScrollState);
+        ticking = true;
+      }
+    };
+
+    updateScrollState();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
 
   const handleLogout = async () => {
     await signOut();
@@ -26,7 +51,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onThemeToggle, isDark }) => {
   };
 
   return (
-    <nav className="sticky top-0 z-50 bg-white dark:bg-slate-900/80 dark:backdrop-blur-xl border-b border-gray-200 dark:border-slate-700/50 px-4 md:px-8 py-4 transition-all duration-300 shadow-sm">
+    <nav
+      className={`fixed inset-x-0 top-0 z-50 px-4 md:px-8 py-4 transition-all duration-300 ${
+        isScrolled
+          ? 'bg-white/78 dark:bg-slate-900/62 backdrop-blur-xl border-b border-gray-200/90 dark:border-slate-700/55 shadow-lg shadow-slate-200/40 dark:shadow-slate-950/30'
+          : 'bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700/50 shadow-sm'
+      }`}
+    >
       <div className="w-full flex items-center justify-between gap-3 sm:gap-4">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-3 group flex-shrink-0">
