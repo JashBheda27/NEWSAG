@@ -8,6 +8,7 @@ class ArticleRecord(BaseModel):
     source: Optional[str]
     url: Optional[str]
     published_at: Optional[str]
+    fetched_at: Optional[str]
     category: Optional[str]
     content_is_full: Optional[bool] = False
     sentiment: Optional[Dict[str, Any]] = None
