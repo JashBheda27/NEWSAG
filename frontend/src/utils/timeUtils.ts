@@ -1,21 +1,24 @@
 /**
  * Format a date to relative time (e.g., "2 hours ago")
  */
+function parseIsoDate(dateString?: string): Date | null {
+  if (!dateString) return null;
+
+  let iso = dateString;
+  if (/^\d{4}-\d{2}-\d{2}T/.test(dateString) && !/[zZ]|[+-]\d{2}:?\d{2}$/.test(dateString)) {
+    // Trim excessive fractional seconds to milliseconds (3 digits) for Date parsing
+    iso = dateString.replace(/(\.\d{3})\d+/, "$1") + 'Z';
+  }
+
+  const parsed = new Date(iso);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 export function formatRelativeTime(dateString?: string): string {
-  if (!dateString) return 'Recently';
+  const date = parseIsoDate(dateString);
+  if (!date) return 'Recently';
 
   try {
-    // Some backend datetimes are ISO strings without timezone (naive UTC),
-    // e.g. "2026-02-11T07:16:52.928000". JavaScript may interpret those
-    // as local time which causes incorrect offsets (shows 5h ago in IST).
-    // If the string has no timezone indicator, treat it as UTC by appending 'Z'.
-    let iso = dateString;
-    if (/^\d{4}-\d{2}-\d{2}T/.test(dateString) && !/[zZ]|[+-]\d{2}:?\d{2}$/.test(dateString)) {
-      // Trim excessive fractional seconds to milliseconds (3 digits) for Date parsing
-      iso = dateString.replace(/(\.\d{3})\d+/, "$1") + 'Z';
-    }
-
-    const date = new Date(iso);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffSecs = Math.floor(diffMs / 1000);
@@ -38,6 +41,26 @@ export function formatRelativeTime(dateString?: string): string {
   } catch {
     return 'Recently';
   }
+}
+
+/**
+ * Format a date as a fixed local timestamp label (e.g., "19 Mar, 10:42 AM").
+ */
+export function formatAbsoluteTime(dateString?: string): string {
+  const date = parseIsoDate(dateString);
+  if (!date) return 'Recently';
+
+  const now = new Date();
+  const sameYear = date.getFullYear() === now.getFullYear();
+
+  return date.toLocaleString('en-US', {
+    day: '2-digit',
+    month: 'short',
+    ...(sameYear ? {} : { year: 'numeric' }),
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
 }
 
 /**
