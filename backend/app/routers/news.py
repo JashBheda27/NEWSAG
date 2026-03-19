@@ -1,10 +1,11 @@
 ﻿import asyncio
 import logging
+from datetime import timedelta, timezone
 from fastapi import APIRouter, HTTPException, Depends, Query
 from app.services.news_service import GNewsService
 from app.services.sentiment_ml import SentimentService  # ✅ Use new ML-based sentiment
 from app.services.credibility_service import analyze_credibility  # ✅ Fake news detection
-from app.core.cache import delete_from_cache, get_from_cache, gnews_cache_key, set_in_cache
+from app.core.cache import get_from_cache, gnews_cache_key, set_in_cache
 from app.core.gnews_counter import GNewsCounter
 from app.core.config import settings
 from app.core.auth import get_current_user_optional, get_user_id, require_admin, require_auth
@@ -30,10 +31,60 @@ async def _mark_gnews_refresh(topic: str):
     )
 
 
+def _parse_article_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+
+    try:
+        normalized = value.strip().replace("Z", "+00:00")
+        parsed = datetime.fromisoformat(normalized)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
+    except Exception:
+        return None
+
+
+def _article_identity(article: dict) -> str | None:
+    return article.get("id") or article.get("url")
+
+
+def _merge_cached_articles(existing: list[dict], fresh: list[dict]) -> list[dict]:
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=settings.CACHE_TTL_NEWS_TOPIC)
+    merged: list[dict] = []
+    seen: set[str] = set()
+
+    # Fresh entries are considered first to preserve newest metadata on duplicates.
+    for article_set in (fresh, existing):
+        for article in article_set:
+            key = _article_identity(article)
+            if not key or key in seen:
+                continue
+
+            fetched_at = _parse_article_datetime(article.get("fetched_at"))
+            published_at = _parse_article_datetime(article.get("published_at"))
+            recency = fetched_at or published_at
+            if recency and recency < cutoff:
+                continue
+
+            seen.add(key)
+            merged.append(article)
+
+    merged.sort(
+        key=lambda article: _parse_article_datetime(article.get("published_at"))
+        or _parse_article_datetime(article.get("fetched_at"))
+        or datetime.min.replace(tzinfo=timezone.utc),
+        reverse=True,
+    )
+    return merged
+
+
 async def _get_cached_topic_response(topic: str, cache_key: str, log_cache_hit: bool = True):
     cached = await get_from_cache(cache_key)
     if not cached:
         return None
+
+    cached_count = len(cached)
 
     updated = False
     for article in cached:
@@ -47,11 +98,11 @@ async def _get_cached_topic_response(topic: str, cache_key: str, log_cache_hit: 
         logger.info(f"[CACHE UPDATE] {topic} | added content_is_full")
 
     if log_cache_hit:
-        logger.info(f"[CACHE HIT] {topic}")
+        logger.info("[CACHE HIT] %s | count=%d", topic, cached_count)
     hit_status = await GNewsCounter.get_hit_status()
     return {
         "source": "cache",
-        "count": len(cached),
+        "count": cached_count,
         "articles": cached,
         "hits": hit_status,
     }
@@ -238,9 +289,11 @@ async def get_news_by_topic(
         if refresh_guard:
             cached_response = await _get_cached_topic_response(topic, cache_key, log_cache_hit=False)
             if cached_response:
+                cached_count = cached_response.get("count", 0)
                 logger.info(
-                    "[REFRESH THROTTLED] %s | served cache (interval=%ds)",
+                    "[REFRESH THROTTLED] %s | served cache count=%d (interval=%ds)",
                     topic,
+                    cached_count,
                     settings.GNEWS_REFRESH_INTERVAL_SEC,
                 )
                 return cached_response
@@ -270,6 +323,7 @@ async def get_news_by_topic(
                     "source": article.get("source"),
                     "url": article.get("url"),
                     "published_at": article.get("published_at"),
+                    "fetched_at": article.get("fetched_at"),
                     "category": article.get("category"),
                     "content_is_full": article.get("content_is_full", False),
                     "cached_at": datetime.utcnow(),
@@ -282,14 +336,18 @@ async def get_news_by_topic(
     except Exception:
         logger.warning("[DB] Error while persisting articles to DB")
     
-    await set_in_cache(cache_key, articles, ttl=settings.CACHE_TTL_NEWS_TOPIC)
+    existing_cached = await get_from_cache(cache_key) or []
+    merged_articles = _merge_cached_articles(existing_cached, articles)
+
+    await set_in_cache(cache_key, merged_articles, ttl=settings.CACHE_TTL_NEWS_TOPIC)
     await _mark_gnews_refresh(topic)
-    full_count = sum(1 for article in articles if article.get("content_is_full"))
-    partial_count = sum(1 for article in articles if article.get("content") and not article.get("content_is_full"))
-    missing_count = sum(1 for article in articles if not article.get("content"))
+    full_count = sum(1 for article in merged_articles if article.get("content_is_full"))
+    partial_count = sum(1 for article in merged_articles if article.get("content") and not article.get("content_is_full"))
+    missing_count = sum(1 for article in merged_articles if not article.get("content"))
     logger.info(
-        "[CACHE SET] %s | content_full=%d partial=%d missing=%d",
+        "[CACHE SET] %s | total=%d content_full=%d partial=%d missing=%d",
         topic,
+        len(merged_articles),
         full_count,
         partial_count,
         missing_count,
@@ -300,8 +358,8 @@ async def get_news_by_topic(
 
     return {
         "source": "api",
-        "count": len(articles),
-        "articles": articles,
+        "count": len(merged_articles),
+        "articles": merged_articles,
         "hits": hit_status,  # ✅ Added
     }
 
@@ -361,7 +419,6 @@ async def refresh_category(
     """Manually refresh news for a specific category (ADMIN ONLY)"""
     admin_id = get_user_id(user)
     cache_key = gnews_cache_key(category)
-    await delete_from_cache(cache_key)
 
     logger.warning(f"[MANUAL REFRESH] {category}")
     try:
@@ -387,8 +444,10 @@ async def refresh_category(
     
     # ✅ Add credibility/fake news detection
     articles = await analyze_credibility(articles)
-    
-    await set_in_cache(cache_key, articles, ttl=settings.CACHE_TTL_NEWS_TOPIC)
+
+    existing_cached = await get_from_cache(cache_key) or []
+    merged_articles = _merge_cached_articles(existing_cached, articles)
+    await set_in_cache(cache_key, merged_articles, ttl=settings.CACHE_TTL_NEWS_TOPIC)
     await _mark_gnews_refresh(category)
     
     # Log success to audit trail
@@ -398,14 +457,17 @@ async def refresh_category(
         action="refresh_cache",
         resource_type="news_category",
         resource_id=category,
-        details={"articles_count": len(articles)},
+        details={
+            "fresh_articles_count": len(articles),
+            "cached_total_count": len(merged_articles),
+        },
         success=True,
     )
 
     return {
         "message": f"{category} refreshed",
         "hits_used": 1,
-        "articles": len(articles),
+        "articles": len(merged_articles),
     }
 
 
@@ -416,7 +478,6 @@ async def _refresh_single_category(cat: str, semaphore: asyncio.Semaphore, db) -
     """Refresh a single category with semaphore for rate limiting."""
     async with semaphore:  # Limit concurrent API calls
         try:
-            await delete_from_cache(gnews_cache_key(cat))
             articles = await GNewsService.fetch_category(cat)
             # Add sentiment BEFORE caching (computed once, cached with articles)
             articles = await add_sentiment_to_articles(articles)
@@ -444,9 +505,12 @@ async def _refresh_single_category(cat: str, semaphore: asyncio.Semaphore, db) -
             except Exception:
                 logger.warning("[DB] Error while persisting articles to DB")
 
-            await set_in_cache(gnews_cache_key(cat), articles, ttl=settings.CACHE_TTL_NEWS_TOPIC)
+            cache_key = gnews_cache_key(cat)
+            existing_cached = await get_from_cache(cache_key) or []
+            merged_articles = _merge_cached_articles(existing_cached, articles)
+            await set_in_cache(cache_key, merged_articles, ttl=settings.CACHE_TTL_NEWS_TOPIC)
             await _mark_gnews_refresh(cat)
-            return {"category": cat, "count": len(articles), "error": None}
+            return {"category": cat, "count": len(merged_articles), "error": None}
         except Exception as e:
             logger.error(f"Error refreshing {cat}: {str(e)}")
             return {"category": cat, "count": 0, "error": str(e)}
