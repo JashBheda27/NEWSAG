@@ -1,5 +1,6 @@
 import httpx
 import hashlib
+from datetime import datetime, timezone
 from typing import List, Dict
 from app.core.config import settings
 from app.core.gnews_counter import GNewsCounter  # ✅ Added
@@ -14,7 +15,7 @@ ALLOWED_CATEGORIES = [
     "health",
 ]
 
-MAX_ARTICLES = 20  # HARD CAP
+MAX_ARTICLES = 10  # HARD CAP per category fetch
 
 class GNewsService:
     @staticmethod
@@ -70,6 +71,7 @@ class GNewsService:
             )
 
         data = response.json()
+        fetched_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
         articles = []
 
         for item in data.get("articles", []):
@@ -91,6 +93,7 @@ class GNewsService:
                 "source": item.get("source", {}).get("name"),
                 "url": item["url"],
                 "published_at": item.get("publishedAt"),
+                "fetched_at": fetched_at,
                 "category": category,
             })
 
