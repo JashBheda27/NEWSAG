@@ -47,9 +47,8 @@ const ContentState = React.memo<{
   articles: Article[];
   viewType: 'grid' | 'list';
   gridClassName: string;
-  timeTick: number;
   onError: (msg: string) => void;
-}>(({ articles, viewType, gridClassName, timeTick, onError }) => {
+}>(({ articles, viewType, gridClassName, onError }) => {
   if (articles.length === 0) {
     return (
       <div className="flex justify-center py-12">
@@ -74,7 +73,6 @@ const ContentState = React.memo<{
           <NewsCard 
             article={article}
             viewType={viewType}
-            timeTick={timeTick}
             onError={onError}
           />
         </div>
@@ -95,7 +93,6 @@ export const NewsGrid: React.FC<NewsGridProps> = React.memo(({
   onError
 }) => {
   const [showLoadingLayer, setShowLoadingLayer] = useState(isLoading);
-  const [relativeTimeTick, setRelativeTimeTick] = useState(() => Date.now());
 
   // Memoize the grid className with improved gap spacing
   const gridClassName = useMemo(() => 
@@ -116,14 +113,6 @@ export const NewsGrid: React.FC<NewsGridProps> = React.memo(({
 
     return () => clearTimeout(fadeTimer);
   }, [isLoading]);
-
-  useEffect(() => {
-    const intervalId = window.setInterval(() => {
-      setRelativeTimeTick(Date.now());
-    }, 30_000);
-
-    return () => window.clearInterval(intervalId);
-  }, []);
 
   // Memoize error handler to prevent re-renders
   const handleError = useCallback((msg: string) => {
@@ -150,7 +139,6 @@ export const NewsGrid: React.FC<NewsGridProps> = React.memo(({
             articles={articles}
             viewType={viewType}
             gridClassName={gridClassName}
-            timeTick={relativeTimeTick}
             onError={handleError}
           />
         </div>
@@ -163,7 +151,6 @@ export const NewsGrid: React.FC<NewsGridProps> = React.memo(({
       articles={articles}
       viewType={viewType}
       gridClassName={gridClassName}
-      timeTick={relativeTimeTick}
       onError={handleError}
     />
   );
