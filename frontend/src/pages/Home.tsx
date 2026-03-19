@@ -23,7 +23,7 @@ const COLD_START_FAST_PROGRESS_MS = 3000;
 const COLD_START_SLOW_PROGRESS_MS = 3000;
 const GENERAL_FEED_POLL_MS = 3000;
 const READY_TRANSITION_MS = 600;
-const BACKGROUND_REFRESH_COOLDOWN_MS = 60_000;
+const BACKGROUND_REFRESH_COOLDOWN_MS = 15 * 60_000;
 
 export const Home: React.FC<HomeProps> = ({ showNotification }) => {
   const [searchParams, setSearchParams] = useSearchParams();
