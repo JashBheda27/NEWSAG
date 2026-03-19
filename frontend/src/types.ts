@@ -17,6 +17,7 @@ export interface Article {
   source: string;
   url: string;
   published_at?: string;
+  fetched_at?: string;
   category?: Topic;
   sentiment?: SentimentData;
   credibility?: CredibilityData;  // ✅ Added: Fake news detection score
