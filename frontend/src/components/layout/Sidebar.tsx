@@ -295,6 +295,7 @@ export const Sidebar: React.FC = () => {
           font-size: 10px;
           background: white;
           border: 2px solid rgb(79, 70, 229);
+          color: rgb(79, 70, 229);
           border-radius: 50%;
           width: 18px;
           height: 18px;
