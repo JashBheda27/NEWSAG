@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timedelta
+from urllib.parse import urlparse
 from fastapi import APIRouter, Depends
 from app.core.database import get_db
 from app.core.auth import get_user_id, require_auth
@@ -18,6 +19,89 @@ async def _get_user_counts(db, user_id: str) -> dict:
         "read_later": read_later,
         "summaries": summaries,
     }
+
+
+def _as_datetime(value):
+    return value if isinstance(value, datetime) else None
+
+
+def _compute_streaks(day_set: set):
+    if not day_set:
+        return 0, 0
+
+    sorted_days = sorted(day_set)
+    best = 1
+    running = 1
+
+    for i in range(1, len(sorted_days)):
+        if (sorted_days[i] - sorted_days[i - 1]).days == 1:
+            running += 1
+            best = max(best, running)
+        else:
+            running = 1
+
+    today = datetime.utcnow().date()
+    latest = sorted_days[-1]
+    current = 0
+
+    if (today - latest).days <= 1:
+        probe = latest
+        while probe in day_set:
+            current += 1
+            probe = probe - timedelta(days=1)
+
+    return current, best
+
+
+def _derive_title_from_url(url: str) -> str:
+    if not isinstance(url, str) or not url:
+        return "Untitled Article"
+    parsed = urlparse(url)
+    slug = (parsed.path or "").strip("/").split("/")[-1]
+    if not slug:
+        return parsed.netloc or "Untitled Article"
+    return slug.replace("-", " ").replace("_", " ").strip().title() or "Untitled Article"
+
+
+def _get_badge_progress(engagement_score: int) -> dict:
+    tiers = [
+        ("Curious Reader", 0, 9),
+        ("Regular", 10, 24),
+        ("Power Reader", 25, 49),
+        ("News Addict", 50, None),
+    ]
+
+    for idx, (name, low, high) in enumerate(tiers):
+        if high is None or engagement_score <= high:
+            if high is None:
+                return {
+                    "current_tier": name,
+                    "next_tier": None,
+                    "progress_to_next": 100,
+                }
+
+            span = max(high - low + 1, 1)
+            progress = int(((engagement_score - low + 1) / span) * 100)
+            next_tier = tiers[idx + 1][0] if idx + 1 < len(tiers) else None
+            return {
+                "current_tier": name,
+                "next_tier": next_tier,
+                "progress_to_next": max(0, min(progress, 100)),
+            }
+
+    return {
+        "current_tier": "Curious Reader",
+        "next_tier": "Regular",
+        "progress_to_next": 0,
+    }
+
+
+def _trend_percent(current: int, previous: int) -> int:
+    if previous > 0:
+        return round(((current - previous) / previous) * 100)
+    if current > 0:
+        return 100
+    return 0
 
 
 @router.get("/stats")
@@ -70,6 +154,11 @@ async def get_profile_analytics(
         sort=[("created_at", -1)],
         projection={"created_at": 1}
     )
+    latest_summary = await db.summary_logs.find_one(
+        {"user_id": user_id},
+        sort=[("created_at", -1)],
+        projection={"created_at": 1}
+    )
 
     last_active_at = None
     if latest_bookmark and latest_bookmark.get("created_at"):
@@ -77,6 +166,9 @@ async def get_profile_analytics(
     if latest_read_later and latest_read_later.get("created_at"):
         if not last_active_at or latest_read_later.get("created_at") > last_active_at:
             last_active_at = latest_read_later.get("created_at")
+    if latest_summary and latest_summary.get("created_at"):
+        if not last_active_at or latest_summary.get("created_at") > last_active_at:
+            last_active_at = latest_summary.get("created_at")
 
     category_counts: dict[str, int] = {}
     for collection in (db.bookmarks, db.read_later):
@@ -101,19 +193,50 @@ async def get_profile_analytics(
 
     now = datetime.utcnow()
     start_date = now - timedelta(days=6)
+    previous_week_start = now - timedelta(days=13)
+    previous_week_end = now - timedelta(days=7)
     weekly_counts: dict[str, int] = {}
+    this_week_count = 0
+    previous_week_count = 0
 
-    for collection in (db.bookmarks, db.read_later):
-        cursor = collection.find(
-            {"user_id": user_id, "created_at": {"$gte": start_date}},
-            projection={"created_at": 1}
-        )
-        async for row in cursor:
-            created_at = row.get("created_at")
-            if not isinstance(created_at, datetime):
-                continue
+    this_week_bookmarks = await db.bookmarks.count_documents(
+        {"user_id": user_id, "created_at": {"$gte": start_date}}
+    )
+    previous_week_bookmarks = await db.bookmarks.count_documents(
+        {
+            "user_id": user_id,
+            "created_at": {"$gte": previous_week_start, "$lte": previous_week_end},
+        }
+    )
+    this_week_read_later = await db.read_later.count_documents(
+        {"user_id": user_id, "created_at": {"$gte": start_date}}
+    )
+    previous_week_read_later = await db.read_later.count_documents(
+        {
+            "user_id": user_id,
+            "created_at": {"$gte": previous_week_start, "$lte": previous_week_end},
+        }
+    )
+
+    activity_days = set()
+    summary_cursor = db.summary_logs.find(
+        {"user_id": user_id},
+        projection={"created_at": 1}
+    ).sort("created_at", -1).limit(500)
+
+    async for row in summary_cursor:
+        created_at = _as_datetime(row.get("created_at"))
+        if not created_at:
+            continue
+
+        activity_days.add(created_at.date())
+
+        if created_at >= start_date:
             day_label = created_at.strftime("%a")
             weekly_counts[day_label] = weekly_counts.get(day_label, 0) + 1
+            this_week_count += 1
+        elif previous_week_start <= created_at <= previous_week_end:
+            previous_week_count += 1
 
     weekly_activity = []
     for i in range(6, -1, -1):
@@ -144,6 +267,73 @@ async def get_profile_analytics(
     else:
         engagement_label = "Power Reader"
 
+    trend_percent = _trend_percent(this_week_count, previous_week_count)
+    bookmarks_trend_percent = _trend_percent(this_week_bookmarks, previous_week_bookmarks)
+    read_later_trend_percent = _trend_percent(this_week_read_later, previous_week_read_later)
+    total_saved_trend_percent = _trend_percent(
+        this_week_bookmarks + this_week_read_later,
+        previous_week_bookmarks + previous_week_read_later,
+    )
+
+    current_streak, best_streak = _compute_streaks(activity_days)
+    reading_time_estimate_minutes_week = this_week_count * 6
+    badge = _get_badge_progress(engagement_score)
+
+    recent_logs = []
+    log_cursor = db.summary_logs.find(
+        {"user_id": user_id},
+        projection={"url": 1, "created_at": 1}
+    ).sort("created_at", -1).limit(40)
+
+    async for row in log_cursor:
+        url = row.get("url")
+        if not isinstance(url, str) or not url:
+            continue
+        created_at = _as_datetime(row.get("created_at"))
+        if not created_at:
+            continue
+        recent_logs.append({"url": url, "created_at": created_at})
+
+    deduped_logs = []
+    seen_urls = set()
+    for row in recent_logs:
+        if row["url"] in seen_urls:
+            continue
+        deduped_logs.append(row)
+        seen_urls.add(row["url"])
+        if len(deduped_logs) >= 5:
+            break
+
+    article_meta_by_url = {}
+    if deduped_logs:
+        urls = [entry["url"] for entry in deduped_logs]
+        article_cursor = db.articles.find(
+            {"url": {"$in": urls}},
+            projection={"title": 1, "category": 1, "source": 1, "url": 1}
+        )
+        async for article in article_cursor:
+            article_url = article.get("url")
+            if isinstance(article_url, str):
+                article_meta_by_url[article_url] = article
+
+    recent_activity = []
+    for row in deduped_logs:
+        meta = article_meta_by_url.get(row["url"], {})
+        source_value = meta.get("source")
+        if isinstance(source_value, dict):
+            source_value = source_value.get("name")
+        if not isinstance(source_value, str) or not source_value:
+            source_value = "Unknown Source"
+        recent_activity.append(
+            {
+                "title": meta.get("title") or _derive_title_from_url(row["url"]),
+                "category": meta.get("category") or "general",
+                "source": source_value,
+                "url": row["url"],
+                "timestamp": row["created_at"],
+            }
+        )
+
     logger.info(
         "[PROFILE ANALYTICS] user_id=%s bookmarks=%s read_later=%s articles_read=%s",
         user_id,
@@ -169,5 +359,22 @@ async def get_profile_analytics(
             "sentiment_breakdown": sentiment_counts if sentiment_found else None,
             "engagement_score": engagement_score,
             "engagement_label": engagement_label,
+        },
+        "tier4": {
+            "weekly_trend_percent": trend_percent,
+            "stat_trends": {
+                "articles_read": trend_percent,
+                "bookmarks": bookmarks_trend_percent,
+                "read_later": read_later_trend_percent,
+                "total_saved": total_saved_trend_percent,
+            },
+            "reading_streak": {
+                "current": current_streak,
+                "best": best_streak,
+            },
+            "reading_time_estimate_minutes_week": reading_time_estimate_minutes_week,
+            "most_read_category": top_category,
+            "badge": badge,
+            "recent_activity": recent_activity,
         },
     }
