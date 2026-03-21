@@ -26,6 +26,33 @@ export interface ProfileAnalyticsResponse {
     engagement_score: number;
     engagement_label: string;
   };
+  tier4?: {
+    weekly_trend_percent: number;
+    stat_trends?: {
+      articles_read: number;
+      bookmarks: number;
+      read_later: number;
+      total_saved: number;
+    };
+    reading_streak: {
+      current: number;
+      best: number;
+    };
+    reading_time_estimate_minutes_week: number;
+    most_read_category: string | null;
+    badge: {
+      current_tier: string;
+      next_tier: string | null;
+      progress_to_next: number;
+    };
+    recent_activity: Array<{
+      title: string;
+      category: string;
+      source?: string;
+      url: string;
+      timestamp: string;
+    }>;
+  };
 }
 
 export const userService = {
