@@ -10,6 +10,7 @@ import { AdminDashboard } from '../pages/AdminDashboard';
 const Profile = lazy(() => import('../pages/Profile').then(m => ({ default: m.Profile })));
 const Bookmarks = lazy(() => import('../pages/Bookmarks').then(m => ({ default: m.Bookmarks })));
 const ReadLater = lazy(() => import('../pages/ReadLater').then(m => ({ default: m.ReadLater })));
+const ArticleViewer = lazy(() => import('../pages/ArticleViewer').then(m => ({ default: m.ArticleViewer })));
 
 // Skeleton loader for lazy-loaded pages
 const PageSkeleton = () => (
@@ -70,6 +71,17 @@ export const AppRouter: React.FC<AppRouterProps> = ({ showNotification }) => {
           <ProtectedRoute requiredCategory="Read Later">
             <Suspense fallback={<PageSkeleton />}>
               <ReadLater />
+            </Suspense>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/article-viewer"
+        element={
+          <ProtectedRoute requiredCategory="Profile">
+            <Suspense fallback={<PageSkeleton />}>
+              <ArticleViewer />
             </Suspense>
           </ProtectedRoute>
         }
