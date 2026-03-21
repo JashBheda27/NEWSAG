@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth, useUser } from '@clerk/clerk-react';
 import { motion } from 'framer-motion';
 import { Clock3, Search, User } from 'lucide-react';
@@ -16,10 +16,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onThemeToggle, isDark }) => {
   const { isSignedIn, signOut } = useAuth();
   const { user, isLoaded } = useUser();
   const navigate = useNavigate();
+  const location = useLocation();
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [showCompactMenu, setShowCompactMenu] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const profileFirstName = user?.firstName || user?.username || 'Profile';
+  const isProfilePage = location.pathname === '/profile';
 
   useEffect(() => {
     let ticking = false;
@@ -183,14 +185,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onThemeToggle, isDark }) => {
                 </Link>
               </motion.div>
 
-              <motion.button
-                onClick={handleLogout}
-                className="hidden lg:inline-flex px-3 py-2 rounded-xl text-sm font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all whitespace-nowrap"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                Logout
-              </motion.button>
+              {!isProfilePage ? (
+                <motion.button
+                  onClick={handleLogout}
+                  className="hidden lg:inline-flex px-3 py-2 rounded-xl text-sm font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all whitespace-nowrap"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  Logout
+                </motion.button>
+              ) : null}
             </>
           ) : (
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
