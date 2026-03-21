@@ -19,6 +19,7 @@ const AppLayout: React.FC<{ showNotification: (msg: string, type?: 'error' | 'su
   const location = useLocation();
   const isAuthPage = location.pathname === '/login';
   const isAdminPage = location.pathname.startsWith('/admin');
+  const isProfilePage = location.pathname === '/profile';
   const { isLoaded, isSignedIn, getToken } = useAuth();
 
   useEffect(() => {
@@ -53,9 +54,13 @@ const AppLayout: React.FC<{ showNotification: (msg: string, type?: 'error' | 'su
         />
       )}
 
-      {!isAuthPage && !isAdminPage && <Sidebar />}
+      {!isAuthPage && !isAdminPage && !isProfilePage && <Sidebar />}
 
-      <main className={`app-main flex-grow overflow-x-hidden ${isAuthPage || isAdminPage ? '' : 'news-shell-main app-main-with-navbar-offset'}`}>
+      <main
+        className={`app-main flex-grow overflow-x-hidden ${
+          !isAuthPage && !isAdminPage ? (isProfilePage ? 'app-main-with-navbar-offset-profile' : 'app-main-with-navbar-offset') : ''
+        } ${!isAuthPage && !isAdminPage && !isProfilePage ? 'news-shell-main' : ''}`}
+      >
         <AppRouter showNotification={showNotification} />
       </main>
 
@@ -68,6 +73,10 @@ const AppLayout: React.FC<{ showNotification: (msg: string, type?: 'error' | 'su
 
           .app-main-with-navbar-offset {
             padding-top: 88px;
+          }
+
+          .app-main-with-navbar-offset-profile {
+            padding-top: 82px;
           }
 
           @media (min-width: 640px) and (max-width: 1023px) {
@@ -88,6 +97,10 @@ const AppLayout: React.FC<{ showNotification: (msg: string, type?: 'error' | 'su
             .app-main-with-navbar-offset {
               padding-top: 84px;
             }
+
+            .app-main-with-navbar-offset-profile {
+              padding-top: 80px;
+            }
           }
         `}</style>
       )}
@@ -97,7 +110,7 @@ const AppLayout: React.FC<{ showNotification: (msg: string, type?: 'error' | 'su
       {/* Scroll to top button */}
       <ScrollToTop />
       
-      {!isAdminPage && (
+      {!isAdminPage && !isProfilePage && (
         <ChatBot 
           onError={(msg) => showNotification(msg, 'error')}
         />
