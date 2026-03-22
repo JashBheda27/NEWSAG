@@ -60,14 +60,14 @@ export const AdminAuditLog: React.FC<AdminAuditLogProps> = ({ showNotification }
   };
 
   const handleApplyFilters = () => {
+    setLoading(true);
     fetchAuditLogs();
   };
 
   const handleClearFilters = () => {
     setFilters({ action: '', resource_type: '' });
-    // Fetch with cleared filters
     setLoading(true);
-    adminApi.getAuditLog(100).then(response => {
+    adminApi.getAuditLog(100, undefined, undefined, undefined).then(response => {
       setLogs(response.logs || []);
       setLoading(false);
     }).catch(err => {
@@ -205,7 +205,7 @@ export const AdminAuditLog: React.FC<AdminAuditLogProps> = ({ showNotification }
               <select
                 value={filters.action}
                 onChange={e => handleFilterChange('action', e.target.value)}
-                className="w-full px-3 py-2 border border-input bg-background rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 border border-input bg-white text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-slate-800 dark:text-white"
               >
                 <option value="">All Actions</option>
                 <option value="verify_report">Verify Report</option>
@@ -222,7 +222,7 @@ export const AdminAuditLog: React.FC<AdminAuditLogProps> = ({ showNotification }
               <select
                 value={filters.resource_type}
                 onChange={e => handleFilterChange('resource_type', e.target.value)}
-                className="w-full px-3 py-2 border border-input bg-background rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 border border-input bg-white text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-slate-800 dark:text-white"
               >
                 <option value="">All Resources</option>
                 <option value="credibility_report">Credibility Report</option>
