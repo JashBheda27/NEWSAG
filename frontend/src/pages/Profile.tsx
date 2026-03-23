@@ -20,7 +20,29 @@ import { userService } from '../services/user.service';
 import type { ProfileAnalyticsResponse } from '../services/user.service';
 
 const ProfileAnalyticsCharts = lazy(() => import('../components/profile/ProfileAnalyticsCharts'));
+
+// Updated badge tier list (synchronized with backend badge_policy.py)
+// This list should match the BADGE_TIERS defined in backend/app/services/badge_policy.py
 const BADGE_TIERS = ['Curious Reader', 'Regular', 'Power Reader', 'News Addict'];
+
+// Helper: Safely get the current badge tier with fallback chain
+const getCurrentBadgeTier = (tier4?: any, tier3?: any): string => {
+  // Primary: use tier4.badge.current_tier from new policy
+  if (tier4?.badge?.current_tier && typeof tier4.badge.current_tier === 'string') {
+    return tier4.badge.current_tier;
+  }
+  // Fallback: use tier3.engagement_label (legacy label for compatibility)
+  if (tier3?.engagement_label && typeof tier3.engagement_label === 'string') {
+    return tier3.engagement_label;
+  }
+  // Final fallback
+  return 'Curious Reader';
+};
+
+// Helper: Normalize tier name in case of minor discrepancies
+const normalizeTierName = (name: string): string => {
+  return name?.trim() || 'Curious Reader';
+};
 
 const formatTrend = (value: number | undefined) => {
   const trend = value ?? 0;
@@ -297,14 +319,16 @@ export const Profile: React.FC = () => {
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-sm font-black text-slate-900 dark:text-white">Engagement Badges</h3>
                 <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-black text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">
-                  {tier4?.badge.current_tier || tier3?.engagement_label || 'Curious Reader'}
+                  {getCurrentBadgeTier(tier4, tier3)}
                 </span>
               </div>
 
               <div className="mt-3 flex flex-wrap gap-2">
-                {BADGE_TIERS.map((tier) => (
-                  <BadgeChip key={tier} label={tier} active={tier === (tier4?.badge.current_tier || '')} />
-                ))}
+                {BADGE_TIERS.map((tier) => {
+                  const currentTier = getCurrentBadgeTier(tier4, tier3);
+                  const isActive = normalizeTierName(tier) === normalizeTierName(currentTier);
+                  return <BadgeChip key={tier} label={tier} active={isActive} />;
+                })}
               </div>
 
               <div className="mt-4">
