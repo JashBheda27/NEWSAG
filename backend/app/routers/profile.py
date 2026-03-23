@@ -4,6 +4,12 @@ from urllib.parse import urlparse
 from fastapi import APIRouter, Depends
 from app.core.database import get_db
 from app.core.auth import get_user_id, require_auth
+from app.services.badge_policy import (
+    compute_engagement_score,
+    resolve_badge_tier,
+    compute_rolling_30day_stats,
+    get_all_tier_names,
+)
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -63,36 +69,78 @@ def _derive_title_from_url(url: str) -> str:
     return slug.replace("-", " ").replace("_", " ").strip().title() or "Untitled Article"
 
 
-def _get_badge_progress(engagement_score: int) -> dict:
-    tiers = [
-        ("Curious Reader", 0, 9),
-        ("Regular", 10, 24),
-        ("Power Reader", 25, 49),
-        ("News Addict", 50, None),
-    ]
-
-    for idx, (name, low, high) in enumerate(tiers):
-        if high is None or engagement_score <= high:
-            if high is None:
-                return {
-                    "current_tier": name,
-                    "next_tier": None,
-                    "progress_to_next": 100,
-                }
-
-            span = max(high - low + 1, 1)
-            progress = int(((engagement_score - low + 1) / span) * 100)
-            next_tier = tiers[idx + 1][0] if idx + 1 < len(tiers) else None
-            return {
-                "current_tier": name,
-                "next_tier": next_tier,
-                "progress_to_next": max(0, min(progress, 100)),
-            }
-
+async def _compute_rolling_30day_stats(db, user_id: str):
+    """
+    Compute 30-day rolling activity stats for hybrid badge gating.
+    
+    Returns:
+        Dict with articles_read_30d, bookmarks_30d, read_later_30d, active_days_30d
+    """
+    now = datetime.utcnow()
+    start_of_30days = now - timedelta(days=29)  # 30 days ago
+    
+    # Count articles read in the last 30 days
+    articles_count_30d = await db.summary_logs.count_documents(
+        {"user_id": user_id, "created_at": {"$gte": start_of_30days}}
+    )
+    
+    # Count bookmarks in the last 30 days
+    bookmarks_count_30d = await db.bookmarks.count_documents(
+        {"user_id": user_id, "created_at": {"$gte": start_of_30days}}
+    )
+    
+    # Count read-later items in the last 30 days
+    read_later_count_30d = await db.read_later.count_documents(
+        {"user_id": user_id, "created_at": {"$gte": start_of_30days}}
+    )
+    
+    # Count distinct activity days in the last 30 days
+    active_days = set()
+    summary_cursor = db.summary_logs.find(
+        {"user_id": user_id, "created_at": {"$gte": start_of_30days}},
+        projection={"created_at": 1}
+    )
+    async for row in summary_cursor:
+        created_at = _as_datetime(row.get("created_at"))
+        if created_at:
+            active_days.add(created_at.date())
+    
     return {
-        "current_tier": "Curious Reader",
-        "next_tier": "Regular",
-        "progress_to_next": 0,
+        "articles_read_30d": articles_count_30d,
+        "bookmarks_30d": bookmarks_count_30d,
+        "read_later_30d": read_later_count_30d,
+        "active_days_30d": len(active_days),
+    }
+
+
+def _get_badge_progress_dict(engagement_score: int, rolling_stats: dict) -> dict:
+    """
+    Compute badge tier progression using hybrid scoring and gating policy.
+    
+    Args:
+        engagement_score: User's all-time engagement score
+        rolling_stats: 30-day rolling activity stats (articles, bookmarks, read_later, active_days)
+    
+    Returns:
+        Dict with current_tier, next_tier, progress_to_next for API response
+    """
+    # Build rolling stats object for policy function
+    rolling_activity = compute_rolling_30day_stats(
+        articles_count_30d=rolling_stats.get("articles_read_30d", 0),
+        bookmarks_count_30d=rolling_stats.get("bookmarks_30d", 0),
+        read_later_count_30d=rolling_stats.get("read_later_30d", 0),
+        active_days_set=set(),  # Already counted as active_days_30d
+    )
+    # Override active_days with the count we already have
+    rolling_activity.active_days = rolling_stats.get("active_days_30d", 0)
+    
+    # Resolve tier using hybrid policy
+    resolution = resolve_badge_tier(engagement_score, rolling_activity)
+    
+    return {
+        "current_tier": resolution.current_tier,
+        "next_tier": resolution.next_tier,
+        "progress_to_next": resolution.progress_to_next,
     }
 
 
@@ -259,13 +307,27 @@ async def get_profile_analytics(
                 sentiment_counts[label] += 1
                 sentiment_found = True
 
-    engagement_score = articles_read + (bookmarks_count * 2) + read_later_count
-    if engagement_score < 10:
-        engagement_label = "Casual Reader"
-    elif engagement_score <= 25:
-        engagement_label = "Active Reader"
-    else:
+    # Compute engagement score using rebalanced weights from policy
+    engagement_score = compute_engagement_score(articles_read, bookmarks_count, read_later_count)
+    
+    # Get 30-day rolling stats for hybrid badge gating
+    rolling_stats = await _compute_rolling_30day_stats(db, user_id)
+    
+    # Compute engagement label for tier3 fallback (legacy compatibility)
+    # Synchronized with badge policy tier names
+    baseline_tier_name = next(
+        (tier[0] for tier in [("Curious Reader", 0, 14), ("Regular", 15, 34), ("Power Reader", 35, 69), ("News Addict", 70, None)]
+         if tier[2] is None or engagement_score <= tier[2]),
+        "Curious Reader"
+    )
+    if baseline_tier_name == "Curious Reader":
+        engagement_label = "Curious Reader"
+    elif baseline_tier_name == "Regular":
+        engagement_label = "Regular"
+    elif baseline_tier_name == "Power Reader":
         engagement_label = "Power Reader"
+    else:
+        engagement_label = "News Addict"
 
     trend_percent = _trend_percent(this_week_count, previous_week_count)
     bookmarks_trend_percent = _trend_percent(this_week_bookmarks, previous_week_bookmarks)
@@ -277,7 +339,7 @@ async def get_profile_analytics(
 
     current_streak, best_streak = _compute_streaks(activity_days)
     reading_time_estimate_minutes_week = this_week_count * 6
-    badge = _get_badge_progress(engagement_score)
+    badge = _get_badge_progress_dict(engagement_score, rolling_stats)
 
     recent_logs = []
     log_cursor = db.summary_logs.find(
