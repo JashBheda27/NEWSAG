@@ -31,6 +31,18 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, language, classN
     };
   }, [audioUrl]);
 
+  // Reset audio cache when text or language changes
+  // This ensures translated content gets fresh TTS audio instead of cached English audio
+  useEffect(() => {
+    if (audioUrl) {
+      URL.revokeObjectURL(audioUrl);
+    }
+    setAudioUrl(null);
+    setError(null);
+    setIsPlaying(false);
+    setProgress(0);
+  }, [text, language]);
+
   const fetchAudio = async () => {
     if (audioUrl) return audioUrl;
 
