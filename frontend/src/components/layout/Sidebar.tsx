@@ -9,6 +9,7 @@ import {
   Globe,
   HeartPulse,
   Landmark,
+  Lock,
   Trophy,
   type LucideIcon,
 } from 'lucide-react';
@@ -67,15 +68,20 @@ export const Sidebar: React.FC = () => {
           to={`/?category=${cat.id}`}
           onClick={handleCategoryClick(cat)}
           aria-label={`Browse ${cat.label}${isLocked ? ' (login required)' : ''}`}
-          className={`sidebar-icon-btn sidebar-category-btn ${isCategoryActive ? 'active' : ''} ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+          className={`sidebar-icon-btn sidebar-category-btn ${isCategoryActive ? 'active' : ''} ${isLocked ? 'sidebar-locked cursor-not-allowed' : ''}`}
         >
-          {isCategoryActive && (
+          {isCategoryActive && !isLocked && (
             <span className="sidebar-active-indicator" aria-hidden="true">
               <Check size={10} />
             </span>
           )}
           <CategoryIcon size={18} aria-hidden="true" className="sidebar-btn-icon" />
           <span className="sidebar-btn-label">{cat.label}</span>
+          {isLocked && (
+            <span className="sidebar-lock-indicator" aria-hidden="true">
+              <Lock size={10} />
+            </span>
+          )}
         </Link>
       </div>
     );
@@ -229,6 +235,48 @@ export const Sidebar: React.FC = () => {
           white-space: nowrap;
           flex: 1;
           text-align: left;
+        }
+
+        .sidebar-lock-indicator {
+          position: absolute;
+          top: 50%;
+          right: 10px;
+          transform: translateY(-50%);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 18px;
+          height: 18px;
+          border-radius: 999px;
+          color: rgb(133, 77, 14);
+          background: linear-gradient(135deg, rgb(255, 244, 214) 0%, rgb(253, 230, 138) 100%);
+          border: 1px solid rgb(245, 158, 11);
+          box-shadow: 0 2px 6px -2px rgba(245, 158, 11, 0.65);
+          flex-shrink: 0;
+        }
+
+        .dark .sidebar-lock-indicator {
+          color: rgb(251, 191, 36);
+          background: linear-gradient(135deg, rgba(120, 53, 15, 0.42) 0%, rgba(180, 83, 9, 0.35) 100%);
+          border-color: rgba(251, 191, 36, 0.75);
+          box-shadow: 0 2px 8px -3px rgba(251, 191, 36, 0.55);
+        }
+
+        .sidebar-icon-btn.sidebar-locked {
+          padding-right: 38px;
+          color: rgb(100, 116, 139);
+          background: rgba(248, 250, 252, 0.8);
+          box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.9);
+        }
+
+        .dark .sidebar-icon-btn.sidebar-locked {
+          color: rgb(148, 163, 184);
+          background: rgba(30, 41, 59, 0.58);
+          box-shadow: inset 0 0 0 1px rgba(71, 85, 105, 0.75);
+        }
+
+        .sidebar-icon-btn.sidebar-locked:hover {
+          transform: none;
         }
 
         .dark .sidebar-icon-btn {
