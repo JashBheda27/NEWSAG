@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { Lock } from 'lucide-react';
 
 export const CategoryPillBar = ({
   categories,
@@ -45,6 +46,7 @@ export const CategoryPillBar = ({
               >
                 <CategoryIcon size={16} aria-hidden="true" />
                 <span>{cat.label}</span>
+                {isLocked && <Lock size={10} aria-hidden="true" className="category-pill-lock" />}
               </Link>
             );
           })}
@@ -90,6 +92,7 @@ export const CategoryPillBar = ({
         .category-pill {
           scroll-snap-align: start;
           flex-shrink: 0;
+          position: relative;
           display: inline-flex;
           align-items: center;
           gap: 6px;
@@ -108,9 +111,28 @@ export const CategoryPillBar = ({
 
         .category-pill.locked {
           opacity: 1;
+          padding-right: 38px;
           background: rgb(255, 255, 255);
           color: rgb(100, 116, 139);
           border-color: rgb(226, 232, 240);
+        }
+
+        .category-pill-lock {
+          position: absolute;
+          top: 50%;
+          right: 10px;
+          transform: translateY(-50%);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 18px;
+          height: 18px;
+          border-radius: 999px;
+          color: rgb(133, 77, 14);
+          background: linear-gradient(135deg, rgb(255, 244, 214) 0%, rgb(253, 230, 138) 100%);
+          border: 1px solid rgb(245, 158, 11);
+          box-shadow: 0 2px 6px -2px rgba(245, 158, 11, 0.65);
+          flex-shrink: 0;
         }
 
         .category-pill.active {
@@ -133,6 +155,13 @@ export const CategoryPillBar = ({
           opacity: 1;
           background: rgb(30, 41, 59);
           color: rgb(148, 163, 184);
+        }
+
+        .dark .category-pill-lock {
+          color: rgb(251, 191, 36);
+          background: linear-gradient(135deg, rgba(120, 53, 15, 0.42) 0%, rgba(180, 83, 9, 0.35) 100%);
+          border-color: rgba(251, 191, 36, 0.75);
+          box-shadow: 0 2px 8px -3px rgba(251, 191, 36, 0.55);
         }
 
         .dark .category-pill.active {
