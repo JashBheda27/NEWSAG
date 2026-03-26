@@ -137,3 +137,40 @@ def gnews_cache_key(category: str) -> str:
     """Return the standard cache key for a GNews category."""
     return f"gnews:{category}"
 
+
+def user_bookmarks_cache_key(user_id: str) -> str:
+    """Redis key for cached bookmark list per user."""
+    return f"user:{user_id}:bookmarks:list"
+
+
+def user_read_later_cache_key(user_id: str) -> str:
+    """Redis key for cached read-later list per user."""
+    return f"user:{user_id}:read_later:list"
+
+
+def user_news_action_status_cache_key(user_id: str) -> str:
+    """Redis key for cached sentiment/report status payload per user."""
+    return f"user:{user_id}:news:action_status"
+
+
+async def invalidate_user_action_cache(user_id: str, *segments: str):
+    """
+    Invalidate one or more user action cache segments.
+
+    Supported segments:
+    - "bookmarks"
+    - "read_later"
+    - "news_action_status"
+    """
+    key_builders = {
+        "bookmarks": user_bookmarks_cache_key,
+        "read_later": user_read_later_cache_key,
+        "news_action_status": user_news_action_status_cache_key,
+    }
+
+    for segment in segments:
+        key_builder = key_builders.get(segment)
+        if key_builder is None:
+            continue
+        await delete_from_cache(key_builder(user_id))
+
