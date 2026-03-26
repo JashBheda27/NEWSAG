@@ -9,6 +9,17 @@ import { SearchSkeleton } from '../ui/skeletons/SearchSkeleton';
 interface NewsGridProps {
   articles: Article[];
   isLoading: boolean;
+  bookmarkedKeys?: Set<string>;
+  readLaterKeys?: Set<string>;
+  sentimentByArticle?: Record<string, string>;
+  reportedKeys?: Set<string>;
+  onActionStateChange?: (update: {
+    articleKey: string;
+    isBookmarked?: boolean;
+    isInReadLater?: boolean;
+    feedbackSubmitted?: string | null;
+    reportSubmitted?: boolean;
+  }) => void;
   viewType?: 'grid' | 'list';
   loadingVariant?: 'feed' | 'category' | 'search';
   showColdStartProgress?: boolean;
@@ -47,8 +58,19 @@ const ContentState = React.memo<{
   articles: Article[];
   viewType: 'grid' | 'list';
   gridClassName: string;
+  bookmarkedKeys: Set<string>;
+  readLaterKeys: Set<string>;
+  sentimentByArticle: Record<string, string>;
+  reportedKeys: Set<string>;
+  onActionStateChange?: (update: {
+    articleKey: string;
+    isBookmarked?: boolean;
+    isInReadLater?: boolean;
+    feedbackSubmitted?: string | null;
+    reportSubmitted?: boolean;
+  }) => void;
   onError: (msg: string) => void;
-}>(({ articles, viewType, gridClassName, onError }) => {
+}>(({ articles, viewType, gridClassName, bookmarkedKeys, readLaterKeys, sentimentByArticle, reportedKeys, onActionStateChange, onError }) => {
   if (articles.length === 0) {
     return (
       <div className="flex justify-center py-12">
@@ -64,19 +86,27 @@ const ContentState = React.memo<{
 
   return (
     <div className={`${gridClassName} page-transition`}>
-      {articles.map((article, idx) => (
-        <div
-          key={article.id || article.url}
-          className="animate-fade-in transform-gpu"
-          style={{ animationDelay: `${Math.min(idx * 40, 300)}ms` }}
-        >
-          <NewsCard 
-            article={article}
-            viewType={viewType}
-            onError={onError}
-          />
-        </div>
-      ))}
+      {articles.map((article, idx) => {
+        const articleKey = article.url || article.id || '';
+        return (
+          <div
+            key={article.id || article.url}
+            className="animate-fade-in transform-gpu"
+            style={{ animationDelay: `${Math.min(idx * 40, 300)}ms` }}
+          >
+            <NewsCard 
+              article={article}
+              viewType={viewType}
+              isBookmarked={bookmarkedKeys.has(articleKey)}
+              isInReadLater={readLaterKeys.has(articleKey)}
+              initialFeedbackSubmitted={sentimentByArticle[articleKey] || null}
+              isReported={reportedKeys.has(articleKey)}
+              onActionStateChange={onActionStateChange}
+              onError={onError}
+            />
+          </div>
+        );
+      })}
     </div>
   );
 });
@@ -85,6 +115,11 @@ const ContentState = React.memo<{
 export const NewsGrid: React.FC<NewsGridProps> = React.memo(({
   articles,
   isLoading,
+  bookmarkedKeys,
+  readLaterKeys,
+  sentimentByArticle,
+  reportedKeys,
+  onActionStateChange,
   viewType = 'grid',
   loadingVariant = 'feed',
   showColdStartProgress = false,
@@ -139,6 +174,11 @@ export const NewsGrid: React.FC<NewsGridProps> = React.memo(({
             articles={articles}
             viewType={viewType}
             gridClassName={gridClassName}
+            bookmarkedKeys={bookmarkedKeys || new Set<string>()}
+            readLaterKeys={readLaterKeys || new Set<string>()}
+            sentimentByArticle={sentimentByArticle || {}}
+            reportedKeys={reportedKeys || new Set<string>()}
+            onActionStateChange={onActionStateChange}
             onError={handleError}
           />
         </div>
@@ -151,6 +191,11 @@ export const NewsGrid: React.FC<NewsGridProps> = React.memo(({
       articles={articles}
       viewType={viewType}
       gridClassName={gridClassName}
+      bookmarkedKeys={bookmarkedKeys || new Set<string>()}
+      readLaterKeys={readLaterKeys || new Set<string>()}
+      sentimentByArticle={sentimentByArticle || {}}
+      reportedKeys={reportedKeys || new Set<string>()}
+      onActionStateChange={onActionStateChange}
       onError={handleError}
     />
   );
