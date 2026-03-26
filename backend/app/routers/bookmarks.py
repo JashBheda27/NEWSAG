@@ -4,6 +4,12 @@ from app.models.bookmark import BookmarkModel
 from bson import ObjectId
 from app.core.auth import get_user_id, require_auth
 from app.services.training_data_service import TrainingDataService
+from app.core.cache import (
+    get_from_cache,
+    set_in_cache,
+    user_bookmarks_cache_key,
+    invalidate_user_action_cache,
+)
 import logging
 
 router = APIRouter()
@@ -36,6 +42,7 @@ async def add_bookmark(
     data["user_id"] = user_id
 
     result = await db.bookmarks.insert_one(data)
+    await invalidate_user_action_cache(user_id, "bookmarks")
     
     # ✅ Collect implicit sentiment feedback (bookmark = positive signal)
     # User bookmarking indicates they found the article valuable with its current sentiment
@@ -94,6 +101,15 @@ async def get_bookmarks(
     db=Depends(get_db),
 ):
     user_id = get_user_id(user)
+    cache_key = user_bookmarks_cache_key(user_id)
+
+    cached = await get_from_cache(cache_key)
+    if cached:
+        logger.info("[BOOKMARKS CACHE HIT] user_id=%s count=%s", user_id, len(cached))
+        return {
+            "count": len(cached),
+            "bookmarks": cached,
+        }
 
     bookmarks = []
     cursor = db.bookmarks.find(
@@ -106,6 +122,8 @@ async def get_bookmarks(
         bookmarks.append(bookmark.model_dump(mode="json"))
 
     logger.info("[BOOKMARKS] user_id=%s count=%s", user_id, len(bookmarks))
+
+    await set_in_cache(cache_key, bookmarks, ttl=60 * 30)
 
     return {
         "count": len(bookmarks),
@@ -126,7 +144,10 @@ async def delete_bookmark_by_article_id(
 
     result = await db.bookmarks.delete_one({
         "user_id": user_id,
-        "article_id": article_id
+        "$or": [
+            {"article_id": article_id},
+            {"url": article_id},
+        ],
     })
 
     if result.deleted_count == 0:
@@ -134,6 +155,8 @@ async def delete_bookmark_by_article_id(
             status_code=404,
             detail="Bookmark not found or not authorized"
         )
+
+    await invalidate_user_action_cache(user_id, "bookmarks")
 
     return {"message": "Bookmark removed"}
 
@@ -160,6 +183,8 @@ async def delete_bookmark(
             status_code=404,
             detail="Bookmark not found or not authorized"
         )
+
+    await invalidate_user_action_cache(user_id, "bookmarks")
 
     return {"message": "Bookmark removed"}
 
