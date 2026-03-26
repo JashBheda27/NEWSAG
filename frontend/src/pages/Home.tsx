@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 import { Grid3X3, Rows3 } from 'lucide-react';
@@ -7,6 +7,7 @@ import type { Topic, Article } from '../types';
 import { NewsGrid } from '../components/news/NewsGrid';
 import { TrendingBulletin } from '../components/news/TrendingBulletin';
 import { mergeArticlesByNewest, newsService } from '../services/news.service';
+import { userService } from '../services/user.service';
 import { getErrorMessage } from '../services/api';
 import { ErrorState } from '../components/ui/ErrorState';
 import { LoginRequiredModal } from '../components/ui/LoginRequiredModal';
@@ -43,6 +44,10 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
   const [coldStartProgress, setColdStartProgress] = useState(0);
   const [coldStartStep, setColdStartStep] = useState(0);
   const [isCompletingFeedLoad, setIsCompletingFeedLoad] = useState(false);
+  const [bookmarkedKeys, setBookmarkedKeys] = useState<Set<string>>(new Set());
+  const [readLaterKeys, setReadLaterKeys] = useState<Set<string>>(new Set());
+  const [sentimentByArticle, setSentimentByArticle] = useState<Record<string, string>>({});
+  const [reportedKeys, setReportedKeys] = useState<Set<string>>(new Set());
   const [isMobileViewport, setIsMobileViewport] = useState(() => {
     if (typeof window === 'undefined') return false;
     return window.innerWidth < 640;
@@ -53,6 +58,11 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
   const activeNewsRequestIdRef = useRef(0);
   const lastBackgroundRefreshAtRef = useRef<Partial<Record<Topic, number>>>({});
   const backgroundRefreshInFlightRef = useRef<Partial<Record<Topic, boolean>>>({});
+
+  const normalizeArticleKey = useCallback((value?: string | null) => {
+    const key = (value || '').trim();
+    return key.length > 0 ? key : null;
+  }, []);
 
   useEffect(() => {
     const onResize = () => {
@@ -170,6 +180,126 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
     if (!isSignedIn && category !== 'general') return;
     fetchNews(category);
   }, [category, isLoaded, isSignedIn, queryFromUrl]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    if (!isSignedIn) {
+      setBookmarkedKeys(new Set());
+      setReadLaterKeys(new Set());
+      setSentimentByArticle({});
+      setReportedKeys(new Set());
+      return;
+    }
+
+    let cancelled = false;
+
+    const hydrateActionState = async () => {
+      try {
+        const [bookmarks, readLater, actionStatus] = await Promise.all([
+          userService.getBookmarks(),
+          userService.getReadLater(),
+          userService.getNewsActionStatus(),
+        ]);
+
+        if (cancelled) return;
+
+        const nextBookmarked = new Set<string>();
+        for (const item of bookmarks) {
+          const keyFromUrl = normalizeArticleKey(item.url);
+          const keyFromArticleId = normalizeArticleKey(item.article_id);
+          if (keyFromUrl) nextBookmarked.add(keyFromUrl);
+          if (keyFromArticleId) nextBookmarked.add(keyFromArticleId);
+        }
+
+        const nextReadLater = new Set<string>();
+        for (const item of readLater) {
+          const keyFromUrl = normalizeArticleKey(item.url);
+          const keyFromArticleId = normalizeArticleKey(item.article_id);
+          if (keyFromUrl) nextReadLater.add(keyFromUrl);
+          if (keyFromArticleId) nextReadLater.add(keyFromArticleId);
+        }
+
+        const nextSentimentByArticle: Record<string, string> = {};
+        for (const [rawKey, label] of Object.entries(actionStatus.sentiment_by_article || {})) {
+          const key = normalizeArticleKey(rawKey);
+          if (key) {
+            nextSentimentByArticle[key] = label;
+          }
+        }
+
+        const nextReported = new Set<string>();
+        for (const rawKey of actionStatus.reported_article_keys || []) {
+          const key = normalizeArticleKey(rawKey);
+          if (key) nextReported.add(key);
+        }
+
+        setBookmarkedKeys(nextBookmarked);
+        setReadLaterKeys(nextReadLater);
+        setSentimentByArticle(nextSentimentByArticle);
+        setReportedKeys(nextReported);
+      } catch {
+        if (cancelled) return;
+        // Keep feed rendering even if optional action hydration fails.
+      }
+    };
+
+    void hydrateActionState();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoaded, isSignedIn, normalizeArticleKey]);
+
+  const handleActionStateChange = useCallback((update: {
+    articleKey: string;
+    isBookmarked?: boolean;
+    isInReadLater?: boolean;
+    feedbackSubmitted?: string | null;
+    reportSubmitted?: boolean;
+  }) => {
+    const articleKey = normalizeArticleKey(update.articleKey);
+    if (!articleKey) return;
+
+    if (typeof update.isBookmarked === 'boolean') {
+      setBookmarkedKeys((prev) => {
+        const next = new Set(prev);
+        if (update.isBookmarked) next.add(articleKey);
+        else next.delete(articleKey);
+        return next;
+      });
+    }
+
+    if (typeof update.isInReadLater === 'boolean') {
+      setReadLaterKeys((prev) => {
+        const next = new Set(prev);
+        if (update.isInReadLater) next.add(articleKey);
+        else next.delete(articleKey);
+        return next;
+      });
+    }
+
+    if (update.feedbackSubmitted !== undefined) {
+      setSentimentByArticle((prev) => {
+        const next = { ...prev };
+        if (update.feedbackSubmitted) {
+          next[articleKey] = update.feedbackSubmitted;
+        } else {
+          delete next[articleKey];
+        }
+        return next;
+      });
+    }
+
+    if (typeof update.reportSubmitted === 'boolean') {
+      setReportedKeys((prev) => {
+        const next = new Set(prev);
+        if (update.reportSubmitted) next.add(articleKey);
+        else next.delete(articleKey);
+        return next;
+      });
+    }
+  }, [normalizeArticleKey]);
 
   useEffect(() => {
     const shouldShowTimedProgress = isFirstLoad
@@ -384,6 +514,11 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
           <NewsGrid 
             articles={articles} 
             isLoading={effectiveIsLoading} 
+            bookmarkedKeys={bookmarkedKeys}
+            readLaterKeys={readLaterKeys}
+            sentimentByArticle={sentimentByArticle}
+            reportedKeys={reportedKeys}
+            onActionStateChange={handleActionStateChange}
             viewType={viewType}
             loadingVariant={loadingVariant}
             showColdStartProgress={effectiveIsLoading && showColdStartProgress}
