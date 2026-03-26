@@ -1,6 +1,11 @@
 import { api, getErrorMessage } from './api';
 import type { Bookmark, ReadLaterItem, Comment } from '../types';
 
+export interface NewsActionStatusResponse {
+  sentiment_by_article: Record<string, string>;
+  reported_article_keys: string[];
+}
+
 export interface ProfileStatsResponse {
   articles_read: number;
   bookmarks: number;
@@ -121,6 +126,16 @@ export const userService = {
   removeFromReadLaterByArticleId: async (articleId: string): Promise<void> => {
     try {
       await api.delete('/api/read-later/', { params: { article_id: articleId } });
+    } catch (err) {
+      throw new Error(getErrorMessage(err));
+    }
+  },
+
+  // User article action status (sentiment/report) for feed hydration
+  getNewsActionStatus: async (): Promise<NewsActionStatusResponse> => {
+    try {
+      const response = await api.get<NewsActionStatusResponse>('/api/news/action-status');
+      return response.data;
     } catch (err) {
       throw new Error(getErrorMessage(err));
     }
