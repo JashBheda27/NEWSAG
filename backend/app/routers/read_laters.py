@@ -4,6 +4,12 @@ from app.core.database import get_db
 from app.core.auth import get_user_id, require_auth
 from app.models.read_later import ReadLaterModel
 from app.services.training_data_service import TrainingDataService
+from app.core.cache import (
+    get_from_cache,
+    set_in_cache,
+    user_read_later_cache_key,
+    invalidate_user_action_cache,
+)
 import logging
 
 router = APIRouter()
@@ -34,6 +40,7 @@ async def add_read_later(
     data["user_id"] = user_id
 
     result = await db.read_later.insert_one(data)
+    await invalidate_user_action_cache(user_id, "read_later")
     
     # fetch the inserted document to return created_at
     inserted = await db.read_later.find_one({"_id": result.inserted_id})
@@ -96,6 +103,15 @@ async def get_read_later(
     db=Depends(get_db),
 ):
     user_id = get_user_id(user)
+    cache_key = user_read_later_cache_key(user_id)
+
+    cached = await get_from_cache(cache_key)
+    if cached:
+        logger.info("[READ_LATER CACHE HIT] user_id=%s count=%s", user_id, len(cached))
+        return {
+            "count": len(cached),
+            "items": cached,
+        }
 
     items = []
     cursor = db.read_later.find(
@@ -108,6 +124,8 @@ async def get_read_later(
         items.append(read_later_item.model_dump(mode="json"))
 
     logger.info("[READ_LATER] user_id=%s count=%s", user_id, len(items))
+
+    await set_in_cache(cache_key, items, ttl=60 * 30)
 
     return {
         "count": len(items),
@@ -133,6 +151,8 @@ async def remove_read_later(
             status_code=404,
             detail="Item not found or unauthorized",
         )
+
+    await invalidate_user_action_cache(user_id, "read_later")
 
     return {"message": "Removed from Read Later"}
 
@@ -162,5 +182,7 @@ async def remove_read_later_by_article(
             status_code=404,
             detail="Item not found or unauthorized",
         )
+
+    await invalidate_user_action_cache(user_id, "read_later")
 
     return {"message": "Removed from Read Later"}
