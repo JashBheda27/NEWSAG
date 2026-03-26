@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, memo, lazy, Suspense } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, memo, lazy, Suspense } from 'react';
 import type { Article } from '../../types';
 import { SentimentBadge } from './SentimentBadge';
 import { CredibilityBadge } from './CredibilityBadge';
@@ -30,6 +30,15 @@ interface NewsCardProps {
   viewType?: 'grid' | 'list';
   isBookmarked?: boolean;
   isInReadLater?: boolean;
+  initialFeedbackSubmitted?: string | null;
+  isReported?: boolean;
+  onActionStateChange?: (update: {
+    articleKey: string;
+    isBookmarked?: boolean;
+    isInReadLater?: boolean;
+    feedbackSubmitted?: string | null;
+    reportSubmitted?: boolean;
+  }) => void;
   onError?: (message: string) => void;
 }
 
@@ -39,10 +48,13 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
   viewType = 'grid',
   isBookmarked: initialIsBookmarked, 
   isInReadLater: initialIsInReadLater, 
+  initialFeedbackSubmitted,
+  isReported: initialIsReported,
+  onActionStateChange,
   onError 
 }) => {
-  const [isBookmarked, setIsBookmarked] = useState(initialIsBookmarked);
-  const [isInReadLater, setIsInReadLater] = useState(initialIsInReadLater);
+  const [isBookmarked, setIsBookmarked] = useState(Boolean(initialIsBookmarked));
+  const [isInReadLater, setIsInReadLater] = useState(Boolean(initialIsInReadLater));
   const [summary, setSummary] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
@@ -55,13 +67,14 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
   
   // ✅ ML Feedback State
   const [showFeedbackMenu, setShowFeedbackMenu] = useState(false);
-  const [feedbackSubmitted, setFeedbackSubmitted] = useState<string | null>(null);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState<string | null>(initialFeedbackSubmitted ?? null);
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState('');
-  const [reportSubmitted, setReportSubmitted] = useState(false);
+  const [reportSubmitted, setReportSubmitted] = useState(Boolean(initialIsReported));
   // Memoize computed values
-  const articleId = useMemo(() => article.id || article.url, [article.id, article.url]);
+  const articleStateKey = useMemo(() => article.url || article.id || '', [article.url, article.id]);
+  const articleId = useMemo(() => article.url || article.id, [article.url, article.id]);
   const sourceValue = useMemo(() => {
     return typeof article.source === 'string'
       ? article.source
@@ -75,6 +88,22 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
   const articleTimestamp = useMemo(() => {
     return formatAbsoluteTime(article.fetched_at || article.published_at);
   }, [article.fetched_at, article.published_at]);
+
+  useEffect(() => {
+    setIsBookmarked(Boolean(initialIsBookmarked));
+  }, [initialIsBookmarked]);
+
+  useEffect(() => {
+    setIsInReadLater(Boolean(initialIsInReadLater));
+  }, [initialIsInReadLater]);
+
+  useEffect(() => {
+    setFeedbackSubmitted(initialFeedbackSubmitted ?? null);
+  }, [initialFeedbackSubmitted]);
+
+  useEffect(() => {
+    setReportSubmitted(Boolean(initialIsReported));
+  }, [initialIsReported]);
 
   const handleSentimentFeedback = useCallback(async (userLabel: string) => {
     setIsSubmittingFeedback(true);
@@ -90,12 +119,18 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
       });
       setFeedbackSubmitted(userLabel);
       setShowFeedbackMenu(false);
+      if (articleStateKey) {
+        onActionStateChange?.({
+          articleKey: articleStateKey,
+          feedbackSubmitted: userLabel,
+        });
+      }
     } catch (err: any) {
       onError?.(err.message || 'Failed to submit feedback');
     } finally {
       setIsSubmittingFeedback(false);
     }
-  }, [articleId, article.url, article.title, article.description, article.sentiment, onError]);
+  }, [articleId, article.url, article.title, article.description, article.sentiment, articleStateKey, onActionStateChange, onError]);
 
   // ✅ Handle Report Misleading
   const handleReportMisleading = useCallback(async () => {
@@ -116,12 +151,18 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
       setReportSubmitted(true);
       setShowReportModal(false);
       setReportReason('');
+      if (articleStateKey) {
+        onActionStateChange?.({
+          articleKey: articleStateKey,
+          reportSubmitted: true,
+        });
+      }
     } catch (err: any) {
       onError?.(err.message || 'Failed to submit report');
     } finally {
       setIsSubmittingFeedback(false);
     }
-  }, [articleId, article.url, article.title, article.description, article.content, sourceValue, article.credibility, reportReason, onError]);
+  }, [articleId, article.url, article.title, article.description, article.content, sourceValue, article.credibility, reportReason, articleStateKey, onActionStateChange, onError]);
 
   const handleSummary = useCallback(async () => {
     setIsModalOpen(true);
@@ -217,11 +258,18 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
           category: article.category,
         });
       }
-      setIsBookmarked(!isBookmarked);
+      const nextState = !isBookmarked;
+      setIsBookmarked(nextState);
+      if (articleStateKey) {
+        onActionStateChange?.({
+          articleKey: articleStateKey,
+          isBookmarked: nextState,
+        });
+      }
     } catch (err: any) {
       onError?.(err.message || ERROR_MESSAGES.ACTION_FAILED);
     }
-  }, [article.url, article.id, article.title, article.description, article.image_url, article.category, sourceValue, isBookmarked, onError]);
+  }, [article.url, article.id, article.title, article.description, article.image_url, article.category, sourceValue, isBookmarked, articleStateKey, onActionStateChange, onError]);
 
   const toggleReadLater = useCallback(async () => {
     try {
@@ -238,11 +286,18 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
           category: article.category,
         });
       }
-      setIsInReadLater(!isInReadLater);
+      const nextState = !isInReadLater;
+      setIsInReadLater(nextState);
+      if (articleStateKey) {
+        onActionStateChange?.({
+          articleKey: articleStateKey,
+          isInReadLater: nextState,
+        });
+      }
     } catch (err: any) {
       onError?.(err.message || ERROR_MESSAGES.ACTION_FAILED);
     }
-  }, [article.url, article.id, article.title, article.category, sourceValue, isInReadLater, onError]);
+  }, [article.url, article.id, article.title, article.category, sourceValue, isInReadLater, articleStateKey, onActionStateChange, onError]);
 
   // ✅ List View Layout (Horizontal)
   if (viewType === 'list') {
