@@ -5,7 +5,13 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from app.services.news_service import GNewsService
 from app.services.sentiment_ml import SentimentService  # ✅ Use new ML-based sentiment
 from app.services.credibility_service import analyze_credibility  # ✅ Fake news detection
-from app.core.cache import get_from_cache, gnews_cache_key, set_in_cache
+from app.core.cache import (
+    get_from_cache,
+    gnews_cache_key,
+    set_in_cache,
+    user_news_action_status_cache_key,
+    invalidate_user_action_cache,
+)
 from app.core.gnews_counter import GNewsCounter
 from app.core.config import settings
 from app.core.auth import get_current_user_optional, get_user_id, require_admin, require_auth
@@ -575,6 +581,67 @@ from app.models.credibility_training import CredibilityReportRequest
 from app.services.training_data_service import TrainingDataService
 
 
+@router.get("/action-status")
+async def get_user_action_status(
+    user=Depends(require_auth),
+    db=Depends(get_db),
+):
+    """Return user-specific article action state for frontend hydration."""
+    user_id = get_user_id(user)
+    cache_key = user_news_action_status_cache_key(user_id)
+
+    cached = await get_from_cache(cache_key)
+    if cached:
+        return cached
+
+    sentiment_by_article: dict[str, str] = {}
+    sentiment_cursor = db.sentiment_training.find(
+        {
+            "user_id": user_id,
+            "source": "explicit",
+            "user_label": {"$exists": True, "$ne": None},
+        },
+        {"article_id": 1, "article_url": 1, "user_label": 1},
+    )
+
+    async for item in sentiment_cursor:
+        label = item.get("user_label")
+        if not label:
+            continue
+        article_id = item.get("article_id")
+        article_url = item.get("article_url")
+        if article_id:
+            sentiment_by_article[article_id] = label
+        if article_url:
+            sentiment_by_article[article_url] = label
+
+    reported_keys: set[str] = set()
+    report_cursor = db.credibility_training.find(
+        {
+            "$or": [
+                {"user_id": user_id},
+                {"reporter_ids": user_id},
+            ]
+        },
+        {"article_id": 1, "article_url": 1},
+    )
+
+    async for item in report_cursor:
+        article_id = item.get("article_id")
+        article_url = item.get("article_url")
+        if article_id:
+            reported_keys.add(article_id)
+        if article_url:
+            reported_keys.add(article_url)
+
+    payload = {
+        "sentiment_by_article": sentiment_by_article,
+        "reported_article_keys": sorted(reported_keys),
+    }
+    await set_in_cache(cache_key, payload, ttl=60 * 30)
+    return payload
+
+
 @router.post("/rate")
 async def rate_article_sentiment(
     rating: SentimentRatingRequest,
@@ -623,6 +690,7 @@ async def rate_article_sentiment(
     )
     
     logger.info(f"[FEEDBACK] Sentiment rating received: article={rating.article_id}, user_label={rating.user_label}")
+    await invalidate_user_action_cache(user_id, "news_action_status")
     
     return {
         "message": "Thank you for your feedback!",
@@ -681,6 +749,7 @@ async def report_misleading_article(
     )
     
     logger.info(f"[FEEDBACK] Misleading report received: article={report.article_id}, status={result['status']}")
+    await invalidate_user_action_cache(user_id, "news_action_status")
     
     return {
         "message": result["message"],
