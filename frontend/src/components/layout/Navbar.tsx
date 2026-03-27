@@ -54,7 +54,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onThemeToggle, isDark }) => {
 
   return (
     <nav
-      className={`fixed inset-x-0 top-0 z-50 px-4 md:px-8 py-4 transition-all duration-300 ${
+      className={`fixed inset-x-0 top-0 z-50 px-4 md:px-8 py-4 transition-colors duration-[80ms] ${
         isScrolled
           ? 'bg-white/78 dark:bg-slate-900/62 backdrop-blur-xl border-b border-gray-200/90 dark:border-slate-700/55 shadow-lg shadow-slate-200/40 dark:shadow-slate-950/30'
           : 'bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700/50 shadow-sm'
@@ -135,8 +135,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onThemeToggle, isDark }) => {
                 className="w-5 h-5 text-amber-400" 
                 fill="currentColor" 
                 viewBox="0 0 20 20"
-                animate={{ rotate: 360 }}
-                transition={{ duration: 0.6 }}
               >
                 <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
               </motion.svg>
@@ -145,8 +143,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onThemeToggle, isDark }) => {
                 className="w-5 h-5 text-gray-700" 
                 fill="currentColor" 
                 viewBox="0 0 20 20"
-                animate={{ rotate: -360 }}
-                transition={{ duration: 0.6 }}
               >
                 <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
               </motion.svg>
