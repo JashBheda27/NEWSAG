@@ -8,10 +8,11 @@ interface ModalProps {
   onClose: () => void;
   title?: string;
   accent?: 'default' | 'comments';
+  forceLightTheme?: boolean;
   children: React.ReactNode;
 }
 
-export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, accent = 'default', children }) => {
+export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, accent = 'default', forceLightTheme = false, children }) => {
   const isCommentsAccent = accent === 'comments';
 
   useEffect(() => {
@@ -41,18 +42,18 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, accent = '
             transition={{ duration: 0.2 }}
           />
           <motion.div 
-            className="relative bg-gradient-to-br from-white to-indigo-50/30 dark:bg-gradient-to-br dark:from-slate-800 dark:to-slate-900/50 text-slate-900 dark:text-slate-100 rounded-3xl shadow-2xl shadow-indigo-500/10 dark:shadow-indigo-900/20 w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col border border-indigo-200/50 dark:border-indigo-500/20"
+            className={`relative bg-gradient-to-br from-white to-indigo-50/30 text-slate-900 rounded-3xl shadow-2xl shadow-indigo-500/10 w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col border border-indigo-200/50 ${forceLightTheme ? '' : 'dark:bg-gradient-to-br dark:from-slate-800 dark:to-slate-900/50 dark:text-slate-100 dark:shadow-indigo-900/20 dark:border-indigo-500/20'}`}
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
           >
             {title && (
-              <div className={`px-6 py-4 border-b flex justify-between items-center ${isCommentsAccent ? 'border-indigo-200/60 dark:border-indigo-500/30 bg-gradient-to-r from-white via-indigo-50/60 to-violet-50/50 dark:from-slate-800 dark:via-indigo-900/20 dark:to-slate-800/90' : 'border-indigo-200/50 dark:border-indigo-500/20 bg-gradient-to-r from-white to-indigo-50/50 dark:from-slate-800 dark:to-slate-800/80'}`}>
-                <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">{title}</h3>
+              <div className={`px-6 py-4 border-b flex justify-between items-center ${isCommentsAccent ? `border-indigo-200/60 bg-gradient-to-r from-white via-indigo-50/60 to-violet-50/50 ${forceLightTheme ? '' : 'dark:border-indigo-500/30 dark:from-slate-800 dark:via-indigo-900/20 dark:to-slate-800/90'}` : `border-indigo-200/50 bg-gradient-to-r from-white to-indigo-50/50 ${forceLightTheme ? '' : 'dark:border-indigo-500/20 dark:from-slate-800 dark:to-slate-800/80'}`}`}>
+                <h3 className={`text-xl font-bold text-slate-900 ${forceLightTheme ? '' : 'dark:text-slate-100'}`}>{title}</h3>
                 <motion.button 
                   onClick={onClose}
-                  className="p-2 text-slate-700 dark:text-slate-200 hover:bg-indigo-100/50 dark:hover:bg-indigo-900/30 hover:ring-2 hover:ring-indigo-400/50 dark:hover:ring-indigo-500/50 rounded-lg transition-all"
+                  className={`p-2 text-slate-700 hover:bg-indigo-100/50 hover:ring-2 hover:ring-indigo-400/50 rounded-lg transition-all ${forceLightTheme ? '' : 'dark:text-slate-200 dark:hover:bg-indigo-900/30 dark:hover:ring-indigo-500/50'}`}
                   aria-label="Close modal"
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
@@ -70,7 +71,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, accent = '
               />
             )}
             <motion.div 
-                className="p-6 overflow-y-auto text-slate-600 dark:text-slate-200"
+                className={`p-6 overflow-y-auto text-slate-600 ${forceLightTheme ? '' : 'dark:text-slate-200'}`}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.1, duration: 0.3 }}
