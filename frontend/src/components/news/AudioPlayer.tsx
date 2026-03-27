@@ -8,11 +8,12 @@ interface AudioPlayerProps {
   text: string;
   language: string;
   className?: string;
+  forceLightTheme?: boolean;
 }
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
 
-export const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, language, className = '' }) => {
+export const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, language, className = '', forceLightTheme = false }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -170,7 +171,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, language, classN
       <button
         onClick={isPlaying ? handlePause : handlePlay}
         disabled={isLoading}
-        className="p-1.5 shrink-0 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors disabled:opacity-50"
+        className={`p-1.5 shrink-0 hover:bg-slate-200 rounded-full transition-colors disabled:opacity-50 ${forceLightTheme ? '' : 'dark:hover:bg-slate-700'}`}
         title={isPlaying ? 'Pause' : 'Listen to summary'}
         style={{ color: '#333' }}
       >
@@ -192,7 +193,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, language, classN
           value={progress}
           onChange={handleSeek}
           disabled={!audioUrl}
-          className="flex-1 min-w-0 h-1 bg-slate-300 dark:bg-slate-600 rounded-lg appearance-none cursor-pointer accent-indigo-600 disabled:opacity-50"
+          className={`flex-1 min-w-0 h-1 bg-slate-300 rounded-lg appearance-none cursor-pointer accent-indigo-600 disabled:opacity-50 ${forceLightTheme ? '' : 'dark:bg-slate-600'}`}
           style={{ accentColor: '#4f46e5' }}
         />
         <span className="text-[9px] sm:text-[10px] font-mono text-slate-500 min-w-[58px] sm:min-w-[70px] text-right shrink-0">
@@ -204,7 +205,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ text, language, classN
       <button
         onClick={handleStop}
         disabled={!audioUrl || (!isPlaying && progress === 0)}
-        className="hidden sm:inline-flex p-1.5 shrink-0 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors disabled:opacity-30"
+        className={`hidden sm:inline-flex p-1.5 shrink-0 hover:bg-slate-200 rounded-full transition-colors disabled:opacity-30 ${forceLightTheme ? '' : 'dark:hover:bg-slate-700'}`}
         title="Stop"
         style={{ color: '#333' }}
       >
