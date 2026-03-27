@@ -5,26 +5,26 @@ interface SentimentBadgeProps {
   sentiment?: SentimentData;
 }
 
-// Optimized SentimentBadge with modern pastel design
+// Optimized SentimentBadge with contrast-safe overlay styling
 export const SentimentBadge = memo<SentimentBadgeProps>(({ sentiment }) => {
   if (!sentiment) return null;
 
-  // Memoize config lookup - softer pastel colors
+  // Memoize config lookup with readable accent colors on top of images
   const { bg, text, label, confidencePercent } = useMemo(() => {
     const config: Record<'Positive' | 'Neutral' | 'Negative', { bg: string; text: string; label: string }> = {
       Positive: {
-        bg: 'bg-emerald-50/90 dark:bg-emerald-500/15',
-        text: 'text-emerald-600 dark:text-emerald-400',
+        bg: 'bg-emerald-900/65',
+        text: 'text-emerald-200',
         label: 'Positive'
       },
       Neutral: {
-        bg: 'bg-slate-100/90 dark:bg-slate-500/15',
-        text: 'text-slate-500 dark:text-slate-400',
+        bg: 'bg-slate-900/65',
+        text: 'text-slate-100',
         label: 'Neutral'
       },
       Negative: {
-        bg: 'bg-rose-50/90 dark:bg-rose-500/15',
-        text: 'text-rose-500 dark:text-rose-400',
+        bg: 'bg-rose-900/65',
+        text: 'text-rose-200',
         label: 'Negative'
       }
     };
@@ -43,15 +43,15 @@ export const SentimentBadge = memo<SentimentBadgeProps>(({ sentiment }) => {
       className={`
         inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wide
         ${bg} ${text}
-        backdrop-blur-sm
+        backdrop-blur-md border border-white/15 shadow-lg shadow-black/45
         transition-all duration-200
         hover:scale-105
       `}
       title={`Confidence: ${confidenceText} (${confidencePercent}%)`}
     >
       <span className={`w-1.5 h-1.5 rounded-full ${
-        sentiment.label === 'Positive' ? 'bg-emerald-500' :
-        sentiment.label === 'Negative' ? 'bg-rose-500' : 'bg-slate-400'
+        sentiment.label === 'Positive' ? 'bg-emerald-300' :
+        sentiment.label === 'Negative' ? 'bg-rose-300' : 'bg-slate-200'
       }`} />
       <span>{label}</span>
     </span>
