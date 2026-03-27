@@ -18,20 +18,20 @@ export const CredibilityBadge = memo<CredibilityBadgeProps>(({ credibility }) =>
     let iconChar: string;
 
     if (label === 'Trusted Source' || score >= 0.75) {
-      bgColor = 'bg-green-50 dark:bg-green-500/15';
-      textColor = 'text-green-600 dark:text-green-300';
+      bgColor = 'bg-green-900/65';
+      textColor = 'text-green-200';
       iconChar = '✓';
     } else if (score >= 0.5) {
-      bgColor = 'bg-blue-50 dark:bg-blue-500/15';
-      textColor = 'text-blue-600 dark:text-blue-300';
+      bgColor = 'bg-blue-900/65';
+      textColor = 'text-blue-200';
       iconChar = '○';
     } else if (score >= 0.35) {
-      bgColor = 'bg-yellow-50 dark:bg-yellow-500/15';
-      textColor = 'text-yellow-600 dark:text-yellow-300';
+      bgColor = 'bg-amber-900/65';
+      textColor = 'text-amber-200';
       iconChar = '?';
     } else {
-      bgColor = 'bg-rose-50 dark:bg-rose-500/15';
-      textColor = 'text-rose-600 dark:text-rose-300';
+      bgColor = 'bg-rose-900/65';
+      textColor = 'text-rose-200';
       iconChar = '!';
     }
 
@@ -61,7 +61,7 @@ export const CredibilityBadge = memo<CredibilityBadgeProps>(({ credibility }) =>
 
   return (
     <span 
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wide border border-current/20 ${bg} ${text}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wide border border-white/15 shadow-lg shadow-black/45 backdrop-blur-md ${bg} ${text}`}
       title={tooltipText}
     >
       <span>{icon}</span>
