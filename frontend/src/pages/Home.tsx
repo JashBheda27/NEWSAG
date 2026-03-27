@@ -450,13 +450,13 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
             transition={{ delay: 0.3 }}
           >
             {/* ✅ Pill Style Segmented Control - NO API calls */}
-            <div className="flex items-center bg-gray-100 dark:bg-slate-800/80 dark:backdrop-blur-sm rounded-full p-1 border border-gray-200 dark:border-slate-700/50 shadow-sm">
+            <div className="flex items-center bg-white/95 dark:bg-[#252526]/95 backdrop-blur-sm rounded-full p-1 border border-gray-200 dark:border-[#3a3a3c] shadow-sm dark:shadow-black/30">
               <motion.button
                 onClick={() => setViewType('grid')}
-                className={`relative px-4 py-2 rounded-full transition-all duration-200 font-semibold text-sm flex items-center gap-2 ${
+                className={`relative px-4 py-2 rounded-full bg-transparent transition-all duration-200 font-semibold text-sm flex items-center gap-2 ${
                   viewType === 'grid'
-                    ? 'text-white'
-                    : 'text-gray-600 hover:text-gray-800 dark:text-slate-400 dark:hover:text-slate-300'
+                    ? 'text-white dark:text-slate-100'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
                 }`}
                 title="Grid View"
                 whileTap={{ scale: 0.95 }}
@@ -464,7 +464,7 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
                 {viewType === 'grid' && (
                   <motion.div
                     layoutId="viewToggle"
-                    className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full shadow-lg shadow-indigo-500/30"
+                    className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-600 dark:from-[#3a3a3c] dark:to-[#2d2d30] rounded-full shadow-lg shadow-indigo-500/30 dark:shadow-black/40"
                     transition={{ type: "spring", stiffness: 400, damping: 30 }}
                   />
                 )}
@@ -474,10 +474,10 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
               <motion.button
                 onClick={() => setViewType('list')}
                 disabled={isMobileViewport}
-                className={`relative px-4 py-2 rounded-full transition-all duration-200 font-semibold text-sm flex items-center gap-2 ${
+                className={`relative px-4 py-2 rounded-full bg-transparent transition-all duration-200 font-semibold text-sm flex items-center gap-2 ${
                   viewType === 'list'
-                    ? 'text-white'
-                    : 'text-gray-600 hover:text-gray-800 dark:text-slate-400 dark:hover:text-slate-300'
+                    ? 'text-white dark:text-slate-100'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
                 } ${isMobileViewport ? 'hidden' : ''}`}
                 title="List View"
                 whileTap={{ scale: 0.95 }}
@@ -485,7 +485,7 @@ export const Home: React.FC<HomeProps> = ({ showNotification }) => {
                 {viewType === 'list' && (
                   <motion.div
                     layoutId="viewToggle"
-                    className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full shadow-lg shadow-indigo-500/30"
+                    className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-600 dark:from-[#3a3a3c] dark:to-[#2d2d30] rounded-full shadow-lg shadow-indigo-500/30 dark:shadow-black/40"
                     transition={{ type: "spring", stiffness: 400, damping: 30 }}
                   />
                 )}
