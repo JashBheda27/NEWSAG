@@ -144,11 +144,11 @@ export const Sidebar: React.FC = () => {
         .sidebar-icon-rail::-webkit-scrollbar { display: none; }
 
         .dark .sidebar-icon-rail {
-          background: rgba(15, 23, 42, 0.78);
-          border-color: rgba(51, 65, 85, 0.7);
+          background: rgba(31, 31, 31, 0.9);
+          border-color: rgba(70, 70, 70, 0.75);
           box-shadow:
-            0 8px 32px -8px rgba(0, 0, 0, 0.4),
-            0 2px 8px -2px rgba(0, 0, 0, 0.2),
+            0 8px 32px -8px rgba(0, 0, 0, 0.45),
+            0 2px 8px -2px rgba(0, 0, 0, 0.28),
             inset 0 1px 0 rgba(255,255,255,0.06);
         }
 
@@ -216,7 +216,7 @@ export const Sidebar: React.FC = () => {
           gap: 12px;
           padding: 0 14px;
           border-radius: 999px;
-          transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+          transition: background-color 80ms ease-out, color 80ms ease-out, border-color 80ms ease-out, box-shadow 80ms ease-out;
           color: rgb(71, 85, 105);
           position: relative;
           background: rgba(255, 255, 255, 0.35);
@@ -271,8 +271,8 @@ export const Sidebar: React.FC = () => {
 
         .dark .sidebar-icon-btn.sidebar-locked {
           color: rgb(148, 163, 184);
-          background: rgba(30, 41, 59, 0.58);
-          box-shadow: inset 0 0 0 1px rgba(71, 85, 105, 0.75);
+          background: rgba(45, 45, 48, 0.8);
+          box-shadow: inset 0 0 0 1px rgba(90, 90, 90, 0.75);
         }
 
         .sidebar-icon-btn.sidebar-locked:hover {
@@ -281,8 +281,8 @@ export const Sidebar: React.FC = () => {
 
         .dark .sidebar-icon-btn {
           color: rgb(148, 163, 184);
-          background: rgba(30, 41, 59, 0.35);
-          box-shadow: inset 0 0 0 1px rgba(51, 65, 85, 0.9);
+          background: rgba(37, 37, 38, 0.55);
+          box-shadow: inset 0 0 0 1px rgba(84, 84, 88, 0.9);
         }
 
         .sidebar-icon-btn:hover {
@@ -295,11 +295,11 @@ export const Sidebar: React.FC = () => {
         }
 
         .dark .sidebar-icon-btn:hover {
-          background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%);
-          color: rgb(165, 180, 252);
+          background: rgba(45, 45, 48, 0.92);
+          color: rgb(226, 232, 240);
           box-shadow: 
-            0 8px 20px -6px rgba(99, 102, 241, 0.4),
-            0 0 0 1px rgba(99, 102, 241, 0.2);
+            0 8px 20px -6px rgba(0, 0, 0, 0.42),
+            0 0 0 1px rgba(110, 110, 116, 0.55);
         }
 
         .sidebar-icon-btn.active {
@@ -312,11 +312,12 @@ export const Sidebar: React.FC = () => {
         }
 
         .dark .sidebar-icon-btn.active {
-          background: linear-gradient(135deg, rgb(79, 70, 229) 0%, rgb(139, 92, 246) 100%);
-          color: white;
+          background: rgba(58, 58, 60, 0.95);
+          color: rgb(248, 250, 252);
           box-shadow: 
-            0 8px 24px -6px rgba(99, 102, 241, 0.5),
-            0 0 24px -4px rgba(99, 102, 241, 0.3);
+            0 8px 24px -6px rgba(0, 0, 0, 0.46),
+            0 0 0 1px rgba(210, 210, 215, 0.85),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
         }
 
         .sidebar-category-btn {
@@ -367,9 +368,9 @@ export const Sidebar: React.FC = () => {
         }
 
         .dark .sidebar-active-indicator {
-          background: rgb(30, 41, 59);
-          border-color: rgb(129, 140, 248);
-          color: white;
+          background: rgb(37, 37, 38);
+          border-color: rgb(210, 210, 215);
+          color: rgb(248, 250, 252);
         }
 
         /* Tooltip hidden — labels always visible */
@@ -402,7 +403,7 @@ export const Sidebar: React.FC = () => {
           gap: 10px;
           padding: 10px 16px;
           border-radius: 8px;
-          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+          transition: background-color 80ms ease-out, color 80ms ease-out, border-color 80ms ease-out, box-shadow 80ms ease-out;
           color: rgb(71, 85, 105);
           font-weight: 600;
           font-size: 13px;
