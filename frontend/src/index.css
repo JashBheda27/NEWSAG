@@ -40,6 +40,27 @@
   --shadow-glow: 0 0 20px -5px rgba(99, 102, 241, 0.3);
 }
 
+/* Lightweight theme transitions for core layout surfaces */
+body,
+nav,
+main,
+aside,
+footer {
+  transition-property: background-color, color, border-color;
+  transition-duration: 80ms;
+  transition-timing-function: ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body,
+  nav,
+  main,
+  aside,
+  footer {
+    transition-duration: 0ms !important;
+  }
+}
+
 /* Devanagari font styling for Hindi content */
 [lang="hi"] .newspaper-paper,
 [lang="hi"] .newspaper-paper * {
@@ -54,14 +75,51 @@
 @media (prefers-color-scheme: dark) {
   :root {
     color: rgba(255, 255, 255, 0.95);
-    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+    background: linear-gradient(160deg, #1f1f1f 0%, #252526 52%, #212121 100%);
     background-attachment: fixed;
   }
 
   body {
-    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+    background: linear-gradient(160deg, #1f1f1f 0%, #252526 52%, #212121 100%);
     background-attachment: fixed;
   }
+}
+
+/* Matte premium black surface overrides for Tailwind dark backgrounds */
+.dark .dark\:bg-slate-950 {
+  background-color: #1b1b1b !important;
+}
+
+.dark .dark\:bg-slate-900,
+.dark .dark\:bg-slate-900\/95,
+.dark .dark\:bg-slate-900\/90,
+.dark .dark\:bg-slate-900\/80,
+.dark .dark\:bg-slate-900\/70,
+.dark .dark\:bg-slate-900\/62,
+.dark .dark\:bg-slate-900\/60,
+.dark .dark\:bg-slate-900\/50,
+.dark .dark\:bg-slate-900\/30,
+.dark .dark\:bg-slate-900\/20 {
+  background-color: #1f1f1f !important;
+}
+
+.dark .dark\:bg-slate-800,
+.dark .dark\:bg-slate-800\/95,
+.dark .dark\:bg-slate-800\/90,
+.dark .dark\:bg-slate-800\/80,
+.dark .dark\:bg-slate-800\/70,
+.dark .dark\:bg-slate-800\/60,
+.dark .dark\:bg-slate-800\/50,
+.dark .dark\:bg-slate-800\/30 {
+  background-color: #252526 !important;
+}
+
+.dark .dark\:bg-slate-700,
+.dark .dark\:bg-slate-700\/80,
+.dark .dark\:bg-slate-700\/70,
+.dark .dark\:bg-slate-700\/60,
+.dark .dark\:bg-slate-700\/50 {
+  background-color: #2d2d30 !important;
 }
 
 /* Newspaper Styles */
