@@ -87,7 +87,7 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
 
   return (
     <>
-    <Modal isOpen={isOpen} onClose={onClose}>
+    <Modal isOpen={isOpen} onClose={onClose} forceLightTheme>
       {isLoading ? (
         <ArticleSkeleton />
       ) : error ? (
@@ -100,10 +100,10 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
         </div>
       ) : (
         <div
-          className="newspaper-paper border border-black w-full"
-          style={{ outline: '1px solid #000', outlineOffset: '4px' }}
+          className="newspaper-paper border w-full"
+          style={{ backgroundColor: '#f1f1ef', borderColor: '#5a5a5a', outline: '1px solid #5a5a5a', outlineOffset: '4px' }}
         >
-          <div className="border p-3 sm:p-4" style={{ borderColor: '#d0d0d0', borderWidth: '1px' }}>
+          <div className="border p-3 sm:p-4" style={{ borderColor: '#9b9b9b', borderWidth: '1px' }}>
              <div className="text-center mb-3 pb-2 border-b-4 border-black border-double">
                 <div className="mb-1">
                   <span className="text-[8px] font-normal uppercase tracking-widest italic">Special AI Edition</span>
@@ -121,8 +121,7 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
              <div className="flex items-center justify-center gap-2 mb-3">
                <label
                  htmlFor="lang-select"
-                 className="text-[10px] uppercase tracking-widest font-normal"
-                 style={{ color: '#555' }}
+                 className="text-[10px] uppercase tracking-widest font-semibold text-slate-700"
                >
                  Translate
                </label>
@@ -131,7 +130,7 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
                  value={selectedLang}
                  onChange={(e) => handleLanguageChange(e.target.value)}
                  disabled={isTranslating}
-                 className="text-xs border border-slate-400 dark:border-slate-500 rounded px-2 py-1 bg-transparent font-serif focus:outline-none focus:ring-1 focus:ring-indigo-400 disabled:opacity-50 text-slate-800 dark:text-slate-100"
+                 className="text-xs border border-slate-500 rounded px-2 py-1 bg-white font-serif focus:outline-none focus:ring-1 focus:ring-indigo-400 disabled:opacity-50 text-slate-900"
                >
                  {SUPPORTED_LANGUAGES.map((l) => (
                    <option key={l.code} value={l.code}>
@@ -143,7 +142,7 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
                  <div className="w-4 h-4 border-2 border-slate-600 border-t-transparent rounded-full animate-spin"></div>
                )}
                {summaryData?.translated && (
-                 <span className="text-[9px] uppercase tracking-wider text-indigo-600 dark:text-indigo-400 font-semibold">
+                 <span className="text-[9px] uppercase tracking-wider text-indigo-700 font-semibold">
                    Translated
                  </span>
                )}
@@ -180,14 +179,15 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
 
             {/* Audio Player for TTS */}
             {summaryData?.audio_available && summaryData?.summary && (
-              <div className="mt-3 pt-2 border-t border-slate-300 dark:border-slate-600">
+              <div className="mt-3 pt-2 border-t border-slate-300">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-[9px] uppercase tracking-widest text-slate-500">Listen to Summary</span>
                 </div>
                 <AudioPlayer 
                   text={summaryData.summary} 
                   language={selectedLang}
-                  className="bg-slate-50 dark:bg-slate-800/50 px-3 rounded-lg"
+                  forceLightTheme
+                  className="bg-slate-50 px-3 rounded-lg"
                 />
               </div>
             )}
@@ -220,13 +220,13 @@ export const SummaryModal: React.FC<Props> = ({ isOpen, onClose, url, title, des
               <div className="flex items-center gap-3">
                 <button 
                   onClick={onClose}
-                  className="text-[10px] font-normal uppercase tracking-widest text-slate-700 dark:text-slate-200 px-2 py-1 rounded hover:text-white dark:hover:text-white hover:bg-indigo-600 dark:hover:bg-indigo-500 transition-colors"
+                  className="text-[10px] font-normal uppercase tracking-widest text-slate-700 px-2 py-1 rounded hover:text-white hover:bg-indigo-600 transition-colors"
                 >
                   Close
                 </button>
                 <button 
                   onClick={() => window.open(url, '_blank')}
-                  className="text-[10px] font-normal uppercase tracking-widest border border-slate-800 dark:border-slate-200 px-3 py-1 text-slate-900 dark:text-slate-100 bg-[#ececec] dark:bg-slate-900/80 hover:text-white dark:hover:text-white hover:border-indigo-600 dark:hover:border-indigo-300 hover:bg-indigo-600 dark:hover:bg-indigo-500 transition-colors"
+                  className="text-[10px] font-normal uppercase tracking-widest border border-slate-800 px-3 py-1 text-slate-900 bg-[#ececec] hover:text-white hover:border-indigo-600 hover:bg-indigo-600 transition-colors"
                 >
                   Read Full Article
                 </button>
