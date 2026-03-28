@@ -120,7 +120,7 @@ export const Sidebar: React.FC = () => {
           position: fixed;
           left: 12px;
           top: 120px;
-          width: 156px;
+          width: 84px;
           height: auto;
           max-height: calc(100vh - 144px);
           display: flex;
@@ -137,8 +137,13 @@ export const Sidebar: React.FC = () => {
             0 8px 32px -8px rgba(15, 23, 42, 0.12),
             0 2px 8px -2px rgba(15, 23, 42, 0.06),
             inset 0 1px 0 rgba(255,255,255,0.7);
+          transition: width 0.32s cubic-bezier(0.4, 0, 0.2, 1);
           overflow-y: auto;
           scrollbar-width: none;
+        }
+
+        .sidebar-icon-rail:hover {
+          width: 176px;
         }
 
         .sidebar-icon-rail::-webkit-scrollbar { display: none; }
@@ -173,6 +178,13 @@ export const Sidebar: React.FC = () => {
           line-height: 1.2;
           text-align: center;
           max-width: 112px;
+          opacity: 0;
+          transition: opacity 0.18s ease 0.08s;
+          white-space: nowrap;
+        }
+
+        .sidebar-icon-rail:hover .sidebar-ai-label {
+          opacity: 1;
         }
 
         .dark .sidebar-ai-label {
@@ -180,14 +192,29 @@ export const Sidebar: React.FC = () => {
         }
 
         .sidebar-section-heading {
-          width: 100%;
+          width: auto;
           margin: 0 0 12px;
-          padding: 0 12px;
-          font-size: 10px;
+          padding: 0;
+          font-size: 9px;
           font-weight: 800;
-          letter-spacing: 0.08em;
+          letter-spacing: 0.04em;
           color: rgb(148, 163, 184);
           text-transform: uppercase;
+          opacity: 1;
+          transition: opacity 0.18s ease 0.08s;
+          white-space: normal;
+          line-height: 1.1;
+          text-align: center;
+        }
+
+        .sidebar-icon-rail:hover .sidebar-section-heading {
+          opacity: 1;
+          width: 100%;
+          padding: 0 12px;
+          font-size: 10px;
+          letter-spacing: 0.08em;
+          white-space: nowrap;
+          text-align: left;
         }
 
         .dark .sidebar-section-heading {
@@ -213,14 +240,29 @@ export const Sidebar: React.FC = () => {
           display: flex;
           flex-direction: row;
           align-items: center;
-          gap: 12px;
-          padding: 0 14px;
+          justify-content: center;
+          gap: 0;
+          padding: 0;
           border-radius: 999px;
           transition: background-color 80ms ease-out, color 80ms ease-out, border-color 80ms ease-out, box-shadow 80ms ease-out;
           color: rgb(71, 85, 105);
           position: relative;
           background: rgba(255, 255, 255, 0.35);
           box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.75);
+        }
+
+        .sidebar-icon-btn.sidebar-locked {
+          padding-right: 0;
+        }
+
+        .sidebar-icon-rail:hover .sidebar-icon-btn {
+          justify-content: flex-start;
+          gap: 12px;
+          padding: 0 14px;
+        }
+
+        .sidebar-icon-rail:hover .sidebar-icon-btn.sidebar-locked {
+          padding-right: 38px;
         }
 
         .sidebar-btn-icon {
@@ -233,8 +275,18 @@ export const Sidebar: React.FC = () => {
           font-size: 13px;
           font-weight: 600;
           white-space: nowrap;
-          flex: 1;
+          flex: 0 0 auto;
           text-align: left;
+          opacity: 0;
+          width: 0;
+          overflow: hidden;
+          transition: opacity 0.18s ease 0.08s, width 0.18s ease;
+        }
+
+        .sidebar-icon-rail:hover .sidebar-btn-label {
+          opacity: 1;
+          width: auto;
+          flex: 1;
         }
 
         .sidebar-lock-indicator {
@@ -338,9 +390,9 @@ export const Sidebar: React.FC = () => {
 
         .sidebar-active-indicator {
           position: absolute;
-          top: 50%;
-          right: 10px;
-          transform: translateY(-50%);
+          top: 6px;
+          right: 8px;
+          transform: none;
           font-size: 10px;
           background: white;
           border: 2px solid rgb(79, 70, 229);
@@ -354,6 +406,12 @@ export const Sidebar: React.FC = () => {
           font-weight: 700;
           box-shadow: 0 4px 12px -2px rgba(79, 70, 229, 0.3);
           animation: pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .sidebar-icon-rail:hover .sidebar-active-indicator {
+          top: 46%;
+          right: 10px;
+          transform: translateY(-50%);
         }
 
         @keyframes pop-in {
