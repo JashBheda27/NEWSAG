@@ -299,6 +299,28 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
     }
   }, [article.url, article.id, article.title, article.category, sourceValue, isInReadLater, articleStateKey, onActionStateChange, onError]);
 
+  const trackReadActivity = useCallback(() => {
+    const articleUrl = article.url;
+    if (!articleUrl) return;
+
+    userService
+      .trackReadActivity({
+        article_id: article.id,
+        article_url: articleUrl,
+        title: article.title,
+        source: sourceValue,
+        category: article.category,
+      })
+      .catch(() => {
+        // Intentionally ignore telemetry failures.
+      });
+  }, [article.category, article.id, article.title, article.url, sourceValue]);
+
+  const handleReadFullArticle = useCallback(() => {
+    trackReadActivity();
+    window.open(article.url, '_blank', 'noopener,noreferrer');
+  }, [article.url, trackReadActivity]);
+
   // ✅ List View Layout (Horizontal)
   if (viewType === 'list') {
     return (
@@ -334,7 +356,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
           </div>
           
           <h3 className="text-lg font-semibold leading-snug mb-2 line-clamp-2 text-gray-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-200">
-            <a href={article.url} target="_blank" rel="noopener noreferrer">{article.title}</a>
+            <a href={article.url} target="_blank" rel="noopener noreferrer" onClick={trackReadActivity}>{article.title}</a>
           </h3>
           
           <p className="text-gray-700 dark:text-slate-400 text-sm line-clamp-2 mb-4 leading-relaxed">
@@ -588,7 +610,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
                         Close
                       </button>
                       <button 
-                        onClick={() => window.open(article.url, '_blank')}
+                        onClick={handleReadFullArticle}
                         className="text-[9px] sm:text-[10px] font-normal uppercase tracking-widest border border-slate-800 px-2.5 sm:px-3 py-1 text-slate-900 bg-[#ececec] hover:text-white hover:border-indigo-600 hover:bg-indigo-600 transition-colors"
                       >
                         Read Full Article
@@ -653,7 +675,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
         </div>
         
         <h3 className="text-base font-semibold leading-snug mb-3 line-clamp-2 text-gray-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-200">
-          <a href={article.url} target="_blank" rel="noopener noreferrer">{article.title}</a>
+          <a href={article.url} target="_blank" rel="noopener noreferrer" onClick={trackReadActivity}>{article.title}</a>
         </h3>
         
         <p className="text-gray-700 dark:text-slate-400 text-sm line-clamp-2 mb-4 leading-relaxed">
@@ -908,7 +930,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
                     Close
                   </button>
                   <button 
-                    onClick={() => window.open(article.url, '_blank')}
+                    onClick={handleReadFullArticle}
                     className="text-[9px] sm:text-[10px] font-normal uppercase tracking-widest border border-slate-800 px-2.5 sm:px-3 py-1 text-slate-900 bg-[#ececec] hover:text-white hover:border-indigo-600 hover:bg-indigo-600 transition-colors"
                   >
                     Read Full Article
