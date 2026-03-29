@@ -1,7 +1,8 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from urllib.parse import urlparse
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from app.core.database import get_db
 from app.core.auth import get_user_id, require_auth
 from app.services.badge_policy import (
@@ -31,6 +32,15 @@ def _as_datetime(value):
     return value if isinstance(value, datetime) else None
 
 
+def _parse_iso_day(value):
+    if not isinstance(value, str):
+        return None
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        return None
+
+
 def _compute_streaks(day_set: set):
     if not day_set:
         return 0, 0
@@ -50,7 +60,8 @@ def _compute_streaks(day_set: set):
     latest = sorted_days[-1]
     current = 0
 
-    if (today - latest).days <= 1:
+    # Strict streak: user must have activity today for a non-zero current streak.
+    if (today - latest).days == 0:
         probe = latest
         while probe in day_set:
             current += 1
@@ -150,6 +161,64 @@ def _trend_percent(current: int, previous: int) -> int:
     if current > 0:
         return 100
     return 0
+
+
+class ReadActivityPayload(BaseModel):
+    article_id: str | None = None
+    article_url: str | None = None
+    title: str | None = None
+    source: str | None = None
+    category: str | None = None
+
+
+@router.post("/activity/read")
+async def track_read_activity(
+    payload: ReadActivityPayload,
+    user=Depends(require_auth),
+    db=Depends(get_db),
+):
+    """
+    Track an article read/open activity for streak analytics.
+    Deduplicates to one record per user + article + UTC day.
+    """
+    user_id = get_user_id(user)
+    article_key = payload.article_id or payload.article_url
+    if not article_key:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="article_id or article_url is required",
+        )
+
+    now = datetime.utcnow()
+    activity_day = now.date().isoformat()
+    filter_query = {
+        "user_id": user_id,
+        "article_key": article_key,
+        "activity_day": activity_day,
+    }
+
+    update_doc = {
+        "$set": {
+            "updated_at": now,
+            "title": payload.title,
+            "source": payload.source,
+            "category": payload.category,
+            "article_url": payload.article_url,
+            "article_id": payload.article_id,
+        },
+        "$setOnInsert": {
+            "user_id": user_id,
+            "article_key": article_key,
+            "activity_day": activity_day,
+            "created_at": now,
+        },
+    }
+
+    result = await db.read_activity_logs.update_one(filter_query, update_doc, upsert=True)
+    return {
+        "status": "created" if result.upserted_id else "updated",
+        "activity_day": activity_day,
+    }
 
 
 @router.get("/stats")
@@ -266,11 +335,18 @@ async def get_profile_analytics(
         }
     )
 
+    streak_days = set()
+    read_activity_days = await db.read_activity_logs.distinct("activity_day", {"user_id": user_id})
+    for day_value in read_activity_days:
+        parsed_day = _parse_iso_day(day_value)
+        if parsed_day:
+            streak_days.add(parsed_day)
+
     activity_days = set()
     summary_cursor = db.summary_logs.find(
         {"user_id": user_id},
         projection={"created_at": 1}
-    ).sort("created_at", -1).limit(500)
+    ).sort("created_at", -1)
 
     async for row in summary_cursor:
         created_at = _as_datetime(row.get("created_at"))
@@ -337,7 +413,8 @@ async def get_profile_analytics(
         previous_week_bookmarks + previous_week_read_later,
     )
 
-    current_streak, best_streak = _compute_streaks(activity_days)
+    # Transition-safe fallback: use summary activity days when read activity is not yet populated.
+    current_streak, best_streak = _compute_streaks(streak_days or activity_days)
     reading_time_estimate_minutes_week = this_week_count * 6
     badge = _get_badge_progress_dict(engagement_score, rolling_stats)
 
