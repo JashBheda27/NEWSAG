@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { SummaryModal } from '../components/news/SummaryModal';
+import { userService } from '../services/user.service';
 
 export const ArticleViewer: React.FC = () => {
   const [params] = useSearchParams();
@@ -11,6 +12,20 @@ export const ArticleViewer: React.FC = () => {
   const description = params.get('description') || undefined;
   const source = params.get('source') || undefined;
   const articleId = params.get('articleId') || undefined;
+
+  useEffect(() => {
+    if (!url) return;
+    userService
+      .trackReadActivity({
+        article_id: articleId,
+        article_url: url,
+        title,
+        source,
+      })
+      .catch(() => {
+        // Intentionally ignore telemetry failures.
+      });
+  }, [articleId, source, title, url]);
 
   const handleClose = () => {
     navigate('/profile');
