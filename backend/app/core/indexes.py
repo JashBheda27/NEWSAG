@@ -100,6 +100,27 @@ async def create_indexes():
         logger.info("[OK] Summary logs indexes created")
 
         # --------------------------------------------------
+        # READ ACTIVITY LOGS COLLECTION
+        # --------------------------------------------------
+        await db.read_activity_logs.create_index(
+            [("user_id", 1), ("created_at", -1)],
+            name="idx_read_activity_user_created"
+        )
+
+        await db.read_activity_logs.create_index(
+            [("user_id", 1), ("article_key", 1), ("activity_day", 1)],
+            unique=True,
+            name="idx_read_activity_unique_day_article"
+        )
+
+        await db.read_activity_logs.create_index(
+            [("user_id", 1), ("activity_day", 1)],
+            name="idx_read_activity_user_day"
+        )
+
+        logger.info("[OK] Read activity logs indexes created")
+
+        # --------------------------------------------------
         # ADMIN AUDIT LOG COLLECTION
         # --------------------------------------------------
         # Index for admin action audit trail
