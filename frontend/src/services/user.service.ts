@@ -13,6 +13,14 @@ export interface ProfileStatsResponse {
   total_saved: number;
 }
 
+export interface ReadActivityPayload {
+  article_id?: string;
+  article_url?: string;
+  title?: string;
+  source?: string;
+  category?: string;
+}
+
 export interface ProfileAnalyticsResponse {
   tier1: {
     articles_read: number;
@@ -196,6 +204,14 @@ export const userService = {
     try {
       const response = await api.get<ProfileAnalyticsResponse>(`/api/profile/analytics`);
       return response.data;
+    } catch (err) {
+      throw new Error(getErrorMessage(err));
+    }
+  },
+
+  trackReadActivity: async (payload: ReadActivityPayload): Promise<void> => {
+    try {
+      await api.post(`/api/profile/activity/read`, payload);
     } catch (err) {
       throw new Error(getErrorMessage(err));
     }
