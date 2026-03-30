@@ -406,7 +406,7 @@ export const ChatBot: React.FC<ChatBotProps> = ({ articleContext: initialContext
                     type="text"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    onKeyPress={handleKeyPress}
+                    onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => handleKeyPress(e)}
                     placeholder="Ask me anything about your news..."
                     className="flex-1 px-5 py-3 bg-slate-100/80 dark:bg-slate-700/80 backdrop-blur-sm text-slate-800 dark:text-slate-200 rounded-full border-none focus:ring-2 focus:ring-indigo-500/50 focus:outline-none text-sm transition-all shadow-inner placeholder:text-slate-400 dark:placeholder:text-slate-500"
                     disabled={isLoading}
