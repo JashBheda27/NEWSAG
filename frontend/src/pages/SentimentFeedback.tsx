@@ -61,6 +61,57 @@ export const SentimentFeedback: React.FC<SentimentFeedbackProps> = ({ showNotifi
   const filteredSamples =
     filter === 'all' ? samples : samples.filter((s) => s.ai_label === filter);
 
+  const escapeCsv = (value: unknown) =>
+    `"${String(value ?? '').replace(/"/g, '""')}"`;
+
+  const handleExport = () => {
+    if (!filteredSamples.length) {
+      notify.warning('No sentiment feedback to export for the selected filter.');
+      return;
+    }
+
+    const headers = [
+      'id',
+      'article_id',
+      'text',
+      'ai_label',
+      'ai_confidence',
+      'user_label',
+      'final_label',
+      'source',
+      'used_for_training',
+      'created_at',
+    ];
+
+    const rows = filteredSamples.map((s) => [
+      escapeCsv(s.id),
+      escapeCsv(s.article_id),
+      escapeCsv(s.text),
+      escapeCsv(s.ai_label),
+      escapeCsv((s.ai_confidence * 100).toFixed(2)),
+      escapeCsv(s.user_label),
+      escapeCsv(s.final_label),
+      escapeCsv(s.source),
+      escapeCsv(s.used_for_training),
+      escapeCsv(s.created_at),
+    ]);
+
+    const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `sentiment-feedback-${filter}-${stamp}.csv`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+
+    notify.success(`Exported ${filteredSamples.length} feedback rows.`);
+  };
+
   return (
     <div className="space-y-6">
       {/* Controls */}
@@ -80,7 +131,11 @@ export const SentimentFeedback: React.FC<SentimentFeedbackProps> = ({ showNotifi
               <option value="neutral">Neutral Only</option>
               <option value="negative">Negative Only</option>
             </select>
-            <button className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium">
+            <button
+              onClick={handleExport}
+              disabled={!filteredSamples.length}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <Download size={16} aria-hidden="true" />
               Export
             </button>
