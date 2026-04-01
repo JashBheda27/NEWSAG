@@ -9,7 +9,7 @@ import { Modal } from '../ui/Modal';
 import { formatAbsoluteTime, getReadTimeText } from '../../utils/timeUtils';
 import { openChatWithArticle } from '../../utils/chatEvents';
 import { ERROR_MESSAGES, SUPPORTED_LANGUAGES } from '../../utils/constants';
-import { AlertTriangle, Bookmark, Bot, Check, Clock3, Heart, MessageCircle, RefreshCw, Sparkles, ThumbsUp, TriangleAlert } from 'lucide-react';
+import { AlertTriangle, Bookmark, Bot, Check, Clock3, Heart, MessageCircle, RefreshCw, Smile, Sparkles, TriangleAlert } from 'lucide-react';
 import { ArticleSkeleton } from '../ui/skeletons/ArticleSkeleton';
 
 // Lazy load heavy components
@@ -401,7 +401,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
                   {feedbackSubmitted ? (
                     <Check className={`${ACTION_ICON_CLASS} stroke-[2.4]`} />
                   ) : (
-                    <ThumbsUp className={ACTION_ICON_CLASS} />
+                    <Smile className={ACTION_ICON_CLASS} />
                   )}
                 </button>
                 
@@ -720,7 +720,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
                 {feedbackSubmitted ? (
                   <Check className={`${ACTION_ICON_CLASS} stroke-[2.4]`} />
                 ) : (
-                  <ThumbsUp className={ACTION_ICON_CLASS} />
+                  <Smile className={ACTION_ICON_CLASS} />
                 )}
               </button>
               
