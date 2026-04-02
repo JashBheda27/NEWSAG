@@ -24,25 +24,25 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ showNotification }
     {
       label: 'Total Users',
       value: '—',
-      icon: <Users size={24} aria-hidden="true" />,
+      icon: <Users size={18} aria-hidden="true" />,
       color: 'indigo',
     },
     {
       label: 'Active This Week',
       value: '—',
-      icon: <TrendingUp size={24} aria-hidden="true" />,
+      icon: <TrendingUp size={18} aria-hidden="true" />,
       color: 'emerald',
     },
     {
       label: 'Articles Indexed',
       value: '—',
-      icon: <BookOpenText size={24} aria-hidden="true" />,
+      icon: <BookOpenText size={18} aria-hidden="true" />,
       color: 'amber',
     },
     {
       label: 'Avg Sentiment (Pos)',
       value: '—',
-      icon: <Activity size={24} aria-hidden="true" />,
+      icon: <Activity size={18} aria-hidden="true" />,
       color: 'rose',
     },
   ]);
@@ -51,9 +51,25 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ showNotification }
   const [_trainingStats, setTrainingStats] = useState<any>(null);
   const [hitStatus, setHitStatus] = useState<any>(null);
   const [hitHistory, setHitHistory] = useState<Array<{date: string; count: number}>>([]);
+  const [hitHistoryError, setHitHistoryError] = useState(false);
   const [systemStatus, setSystemStatus] = useState<any>(null);
   const [metricsLoading, setMetricsLoading] = useState(true);
   const [metricsError, setMetricsError] = useState<string | null>(null);
+
+  const mergeTodayHitFallback = (
+    history: Array<{ date: string; count: number }>,
+    todayHits?: number
+  ) => {
+    if (!todayHits || todayHits <= 0 || history.length === 0) return history;
+
+    const today = new Date().toISOString().slice(0, 10);
+    return history.map((entry) => {
+      if (entry.date === today && entry.count < todayHits) {
+        return { ...entry, count: todayHits };
+      }
+      return entry;
+    });
+  };
 
   useEffect(() => {
     const fetchMetrics = async () => {
@@ -69,8 +85,11 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ showNotification }
         // Fetch hit history (7 days)
         try {
           const history = await adminApi.getHitHistory(7);
-          setHitHistory(history.history || []);
+          setHitHistory(mergeTodayHitFallback(history.history || [], hits?.today_hits));
+          setHitHistoryError(false);
         } catch {
+          setHitHistory([]);
+          setHitHistoryError(true);
           notify.warning('Hit history is temporarily unavailable.');
         }
 
@@ -151,17 +170,21 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ showNotification }
     rose: 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400',
   };
 
+  const chartTotal = hitHistory.reduce((sum, item) => sum + item.count, 0);
+  const chartMax = hitHistory.length ? Math.max(...hitHistory.map((item) => item.count)) : 0;
+  const chartAvg = hitHistory.length ? Number((chartTotal / hitHistory.length).toFixed(1)) : 0;
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 pb-3">
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {kpis.map((kpi, idx) => (
           <div
             key={idx}
-            className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow"
+            className="bg-white dark:bg-slate-900 rounded-xl p-3 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow min-h-[96px]"
           >
-            <div className="flex items-start justify-between mb-4">
-              <div className={`p-3 rounded-xl ${colorClasses[kpi.color]}`}>
+            <div className="flex items-start justify-between mb-2">
+              <div className={`p-2 rounded-lg ${colorClasses[kpi.color]}`}>
                 {kpi.icon}
               </div>
               {kpi.trend && (
@@ -170,12 +193,12 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ showNotification }
                 </span>
               )}
             </div>
-            <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
+            <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
               {kpi.label}
             </p>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white">
+            <p className="text-xl font-bold text-slate-900 dark:text-white leading-tight">
               {metricsLoading ? (
-                <span className="inline-block h-8 w-24 rounded bg-slate-200 dark:bg-slate-700 animate-pulse" />
+                <span className="inline-block h-6 w-20 rounded bg-slate-200 dark:bg-slate-700 animate-pulse" />
               ) : metricsError ? (
                 <span className="text-sm font-semibold text-rose-600">Error</span>
               ) : (
@@ -186,51 +209,72 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ showNotification }
         ))}
       </div>
 
-      {/* Quick Actions */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
-        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-          Quick Actions
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <button 
-            onClick={async () => {
-              await notify.promise(adminApi.refreshAllCache(), {
-                loading: 'Refreshing all cache categories...',
-                success: 'Cache refresh started',
-                error: 'Failed to refresh cache',
-              });
-            }}
-            className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-left"
-          >
-            <p className="font-medium text-slate-900 dark:text-white mb-1">Refresh News Cache</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Clear and reload all categories</p>
-          </button>
-          <button 
-            onClick={async () => {
-              await notify.promise(adminApi.resetHitCounter(), {
-                loading: 'Resetting daily GNews quota...',
-                success: 'Hit counter reset',
-                error: 'Failed to reset quota',
-              });
-            }}
-            className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-left"
-          >
-            <p className="font-medium text-slate-900 dark:text-white mb-1">Reset GNews Quota</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Reset daily hit counter</p>
-          </button>
-          <button 
-            onClick={() => navigate('/admin/audit')}
-            className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-left"
-          >
-            <p className="font-medium text-slate-900 dark:text-white mb-1">View Audit Log</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400">See recent admin actions</p>
-          </button>
+      {/* GNews Hits History (moved up) */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h3 className="text-base font-semibold text-slate-900 dark:text-white">GNews Hits (Last 7 days)</h3>
+          {!hitHistoryError && hitHistory.length > 0 && (
+            <div className="flex items-center gap-1.5 text-[11px] sm:text-xs">
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                Total: {chartTotal}
+              </span>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                Avg/day: {chartAvg}
+              </span>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                Max/day: {chartMax}
+              </span>
+            </div>
+          )}
         </div>
+        {hitHistoryError ? (
+          <EmptyState
+            title="Hit History Unavailable"
+            description="The metrics history endpoint is currently unavailable. Try again shortly or check system health."
+            action={{ label: 'Open System Ops', href: '/admin/ops' }}
+            illustration="generic"
+          />
+        ) : hitHistory && hitHistory.length > 0 ? (
+          <div className="rounded-lg border border-slate-200 p-2.5 dark:border-slate-800">
+            <div className="mb-1.5 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+              <span>Daily hits</span>
+              <span>Max scale: {Math.max(chartMax, 1)}</span>
+            </div>
+            <div className="flex items-end gap-2 h-28">
+            {(() => {
+              const max = Math.max(...hitHistory.map(h => h.count), 1);
+              return hitHistory.map((h) => (
+                <div key={h.date} className="flex-1 h-full flex flex-col justify-end text-center">
+                  <div className="mb-1 text-[10px] font-semibold text-slate-600 dark:text-slate-300">{h.count}</div>
+                  <div className="flex-1 flex items-end justify-center">
+                    <div
+                      title={`${h.date}: ${h.count}`}
+                      className="bg-indigo-500 dark:bg-indigo-400 rounded-t-md transition-all"
+                      style={{
+                        width: '76%',
+                        height: h.count > 0 ? `${Math.max((h.count / max) * 100, 8)}%` : '0%',
+                      }}
+                    />
+                  </div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1.5">{h.date.split('-').slice(1).join('-')}</div>
+                </div>
+              ));
+            })()}
+          </div>
+          </div>
+        ) : (
+          <EmptyState
+            title="No Hit History"
+            description="We do not have enough GNews usage data yet. Check back after traffic starts flowing."
+            action={{ label: 'Open System Ops', href: '/admin/ops' }}
+            illustration="generic"
+          />
+        )}
       </div>
 
       {/* System Health */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800">
           <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
             Redis Cache Status
           </h3>
@@ -253,7 +297,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ showNotification }
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
+        <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800">
           <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
             GNews API Status
           </h3>
@@ -287,35 +331,46 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ showNotification }
         </div>
       </div>
 
-      {/* GNews Hits History */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
-        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">GNews Hits (Last 7 days)</h3>
-        {hitHistory && hitHistory.length > 0 ? (
-          <div className="flex items-end gap-3 h-32">
-            {(() => {
-              const max = Math.max(...hitHistory.map(h => h.count), 1);
-              return hitHistory.map((h) => (
-                <div key={h.date} className="flex-1 text-center">
-                  <div className="h-full flex items-end justify-center">
-                    <div
-                      title={`${h.date}: ${h.count}`}
-                      className="bg-indigo-500 dark:bg-indigo-400 rounded-t-md transition-all"
-                      style={{ width: '70%', height: `${(h.count / max) * 100}%` }}
-                    />
-                  </div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">{h.date.split('-').slice(1).join('-')}</div>
-                </div>
-              ));
-            })()}
-          </div>
-        ) : (
-          <EmptyState
-            title="No Hit History"
-            description="We do not have enough GNews usage data yet. Check back after traffic starts flowing."
-            action={{ label: 'Open System Ops', href: '/admin/ops' }}
-            illustration="generic"
-          />
-        )}
+      {/* Quick Actions (moved down) */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800">
+        <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-3">
+          Quick Actions
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <button
+            onClick={async () => {
+              await notify.promise(adminApi.refreshAllCache(), {
+                loading: 'Refreshing all cache categories...',
+                success: 'Cache refresh started',
+                error: 'Failed to refresh cache',
+              });
+            }}
+            className="p-3 rounded-lg border border-red-200 bg-red-50 text-left transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-100 hover:border-red-300 hover:shadow-sm dark:border-red-900/60 dark:bg-red-950/20 dark:hover:bg-red-900/30"
+          >
+            <p className="font-medium text-slate-900 dark:text-white mb-1">Refresh News Cache</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Clear and reload all categories</p>
+          </button>
+          <button
+            onClick={async () => {
+              await notify.promise(adminApi.resetHitCounter(), {
+                loading: 'Resetting daily GNews quota...',
+                success: 'Hit counter reset',
+                error: 'Failed to reset quota',
+              });
+            }}
+            className="p-3 rounded-lg border border-red-200 bg-red-50 text-left transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-100 hover:border-red-300 hover:shadow-sm dark:border-red-900/60 dark:bg-red-950/20 dark:hover:bg-red-900/30"
+          >
+            <p className="font-medium text-slate-900 dark:text-white mb-1">Reset GNews Quota</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Reset daily hit counter</p>
+          </button>
+          <button
+            onClick={() => navigate('/admin/audit')}
+            className="p-3 rounded-lg border border-red-200 bg-red-50 text-left transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-100 hover:border-red-300 hover:shadow-sm dark:border-red-900/60 dark:bg-red-950/20 dark:hover:bg-red-900/30"
+          >
+            <p className="font-medium text-slate-900 dark:text-white mb-1">View Audit Log</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">See recent admin actions</p>
+          </button>
+        </div>
       </div>
       {/* Sentiment distribution is shown on the Sentiment Feedback page */}
     </div>
