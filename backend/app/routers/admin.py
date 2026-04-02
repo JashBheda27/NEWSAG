@@ -732,6 +732,9 @@ async def get_hit_history(
     Return daily hit counts for the past `days` days (default 7).
     Each entry contains: { date: YYYY-MM-DD, count: int, hours: {HH: count, ...} }
     """
+    if days < 1 or days > 30:
+        raise HTTPException(status_code=400, detail="days must be between 1 and 30")
+
     results = []
     try:
         now = datetime.utcnow()
@@ -747,6 +750,7 @@ async def get_hit_history(
             else:
                 results.append({"date": d, "count": 0, "hours": {}})
     except Exception:
+        logger.exception("Failed to retrieve GNews hit history", extra={"days": days})
         raise HTTPException(status_code=500, detail="Failed to retrieve hit history")
 
     return {"days": days, "history": results}
