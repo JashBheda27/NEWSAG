@@ -1,17 +1,24 @@
+import logging
 from datetime import datetime
 from app.core.database import get_db
+
+
+logger = logging.getLogger(__name__)
 
 
 class MetricsService:
     """Centralized metrics persistence helpers."""
 
     @staticmethod
-    async def record_gnews_hit(count: int = 1):
+    async def record_gnews_hit(count: int = 1) -> bool:
         """Record one or more GNews API hits into `gnews_hits` collection.
 
         Stores both daily total (date) and hourly slot under `hours` subdocument.
-        Best-effort: failures are ignored to avoid blocking API calls.
+        Returns True when persistence succeeds, otherwise False.
         """
+        if count <= 0:
+            return True
+
         try:
             db = await get_db()
             now = datetime.utcnow()
@@ -28,9 +35,14 @@ class MetricsService:
                 },
                 upsert=True,
             )
+
+            return True
         except Exception:
-            # best-effort only
-            pass
+            logger.exception(
+                "Failed to persist GNews hit metrics",
+                extra={"count": int(count)},
+            )
+            return False
 
     @staticmethod
     async def get_daily_hits(date_str: str):
