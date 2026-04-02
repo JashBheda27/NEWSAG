@@ -3,10 +3,14 @@ GNews API Hit Counter
 Tracks API calls for rate limiting (100 requests/day free tier)
 """
 
+import logging
 from datetime import datetime
 from typing import Dict
 from app.core.cache import get_from_cache, set_in_cache, delete_from_cache
 from app.services.metrics_service import MetricsService
+
+
+logger = logging.getLogger(__name__)
 
 class GNewsCounter:
     """
@@ -42,11 +46,13 @@ class GNewsCounter:
         # Store back in cache with 24-hour TTL
         await set_in_cache(cache_key, new_hits, ttl=86400)
 
-        # Persist daily count to DB (best-effort)
-        try:
-            await MetricsService.record_gnews_hit(1)
-        except Exception:
-            pass
+        # Persist daily count to DB and log failures without blocking requests.
+        persisted = await MetricsService.record_gnews_hit(1)
+        if not persisted:
+            logger.warning(
+                "GNews hit persisted to cache but failed to persist metrics",
+                extra={"cache_key": cache_key, "today_hits": new_hits},
+            )
         
         remaining = max(0, GNewsCounter.MAX_HITS_PER_DAY - new_hits)
         is_warning = new_hits >= GNewsCounter.WARNING_THRESHOLD
@@ -109,15 +115,9 @@ class GNewsCounter:
         Returns: reset status
         """
         cache_key = GNewsCounter.get_today_key()
-        # Read final count before deleting (if exists) and persist if present
+        # Read final count before deleting so reset activity is observable.
         final = await get_from_cache(cache_key) or 0
-        try:
-            if final:
-                # write remaining count into DB (best-effort)
-                # record difference is not known here; record final as idempotent write
-                await MetricsService.record_gnews_hit(0)
-        except Exception:
-            pass
+        logger.info("Resetting GNews hit counter", extra={"cache_key": cache_key, "final_hits": final})
 
         await delete_from_cache(cache_key)
         
