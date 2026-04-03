@@ -37,10 +37,10 @@ export interface SentimentFeedback {
   id: string;
   article_id: string;
   text: string;
-  ai_label: 'positive' | 'neutral' | 'negative';
+  ai_label: 'positive' | 'neutral' | 'negative' | 'Positive' | 'Neutral' | 'Negative';
   ai_confidence: number;
-  user_label?: 'positive' | 'neutral' | 'negative';
-  final_label?: 'positive' | 'neutral' | 'negative';
+  user_label?: 'positive' | 'neutral' | 'negative' | 'Positive' | 'Neutral' | 'Negative';
+  final_label?: 'positive' | 'neutral' | 'negative' | 'Positive' | 'Neutral' | 'Negative';
   source: string;
   used_for_training: boolean;
   created_at: string;
