@@ -112,11 +112,13 @@ Expected response (200 OK):
 2. Filter by:
    - **Sentiment**: All, Positive, Neutral, Negative
    - **Source**: Explicit (user-rated), Implicit (bookmark/read-later inferred)
+   - **Search**: Find samples by article id, text snippet, or source keyword
+   - **Pagination**: Browse filtered results with page controls and adjustable rows/page
 3. Review samples:
    - Text excerpt (first 200 chars)
    - AI prediction vs. user label
    - Confidence score
-4. Export feedback as CSV for analysis
+4. Export filtered feedback as CSV for analysis (exports all filtered rows, not only visible page rows)
 
 **Best Practices**:
 - Check "Positive Feedback" first (most users interact with articles they like)
