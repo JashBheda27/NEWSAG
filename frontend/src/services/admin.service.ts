@@ -36,14 +36,70 @@ export interface PendingReport {
 export interface SentimentFeedback {
   id: string;
   article_id: string;
+  article_url?: string;
   text: string;
   ai_label: 'positive' | 'neutral' | 'negative' | 'Positive' | 'Neutral' | 'Negative';
   ai_confidence: number;
   user_label?: 'positive' | 'neutral' | 'negative' | 'Positive' | 'Neutral' | 'Negative';
   final_label?: 'positive' | 'neutral' | 'negative' | 'Positive' | 'Neutral' | 'Negative';
   source: string;
+  review_flag?: boolean;
+  review_reason?: string;
+  sentiment_history?: Array<{
+    type?: string;
+    old_label?: string;
+    new_label?: string;
+    reason?: string;
+    changed_by?: string;
+    changed_at?: string;
+  }>;
   used_for_training: boolean;
   created_at: string;
+  updated_at?: string;
+}
+
+export interface SentimentTrendPoint {
+  date: string;
+  positive: number;
+  neutral: number;
+  negative: number;
+  total: number;
+  positive_ratio: number;
+  neutral_ratio: number;
+  negative_ratio: number;
+}
+
+export interface SentimentHeatmapCell {
+  source: string;
+  sentiment: 'positive' | 'neutral' | 'negative';
+  value: number;
+  intensity: number;
+}
+
+export interface SentimentAnomalyConfig {
+  window_hours: number;
+  negative_threshold: number;
+  minimum_samples: number;
+}
+
+export interface SentimentAnomalyReport {
+  window_hours: number;
+  minimum_samples: number;
+  negative_threshold: number;
+  total: number;
+  positive: number;
+  neutral: number;
+  negative: number;
+  negative_ratio: number;
+  alert: boolean;
+  message: string;
+  samples: Array<{
+    id: string;
+    article_id?: string;
+    label?: string;
+    source?: string;
+    created_at?: string;
+  }>;
 }
 
 export interface AuditLog {
@@ -156,11 +212,13 @@ export const adminApi = {
    */
   async getSentimentFeedback(
     limit: number = 100,
-    source?: string
+    source?: string,
+    offset?: number
   ): Promise<{ count: number; feedback: SentimentFeedback[] }> {
     try {
       const params: any = { limit };
       if (source) params.source = source;
+      if (typeof offset === 'number') params.offset = offset;
 
       const response = await api.get('/api/admin/feedback/sentiment', { params });
       return response.data;
@@ -316,6 +374,93 @@ export const adminApi = {
       return response.data;
     } catch (error) {
       throw new Error(`Failed to fetch sentiment stats: ${getErrorMessage(error)}`);
+    }
+  },
+
+  async getSentimentTrends(days: number = 30): Promise<{ days: number; points: SentimentTrendPoint[] }> {
+    try {
+      const response = await api.get('/api/admin/sentiment/trends', { params: { days } });
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to fetch sentiment trends: ${getErrorMessage(error)}`);
+    }
+  },
+
+  async getSentimentHeatmap(days: number = 30): Promise<{ days: number; sources: string[]; sentiments: string[]; max: number; cells: SentimentHeatmapCell[] }> {
+    try {
+      const response = await api.get('/api/admin/sentiment/heatmap', { params: { days } });
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to fetch sentiment heatmap: ${getErrorMessage(error)}`);
+    }
+  },
+
+  async overrideSentimentLabel(feedbackId: string, newLabel: 'positive' | 'neutral' | 'negative', reason?: string): Promise<{ message: string; id: string; old_label: string; new_label: string }> {
+    try {
+      const response = await api.patch(`/api/admin/feedback/sentiment/${feedbackId}/override-label`, {
+        new_label: newLabel,
+        reason,
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to override sentiment label: ${getErrorMessage(error)}`);
+    }
+  },
+
+  async flagSentimentFeedback(feedbackId: string, flagged: boolean, reason?: string): Promise<{ message: string; id: string; flagged: boolean; reason?: string }> {
+    try {
+      const response = await api.patch(`/api/admin/feedback/sentiment/${feedbackId}/flag`, {
+        flagged,
+        reason,
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to update review flag: ${getErrorMessage(error)}`);
+    }
+  },
+
+  async reanalyzeSentimentFeedback(feedbackId: string): Promise<{
+    message: string;
+    id: string;
+    previous_ai_label?: string;
+    new_ai_label: string;
+    previous_ai_confidence?: number;
+    new_ai_confidence: number;
+    new_final_label?: string;
+    sentiment_history: Record<string, any>;
+  }> {
+    try {
+      const response = await api.post(`/api/admin/feedback/sentiment/${feedbackId}/reanalyze`);
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to re-analyze sentiment feedback: ${getErrorMessage(error)}`);
+    }
+  },
+
+  async getSentimentAnomalyConfig(): Promise<SentimentAnomalyConfig> {
+    try {
+      const response = await api.get('/api/admin/sentiment/anomaly-config');
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to fetch sentiment anomaly config: ${getErrorMessage(error)}`);
+    }
+  },
+
+  async saveSentimentAnomalyConfig(config: SentimentAnomalyConfig): Promise<SentimentAnomalyConfig> {
+    try {
+      const response = await api.put('/api/admin/sentiment/anomaly-config', config);
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to save sentiment anomaly config: ${getErrorMessage(error)}`);
+    }
+  },
+
+  async getSentimentAnomalies(): Promise<SentimentAnomalyReport> {
+    try {
+      const response = await api.get('/api/admin/sentiment/anomalies');
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to fetch sentiment anomalies: ${getErrorMessage(error)}`);
     }
   },
 };
