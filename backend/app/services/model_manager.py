@@ -10,15 +10,21 @@ Centralized ML Model Manager
 import os
 import asyncio
 import logging
+import gc
 from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
 from typing import Any, Callable, Optional
+from pathlib import Path
 
 # Import transformers at module level to avoid race conditions in thread pool
 import torch
 from transformers import pipeline, AutoModelForSequenceClassification, AutoTokenizer
 
 logger = logging.getLogger(__name__)
+
+MODELS_DIR = Path(__file__).parent.parent.parent / "models"
+SENTIMENT_MODEL_PATH = MODELS_DIR / "sentiment_finetuned"
+CREDIBILITY_MODEL_PATH = MODELS_DIR / "credibility_finetuned"
 
 # Dedicated thread pool for ML inference (CPU-bound operations)
 # Size = number of CPU cores, capped at 4 to prevent memory exhaustion
@@ -60,13 +66,14 @@ class ModelManager:
         try:
             logger.info("[MODEL] Loading sentiment model...")
             
-            # Explicitly load model and tokenizer to avoid meta tensor issues
+            # Prefer fine-tuned artifacts if present, otherwise fallback to base model.
             model_name = "cardiffnlp/twitter-roberta-base-sentiment-latest"
-            tokenizer = AutoTokenizer.from_pretrained(model_name)
+            model_path = str(SENTIMENT_MODEL_PATH) if SENTIMENT_MODEL_PATH.exists() else model_name
+            tokenizer = AutoTokenizer.from_pretrained(model_path)
             model = AutoModelForSequenceClassification.from_pretrained(
-                model_name,
+                model_path,
                 device_map=None,  # Disable accelerate device mapping
-                low_cpu_mem_usage=False,  # Load full tensors, not meta
+                low_cpu_mem_usage=True,
             )
             model = model.to("cpu")  # Explicitly move to CPU
             model.eval()  # Set to evaluation mode
@@ -120,13 +127,14 @@ class ModelManager:
         try:
             logger.info("[MODEL] Loading credibility model...")
             
-            # Explicitly load model and tokenizer to avoid meta tensor issues
+            # Prefer fine-tuned artifacts if present, otherwise fallback to base model.
             model_name = "mrm8488/bert-tiny-finetuned-fake-news-detection"
-            tokenizer = AutoTokenizer.from_pretrained(model_name)
+            model_path = str(CREDIBILITY_MODEL_PATH) if CREDIBILITY_MODEL_PATH.exists() else model_name
+            tokenizer = AutoTokenizer.from_pretrained(model_path)
             model = AutoModelForSequenceClassification.from_pretrained(
-                model_name,
+                model_path,
                 device_map=None,  # Disable accelerate device mapping
-                low_cpu_mem_usage=False,  # Load full tensors, not meta
+                low_cpu_mem_usage=True,
             )
             model = model.to("cpu")  # Explicitly move to CPU
             model.eval()  # Set to evaluation mode
@@ -218,6 +226,35 @@ class ModelManager:
                 "loading": self._credibility_loading,
             },
         }
+
+    def invalidate_model_cache(self, model_type: str) -> None:
+        """Release cached inference pipeline so Windows file handles can be released."""
+        if model_type == "sentiment":
+            self._sentiment_pipeline = None
+            self._sentiment_ready.clear()
+        elif model_type == "credibility":
+            self._credibility_pipeline = None
+            self._credibility_ready.clear()
+        else:
+            self._sentiment_pipeline = None
+            self._credibility_pipeline = None
+            self._sentiment_ready.clear()
+            self._credibility_ready.clear()
+
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+    async def reload_model(self, model_type: str) -> bool:
+        """Invalidate then reload a model into the runtime singleton cache."""
+        self.invalidate_model_cache(model_type)
+        if model_type == "sentiment":
+            model = await self.get_sentiment_model()
+            return model is not None
+        if model_type == "credibility":
+            model = await self.get_credibility_model()
+            return model is not None
+        return False
 
 
 # Global singleton instance
