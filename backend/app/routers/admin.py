@@ -5,12 +5,13 @@ Protected endpoints for model management and training data administration.
 ALL routes require admin authentication.
 """
 
+import asyncio
 import logging
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from typing import Optional, List
 from bson import ObjectId
 from app.core.database import get_db
-from app.core.auth import get_user_id, require_admin
+from app.core.auth import get_user_id, require_admin, _validate_token
 from app.services.training_data_service import TrainingDataService
 from app.services.model_fine_tuning_service import ModelFineTuningService
 from app.services.admin_audit_service import AdminAuditService
@@ -26,6 +27,9 @@ from app.services.clerk_service import get_clerk_user_count
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+# Tracks currently running fine-tune background tasks keyed by job_id.
+RUNNING_TUNING_TASKS: dict[str, asyncio.Task] = {}
 
 
 # --------------------------------------------------
@@ -43,16 +47,9 @@ async def get_training_stats(
     stats = await TrainingDataService.get_training_stats(db)
     model_info = ModelFineTuningService.get_model_info()
 
-    # Get sample counts and last trained times
-    try:
-        sentiment_samples = await db.sentiment_training.count_documents({})
-    except Exception:
-        sentiment_samples = 0
-
-    try:
-        credibility_samples = await db.credibility_training.count_documents({})
-    except Exception:
-        credibility_samples = 0
+    # Use train-ready counts for dashboard cards (not raw totals).
+    sentiment_samples = int((stats.get("sentiment") or {}).get("unused", 0))
+    credibility_samples = int((stats.get("credibility") or {}).get("ready_for_training", 0))
 
     def _get_mtime(path):
         try:
@@ -240,6 +237,532 @@ async def fine_tune_all_models(
     result = await ModelFineTuningService.fine_tune_all(db)
     
     return result
+
+
+# --------------------------------------------------
+# TUNING API COMPATIBILITY (USED BY FRONTEND MODELTUNING PAGE)
+# --------------------------------------------------
+@router.post("/tuning/start")
+async def start_fine_tuning_with_hyperparameters(
+    request_body: dict = Body(...),
+    user=Depends(require_admin),
+    db=Depends(get_db),
+):
+    admin_id = get_user_id(user)
+
+    model_type = str(request_body.get("model_type", "")).lower()
+    if model_type not in ["sentiment", "credibility"]:
+        raise HTTPException(status_code=400, detail="model_type must be 'sentiment' or 'credibility'")
+
+    min_samples = int(request_body.get("min_samples") or (50 if model_type == "sentiment" else 30))
+    hyperparams = request_body.get("hyperparameters") or {}
+    job_id = str(ObjectId())
+    now = datetime.utcnow()
+
+    learning_rate = float(hyperparams.get("learning_rate", 0.0001))
+    epochs = int(hyperparams.get("epochs", 5))
+    batch_size = int(hyperparams.get("batch_size", 32))
+    optimizer = str(hyperparams.get("optimizer", "AdamW"))
+    warmup_steps = int(hyperparams.get("warmup_steps", 100))
+    dropout = float(hyperparams.get("dropout", 0.1))
+
+    audit_insert = await db.admin_audit_logs.insert_one(
+        {
+            "admin_user_id": admin_id,
+            "action": "fine_tune",
+            "resource_type": f"{model_type}_model",
+            "resource_id": None,
+            "details": {
+                "job_id": job_id,
+                "status": "running",
+                "message": "Fine-tuning started",
+                "min_samples": min_samples,
+                "learning_rate": learning_rate,
+                "epochs": epochs,
+                "batch_size": batch_size,
+                "optimizer": optimizer,
+                "warmup_steps": warmup_steps,
+                "dropout": dropout,
+            },
+            "success": True,
+            "error_message": None,
+            "created_at": now,
+            "ip_address": None,
+        }
+    )
+
+    await db.tuning_job_logs.insert_many(
+        [
+            {
+                "job_id": job_id,
+                "model_type": model_type,
+                "event": "queued",
+                "message": f"{model_type} fine-tuning queued",
+                "epoch": 0,
+                "step": 0,
+                "timestamp": now,
+            },
+            {
+                "job_id": job_id,
+                "model_type": model_type,
+                "event": "running",
+                "message": f"{model_type} fine-tuning started",
+                "epoch": 0,
+                "step": 1,
+                "timestamp": now,
+            },
+        ]
+    )
+
+    async def _runner() -> None:
+        try:
+            if model_type == "sentiment":
+                result = await ModelFineTuningService.fine_tune_sentiment(
+                    db=db,
+                    min_samples=min_samples,
+                    epochs=epochs,
+                    batch_size=batch_size,
+                    learning_rate=learning_rate,
+                    optimizer=optimizer,
+                    warmup_steps=warmup_steps,
+                    dropout=dropout,
+                    job_id=job_id,
+                )
+            else:
+                result = await ModelFineTuningService.fine_tune_credibility(
+                    db=db,
+                    min_samples=min_samples,
+                    epochs=epochs,
+                    batch_size=batch_size,
+                    learning_rate=learning_rate,
+                    optimizer=optimizer,
+                    warmup_steps=warmup_steps,
+                    dropout=dropout,
+                    job_id=job_id,
+                )
+
+            final_status = result.get("status", "success")
+            final_message = result.get("message") or f"{model_type} fine-tuning {final_status}"
+
+            await db.admin_audit_logs.update_one(
+                {"_id": audit_insert.inserted_id},
+                {
+                    "$set": {
+                        "details.status": final_status,
+                        "details.message": final_message,
+                        "details.warning_message": result.get("warning_message"),
+                        "details.samples_used": result.get("samples_used"),
+                        "details.samples_available": result.get("samples_available"),
+                        "details.samples_remaining": result.get("samples_remaining"),
+                        "details.min_required": result.get("min_required"),
+                        "details.training_loss": result.get("training_loss"),
+                        "details.eval_loss": result.get("eval_loss"),
+                        "details.accuracy": result.get("accuracy"),
+                        "details.f1_score": result.get("f1_score"),
+                        "details.epochs_completed": result.get("epochs_completed"),
+                        "details.artifact_saved": result.get("artifact_saved"),
+                        "details.duration_seconds": result.get("duration_seconds"),
+                        "success": final_status in ["success", "skipped"],
+                    }
+                },
+            )
+
+            await db.tuning_job_logs.insert_one(
+                {
+                    "job_id": job_id,
+                    "model_type": model_type,
+                    "event": "completed" if final_status in ["success", "skipped"] else "failed",
+                    "message": final_message,
+                    "epoch": 9999,
+                    "step": 9999,
+                    "loss": result.get("training_loss"),
+                    "eval_loss": result.get("eval_loss"),
+                    "accuracy": result.get("accuracy"),
+                    "f1_score": result.get("f1_score"),
+                    "timestamp": datetime.utcnow(),
+                }
+            )
+        except asyncio.CancelledError:
+            await db.admin_audit_logs.update_one(
+                {"_id": audit_insert.inserted_id},
+                {
+                    "$set": {
+                        "details.status": "cancelled",
+                        "details.message": "Fine-tuning cancelled",
+                        "success": False,
+                        "error_message": "cancelled by admin",
+                    }
+                },
+            )
+            await db.tuning_job_logs.insert_one(
+                {
+                    "job_id": job_id,
+                    "model_type": model_type,
+                    "event": "cancelled",
+                    "message": "Fine-tuning cancelled",
+                    "epoch": 9999,
+                    "step": 9999,
+                    "timestamp": datetime.utcnow(),
+                }
+            )
+            raise
+        except Exception as e:
+            await db.admin_audit_logs.update_one(
+                {"_id": audit_insert.inserted_id},
+                {
+                    "$set": {
+                        "details.status": "failed",
+                        "details.message": str(e),
+                        "success": False,
+                        "error_message": str(e),
+                    }
+                },
+            )
+            await db.tuning_job_logs.insert_one(
+                {
+                    "job_id": job_id,
+                    "model_type": model_type,
+                    "event": "failed",
+                    "message": str(e),
+                    "epoch": 9999,
+                    "step": 9999,
+                    "timestamp": datetime.utcnow(),
+                }
+            )
+        finally:
+            RUNNING_TUNING_TASKS.pop(job_id, None)
+
+    task = asyncio.create_task(_runner())
+    RUNNING_TUNING_TASKS[job_id] = task
+
+    return {
+        "status": "running",
+        "job_id": job_id,
+        "model": model_type,
+        "message": f"{model_type} fine-tuning started",
+    }
+
+
+@router.post("/tuning/cancel/{job_id}")
+async def cancel_fine_tuning(job_id: str, user=Depends(require_admin), db=Depends(get_db)):
+    admin_id = get_user_id(user)
+
+    task = RUNNING_TUNING_TASKS.get(job_id)
+    if task and not task.done():
+        await db.admin_audit_logs.update_one(
+            {
+                "action": "fine_tune",
+                "details.job_id": job_id,
+            },
+            {
+                "$set": {
+                    "details.status": "cancelled",
+                    "details.message": f"Cancelled by admin {admin_id}",
+                    "success": False,
+                    "error_message": "cancelled by admin",
+                }
+            },
+        )
+        await db.tuning_job_logs.insert_one(
+            {
+                "job_id": job_id,
+                "event": "cancelled",
+                "message": f"Cancelled by admin {admin_id}",
+                "timestamp": datetime.utcnow(),
+            }
+        )
+        task.cancel()
+        return {
+            "status": "cancelled",
+            "job_id": job_id,
+            "message": "Fine-tuning cancelled",
+        }
+
+    # Fallback for stale UI state: convert running/queued audit rows to cancelled.
+    update_result = await db.admin_audit_logs.update_one(
+        {
+            "action": "fine_tune",
+            "details.job_id": job_id,
+            "details.status": {"$in": ["running", "queued"]},
+        },
+        {
+            "$set": {
+                "details.status": "cancelled",
+                "details.message": f"Cancelled by admin {admin_id}",
+                "success": False,
+                "error_message": "cancelled by admin",
+            }
+        },
+    )
+
+    if update_result.modified_count > 0:
+        await db.tuning_job_logs.insert_one(
+            {
+                "job_id": job_id,
+                "event": "cancelled",
+                "message": f"Cancelled by admin {admin_id}",
+                "timestamp": datetime.utcnow(),
+            }
+        )
+        return {
+            "status": "cancelled",
+            "job_id": job_id,
+            "message": "Fine-tuning job cancelled",
+        }
+
+    return {
+        "status": "not_running",
+        "job_id": job_id,
+        "message": "Job is already finished or not found",
+    }
+
+
+@router.delete("/tuning/jobs/{job_id}")
+async def delete_tuning_job(job_id: str, user=Depends(require_admin), db=Depends(get_db)):
+    task = RUNNING_TUNING_TASKS.get(job_id)
+    if task and not task.done():
+        raise HTTPException(status_code=409, detail="Cannot delete a running job")
+
+    audit_delete = await db.admin_audit_logs.delete_many(
+        {
+            "action": "fine_tune",
+            "details.job_id": job_id,
+        }
+    )
+    logs_delete = await db.tuning_job_logs.delete_many({"job_id": job_id})
+    metrics_delete = await db.tuning_model_metrics.delete_many({"job_id": job_id})
+    versions_delete = await db.tuning_model_versions.delete_many({"source_job_id": job_id})
+
+    return {
+        "job_id": job_id,
+        "deleted": {
+            "audit_logs": audit_delete.deleted_count,
+            "tuning_logs": logs_delete.deleted_count,
+            "metrics": metrics_delete.deleted_count,
+            "versions": versions_delete.deleted_count,
+        },
+    }
+
+
+@router.get("/tuning/jobs")
+async def get_tuning_jobs(
+    page: int = 1,
+    page_size: int = 20,
+    status: Optional[str] = None,
+    model_type: Optional[str] = None,
+    user=Depends(require_admin),
+    db=Depends(get_db),
+):
+    page = max(1, page)
+    page_size = max(1, min(page_size, 100))
+
+    query = {"action": "fine_tune"}
+    if model_type:
+        query["resource_type"] = f"{model_type.lower()}_model"
+    if status and status != "all":
+        query["details.status"] = status
+
+    total = await db.admin_audit_logs.count_documents(query)
+    skip = (page - 1) * page_size
+
+    jobs = []
+    cursor = db.admin_audit_logs.find(query).sort("created_at", -1).skip(skip).limit(page_size)
+    async for doc in cursor:
+        details = doc.get("details", {})
+        jobs.append(
+            {
+                "id": details.get("job_id") or str(doc.get("_id")),
+                "job_id": details.get("job_id") or str(doc.get("_id")),
+                "model": doc.get("resource_type", "unknown").replace("_model", ""),
+                "date": doc.get("created_at").isoformat() if doc.get("created_at") else None,
+                "samples": details.get("samples_used") or details.get("samples_available") or details.get("min_samples"),
+                "samples_used": details.get("samples_used"),
+                "samples_available": details.get("samples_available"),
+                "min_required": details.get("min_required") or details.get("min_samples"),
+                "status": details.get("status") or ("completed" if doc.get("success", True) else "failed"),
+                "message": details.get("message"),
+                "training_loss": details.get("training_loss"),
+                "eval_loss": details.get("eval_loss"),
+                "duration_seconds": details.get("duration_seconds"),
+            }
+        )
+
+    total_pages = (total + page_size - 1) // page_size if total else 0
+    return {
+        "jobs": jobs,
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+        "total_pages": total_pages,
+        "has_next": page < total_pages,
+        "has_prev": page > 1,
+    }
+
+
+@router.get("/tuning/logs/{job_id}")
+async def get_tuning_logs(job_id: str, user=Depends(require_admin), db=Depends(get_db)):
+    logs = []
+    cursor = db.tuning_job_logs.find({"job_id": job_id}).sort([("epoch", 1), ("step", 1), ("timestamp", 1)])
+    async for item in cursor:
+        logs.append(
+            {
+                "job_id": item.get("job_id"),
+                "model_type": item.get("model_type"),
+                "event": item.get("event"),
+                "message": item.get("message"),
+                "epoch": item.get("epoch"),
+                "step": item.get("step"),
+                "loss": item.get("loss"),
+                "eval_loss": item.get("eval_loss"),
+                "accuracy": item.get("accuracy"),
+                "f1_score": item.get("f1_score"),
+                "learning_rate": item.get("learning_rate"),
+                "timestamp": item.get("timestamp").isoformat() if item.get("timestamp") else None,
+            }
+        )
+    return {"job_id": job_id, "logs": logs}
+
+
+@router.websocket("/tuning/logs/ws/{job_id}")
+async def tuning_logs_websocket(websocket: WebSocket, job_id: str, db=Depends(get_db)):
+    token = websocket.query_params.get("token")
+    if not token:
+        await websocket.close(code=1008)
+        return
+
+    try:
+        payload = await _validate_token(token)
+        if not payload.get("is_admin"):
+            await websocket.close(code=1008)
+            return
+    except Exception:
+        await websocket.close(code=1008)
+        return
+
+    await websocket.accept()
+
+    known_count_raw = websocket.query_params.get("known_count", "0")
+    try:
+        known_count = max(0, int(known_count_raw))
+    except ValueError:
+        known_count = 0
+
+    try:
+        while True:
+            logs = []
+            cursor = db.tuning_job_logs.find({"job_id": job_id}).sort([("epoch", 1), ("step", 1), ("timestamp", 1)])
+            async for item in cursor:
+                logs.append(
+                    {
+                        "job_id": item.get("job_id"),
+                        "model_type": item.get("model_type"),
+                        "event": item.get("event"),
+                        "message": item.get("message"),
+                        "epoch": item.get("epoch"),
+                        "step": item.get("step"),
+                        "loss": item.get("loss"),
+                        "eval_loss": item.get("eval_loss"),
+                        "accuracy": item.get("accuracy"),
+                        "f1_score": item.get("f1_score"),
+                        "learning_rate": item.get("learning_rate"),
+                        "timestamp": item.get("timestamp").isoformat() if item.get("timestamp") else None,
+                    }
+                )
+
+            if len(logs) != known_count:
+                await websocket.send_json({"type": "snapshot", "job_id": job_id, "logs": logs})
+                known_count = len(logs)
+
+            await asyncio.sleep(1.2)
+    except WebSocketDisconnect:
+        logger.info(f"[ADMIN] Live log websocket disconnected for job={job_id}")
+    except Exception as e:
+        logger.warning(f"[ADMIN] Live log websocket error for job={job_id}: {str(e)}")
+
+
+@router.get("/tuning/metrics/{model_type}")
+async def get_tuning_metrics(model_type: str, user=Depends(require_admin), db=Depends(get_db)):
+    model_type = model_type.lower()
+    if model_type not in ["sentiment", "credibility"]:
+        raise HTTPException(status_code=400, detail="model_type must be 'sentiment' or 'credibility'")
+
+    latest = await db.tuning_model_metrics.find_one({"model_type": model_type}, sort=[("created_at", -1)])
+    if latest:
+        return {
+            "model_type": model_type,
+            "accuracy": latest.get("accuracy"),
+            "f1_score": latest.get("f1_score"),
+            "loss": latest.get("loss"),
+            "eval_loss": latest.get("eval_loss"),
+            "model_health": latest.get("model_health"),
+            "last_updated": latest.get("created_at").isoformat() if latest.get("created_at") else None,
+        }
+
+    return {
+        "model_type": model_type,
+        "accuracy": None,
+        "f1_score": None,
+        "loss": None,
+        "eval_loss": None,
+        "model_health": None,
+        "last_updated": None,
+    }
+
+
+@router.get("/tuning/data-quality/{model_type}")
+async def get_tuning_data_quality(model_type: str, user=Depends(require_admin), db=Depends(get_db)):
+    model_type = model_type.lower()
+    if model_type not in ["sentiment", "credibility"]:
+        raise HTTPException(status_code=400, detail="model_type must be 'sentiment' or 'credibility'")
+
+    if model_type == "sentiment":
+        total = await db.sentiment_training.count_documents({})
+        min_required = 50
+    else:
+        total = await db.credibility_training.count_documents({})
+        min_required = 30
+
+    shortfall = max(0, min_required - total)
+    warning = f"Need {shortfall} more samples to reach minimum threshold." if shortfall > 0 else None
+    return {
+        "model_type": model_type,
+        "total_samples": total,
+        "minimum_required": min_required,
+        "samples_shortfall": shortfall,
+        "average_confidence": 0.0,
+        "verified_labels_count": 0,
+        "duplicate_rate": 0.0,
+        "class_balance_status": "unknown",
+        "missing_values_count": 0,
+        "warning_message": warning,
+        "tips": [],
+    }
+
+
+@router.get("/tuning/versions/{model_type}")
+async def get_tuning_versions(model_type: str, user=Depends(require_admin), db=Depends(get_db)):
+    model_type = model_type.lower()
+    if model_type not in ["sentiment", "credibility"]:
+        raise HTTPException(status_code=400, detail="model_type must be 'sentiment' or 'credibility'")
+
+    versions = []
+    cursor = db.tuning_model_versions.find({"model_type": model_type}).sort("version", -1)
+    async for item in cursor:
+        versions.append(
+            {
+                "version": item.get("version"),
+                "sample_count": item.get("sample_count"),
+                "accuracy": item.get("accuracy"),
+                "f1_score": item.get("f1_score"),
+                "loss": item.get("loss"),
+                "eval_loss": item.get("eval_loss"),
+                "created_at": item.get("created_at").isoformat() if item.get("created_at") else None,
+                "checkpoint_path": item.get("checkpoint_path"),
+                "source_job_id": item.get("source_job_id"),
+                "is_active": bool(item.get("is_active", False)),
+            }
+        )
+    return {"model_type": model_type, "versions": versions}
 
 
 # --------------------------------------------------
