@@ -124,6 +124,16 @@ export interface TuningJob {
   accuracy?: number;
 }
 
+export interface PaginatedTuningJobsResponse {
+  jobs: Array<any>;
+  page: number;
+  page_size: number;
+  total: number;
+  total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
+}
+
 export interface NewsStatus {
   today_hits: number;
   remaining_hits: number;
@@ -179,6 +189,120 @@ export const adminApi = {
       return response.data;
     } catch (error) {
       throw new Error(`Failed to start fine-tuning all models: ${getErrorMessage(error)}`);
+    }
+  },
+
+  /**
+   * Enhanced Fine-Tuning API (v2) with Hyperparameters
+   */
+  async startFineTuningWithHyperparameters(
+    modelType: 'sentiment' | 'credibility',
+    minSamples?: number,
+    hyperparameters?: {
+      learning_rate?: number;
+      epochs?: number;
+      batch_size?: number;
+      optimizer?: string;
+      warmup_steps?: number;
+      dropout?: number;
+    }
+  ) {
+    try {
+      const response = await api.post('/api/admin/tuning/start', {
+        model_type: modelType,
+        min_samples: minSamples,
+        hyperparameters,
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to start fine-tuning: ${getErrorMessage(error)}`);
+    }
+  },
+
+  async getModelMetrics(modelType: 'sentiment' | 'credibility') {
+    try {
+      const response = await api.get(`/api/admin/tuning/metrics/${modelType}`);
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to fetch model metrics: ${getErrorMessage(error)}`);
+    }
+  },
+
+  async cancelFineTuning(jobId: string) {
+    try {
+      const response = await api.post(`/api/admin/tuning/cancel/${jobId}`);
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to cancel fine-tuning: ${getErrorMessage(error)}`);
+    }
+  },
+
+  async deleteTuningJob(jobId: string) {
+    try {
+      const response = await api.delete(`/api/admin/tuning/jobs/${jobId}`);
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to delete tuning job: ${getErrorMessage(error)}`);
+    }
+  },
+
+  async getDataQualityStats(modelType: 'sentiment' | 'credibility') {
+    try {
+      const response = await api.get(`/api/admin/tuning/data-quality/${modelType}`);
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to fetch data quality stats: ${getErrorMessage(error)}`);
+    }
+  },
+
+  async getModelVersions(modelType: 'sentiment' | 'credibility') {
+    try {
+      const response = await api.get(`/api/admin/tuning/versions/${modelType}`);
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to fetch model versions: ${getErrorMessage(error)}`);
+    }
+  },
+
+  async rollbackModel(modelType: 'sentiment' | 'credibility', version: number) {
+    try {
+      const response = await api.post(`/api/admin/tuning/rollback/${modelType}`, {
+        version,
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to rollback model: ${getErrorMessage(error)}`);
+    }
+  },
+
+  async getTrainingLogs(jobId: string) {
+    try {
+      const response = await api.get(`/api/admin/tuning/logs/${jobId}`);
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to fetch training logs: ${getErrorMessage(error)}`);
+    }
+  },
+
+  async getTuningJobsHistory(
+    page: number = 1,
+    pageSize: number = 20,
+    status?: 'all' | 'running' | 'completed' | 'failed' | 'skipped' | 'cancelled',
+    modelType?: 'sentiment' | 'credibility'
+  ): Promise<PaginatedTuningJobsResponse> {
+    try {
+      const params: Record<string, any> = {
+        page,
+        page_size: pageSize,
+      };
+
+      if (status && status !== 'all') params.status = status;
+      if (modelType) params.model_type = modelType;
+
+      const response = await api.get('/api/admin/tuning/jobs', { params });
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to fetch tuning jobs history: ${getErrorMessage(error)}`);
     }
   },
 
