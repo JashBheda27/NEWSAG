@@ -17,6 +17,30 @@ class TrainingDataService:
     Service for managing training data collection and retrieval.
     Supports both sentiment and credibility feedback loops.
     """
+
+    @staticmethod
+    def _normalize_sentiment_label(label: Optional[str]) -> Optional[str]:
+        if not label:
+            return None
+        normalized = str(label).strip().lower()
+        if normalized.startswith("pos"):
+            return "Positive"
+        if normalized.startswith("neu"):
+            return "Neutral"
+        if normalized.startswith("neg"):
+            return "Negative"
+        return None
+
+    @staticmethod
+    def _normalize_credibility_label(label: Optional[str]) -> Optional[str]:
+        if not label:
+            return None
+        normalized = str(label).strip().upper()
+        if normalized in ["REAL", "TRUE", "LEGIT", "RELIABLE"]:
+            return "REAL"
+        if normalized in ["FAKE", "FALSE", "MISLEADING", "POTENTIALLY MISLEADING"]:
+            return "FAKE"
+        return None
     
     # =========================================================
     # SENTIMENT TRAINING DATA
@@ -122,10 +146,13 @@ class TrainingDataService:
         data = []
         
         async for doc in cursor:
+            label = TrainingDataService._normalize_sentiment_label(
+                doc.get("final_label") or doc.get("user_label") or doc.get("ai_label")
+            )
             data.append({
                 "id": str(doc["_id"]),
                 "text": doc["text"],
-                "label": doc.get("final_label") or doc.get("user_label") or doc["ai_label"],
+                "label": label or "Neutral",
                 "source": doc["source"],
                 "ai_confidence": doc["ai_confidence"],
             })
@@ -303,11 +330,15 @@ class TrainingDataService:
             text = doc["title"]
             if doc.get("description"):
                 text += " " + doc["description"]
+
+            label = TrainingDataService._normalize_credibility_label(doc.get("final_label"))
+            if not label:
+                label = "REAL" if doc.get("verification_status") == "rejected" else "FAKE"
             
             data.append({
                 "id": str(doc["_id"]),
                 "text": text,
-                "label": "FAKE",  # All verified reports are labeled as fake/misleading
+                "label": label,
                 "source_domain": doc.get("source_domain"),
                 "report_count": doc.get("report_count", 1),
                 "verification_status": doc["verification_status"],
