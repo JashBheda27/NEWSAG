@@ -91,6 +91,15 @@ export const ModelTuning: React.FC<ModelTuningProps> = ({ showNotification }) =>
   const [dataQuality, setDataQuality] = useState<any>({});
   const [versions, setVersions] = useState<any>({});
 
+  const [csvModel, setCsvModel] = useState<ModelType>('sentiment');
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [csvMappingMode, setCsvMappingMode] = useState<'auto' | 'manual'>('auto');
+  const [csvMapping, setCsvMapping] = useState<Record<string, string>>({});
+  const [csvValidation, setCsvValidation] = useState<any>(null);
+  const [csvValidating, setCsvValidating] = useState(false);
+  const [csvImporting, setCsvImporting] = useState(false);
+  const [csvResultTab, setCsvResultTab] = useState<'rows' | 'valid' | 'invalid' | 'duplicate'>('rows');
+
   const [activeLogJobId, setActiveLogJobId] = useState<string | null>(null);
   const [jobLogs, setJobLogs] = useState<any[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
@@ -415,6 +424,77 @@ export const ModelTuning: React.FC<ModelTuningProps> = ({ showNotification }) =>
     }
   };
 
+  const getRequiredCsvFields = (modelType: ModelType): string[] => {
+    return modelType === 'sentiment' ? ['text', 'label'] : ['title_or_text', 'label'];
+  };
+
+  const getCsvFieldLabel = (field: string): string => {
+    const labels: Record<string, string> = {
+      text: 'Text',
+      label: 'Label',
+      title_or_text: 'Title or Text',
+    };
+    return labels[field] || field;
+  };
+
+  const handleValidateCsv = async () => {
+    if (!csvFile) {
+      notify.error('Please select a CSV file first');
+      return;
+    }
+
+    setCsvValidating(true);
+    try {
+      const mappingPayload = csvMappingMode === 'manual' ? csvMapping : undefined;
+      const response = await adminApi.validateTrainingCsv(csvModel, csvFile, mappingPayload);
+      setCsvValidation(response);
+      setCsvMapping(response?.mapping || {});
+      setCsvResultTab('rows');
+
+      if (response?.ready_to_import) {
+        notify.success('CSV validation passed. Ready to import.');
+      } else {
+        notify.info('CSV validated with issues. Resolve required mapping fields before import.');
+      }
+    } catch (error) {
+      notify.error(`CSV validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setCsvValidating(false);
+    }
+  };
+
+  const handleImportCsv = async () => {
+    if (!csvFile) {
+      notify.error('Please select a CSV file first');
+      return;
+    }
+
+    if (!csvValidation || !csvValidation.ready_to_import || csvValidation.model_type !== csvModel) {
+      notify.error('Please validate CSV and resolve required fields before import');
+      return;
+    }
+
+    setCsvImporting(true);
+    try {
+      const mappingPayload = csvMappingMode === 'manual' ? csvMapping : csvValidation.mapping;
+      const response = await adminApi.importTrainingCsvWithMapping(csvModel, csvFile, mappingPayload);
+
+      notify.success(
+        `${response?.message || 'CSV imported'} (Imported: ${response?.imported ?? 0}, Skipped: ${response?.skipped ?? 0})`
+      );
+
+      await fetchData(true);
+      setCsvValidation(null);
+      setCsvFile(null);
+      setCsvMapping({});
+      setCsvResultTab('rows');
+    } catch (error) {
+      notify.error(`CSV import failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setCsvImporting(false);
+    }
+  };
+
   const getStatusIcon = (status: JobStatus) => {
     const normalized = mapStatus(status);
 
@@ -672,6 +752,16 @@ export const ModelTuning: React.FC<ModelTuningProps> = ({ showNotification }) =>
   const DataQualityTab = () => {
     const sentimentQuality = dataQuality.sentiment || {};
     const credibilityQuality = dataQuality.credibility || {};
+    const requiredFields = getRequiredCsvFields(csvModel);
+    const headers = csvValidation?.headers || [];
+    const previewRows = Array.isArray(csvValidation?.validation?.preview_rows) ? csvValidation.validation.preview_rows : [];
+    const validPreviewRows = previewRows.filter((row: any) => row.valid);
+    const invalidIssues = Array.isArray(csvValidation?.validation?.issues) ? csvValidation.validation.issues.slice(0, 50) : [];
+    const duplicatePreviewRows = previewRows.filter((row: any, idx: number, arr: any[]) => {
+      const id = String(row.article_id || '').trim().toLowerCase();
+      if (!id) return false;
+      return arr.findIndex((item: any) => String(item.article_id || '').trim().toLowerCase() === id) !== idx;
+    });
 
     const QualitySection = ({ title, quality }: { title: string; quality: any }) => (
       <div className="space-y-2">
@@ -718,6 +808,299 @@ export const ModelTuning: React.FC<ModelTuningProps> = ({ showNotification }) =>
 
     return (
       <div className="space-y-3">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-3 space-y-3">
+          <div className="flex flex-col md:flex-row md:items-end gap-3">
+            <label className="space-y-1 text-xs w-full md:w-44">
+              <span className="text-slate-600 dark:text-slate-400">Target model</span>
+              <select
+                value={csvModel}
+                onChange={(e) => {
+                  setCsvModel(e.target.value as ModelType);
+                  setCsvValidation(null);
+                  setCsvMapping({});
+                  setCsvResultTab('rows');
+                }}
+                className="w-full px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+              >
+                <option value="sentiment">Sentiment</option>
+                <option value="credibility">Credibility</option>
+              </select>
+            </label>
+
+            <label className="space-y-1 text-xs w-full md:w-52">
+              <span className="text-slate-600 dark:text-slate-400">Mapping mode</span>
+              <select
+                value={csvMappingMode}
+                onChange={(e) => {
+                  setCsvMappingMode(e.target.value as 'auto' | 'manual');
+                  setCsvValidation(null);
+                  setCsvResultTab('rows');
+                }}
+                className="w-full px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+              >
+                <option value="auto">Auto-detect</option>
+                <option value="manual">Manual mapping</option>
+              </select>
+            </label>
+
+            <label className="space-y-1 text-xs flex-1">
+              <span className="text-slate-600 dark:text-slate-400">CSV file</span>
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  setCsvFile(file);
+                  setCsvValidation(null);
+                  setCsvMapping({});
+                  setCsvResultTab('rows');
+                }}
+                className="w-full px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+              />
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                {csvFile ? `Selected: ${csvFile.name}` : 'No file selected'}
+              </p>
+            </label>
+          </div>
+
+          {csvMappingMode === 'manual' && headers.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {requiredFields.map((field) => (
+                <label key={field} className="space-y-1 text-xs">
+                  <span className="text-slate-600 dark:text-slate-400">Map {getCsvFieldLabel(field)}</span>
+                  <select
+                    value={csvMapping[field] || ''}
+                    onChange={(e) =>
+                      setCsvMapping((prev) => ({
+                        ...prev,
+                        [field]: e.target.value,
+                      }))
+                    }
+                    className="w-full px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                  >
+                    <option value="">Select column</option>
+                    {headers.map((header: string) => (
+                      <option key={`${field}-${header}`} value={header}>
+                        {header}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={handleValidateCsv}
+              disabled={!csvFile || csvValidating}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+            >
+              {csvValidating ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <CheckCircle2 size={14} aria-hidden="true" />}
+              <span className="font-semibold text-xs">{csvValidating ? 'Validating...' : 'Validate CSV'}</span>
+            </button>
+
+            <button
+              onClick={handleImportCsv}
+              disabled={!csvValidation?.ready_to_import || csvImporting}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors disabled:opacity-50"
+            >
+              {csvImporting ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Play size={14} aria-hidden="true" />}
+              <span className="font-semibold text-xs">{csvImporting ? 'Importing...' : 'Import Valid Rows'}</span>
+            </button>
+          </div>
+
+          {csvValidation && (
+            <div className="space-y-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2.5">
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                Rows: <span className="font-semibold text-slate-900 dark:text-white">{csvValidation.validation?.total_rows ?? 0}</span>
+                {' • '}Valid: <span className="font-semibold text-emerald-600 dark:text-emerald-300">{csvValidation.validation?.valid_rows ?? 0}</span>
+                {' • '}Invalid: <span className="font-semibold text-rose-600 dark:text-rose-300">{csvValidation.validation?.invalid_rows ?? 0}</span>
+                {' • '}Duplicates: <span className="font-semibold text-amber-600 dark:text-amber-300">{csvValidation.validation?.duplicate_estimate ?? 0}</span>
+              </p>
+
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { key: 'rows', label: 'Rows', count: csvValidation.validation?.total_rows ?? 0 },
+                  { key: 'valid', label: 'Valid', count: csvValidation.validation?.valid_rows ?? 0 },
+                  { key: 'invalid', label: 'Invalid', count: csvValidation.validation?.invalid_rows ?? 0 },
+                  { key: 'duplicate', label: 'Duplicate', count: csvValidation.validation?.duplicate_estimate ?? 0 },
+                ].map((tab: any) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setCsvResultTab(tab.key)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${
+                      csvResultTab === tab.key
+                        ? 'border-indigo-600 text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/20'
+                        : 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    {tab.label}: {tab.count}
+                  </button>
+                ))}
+              </div>
+
+              {Array.isArray(csvValidation.unresolved_required) && csvValidation.unresolved_required.length > 0 && (
+                <p className="text-xs text-rose-600 dark:text-rose-300">
+                  Required fields not mapped: {csvValidation.unresolved_required.map((field: string) => getCsvFieldLabel(field)).join(', ')}
+                </p>
+              )}
+
+              {Array.isArray(csvValidation.validation?.warnings) && csvValidation.validation.warnings.length > 0 && (
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  {csvValidation.validation.warnings.join(' | ')}
+                </p>
+              )}
+
+              {csvResultTab === 'rows' && previewRows.length > 0 && (
+                <div className="overflow-auto rounded-md border border-slate-200 dark:border-slate-700">
+                  <table className="w-full text-xs">
+                    <thead className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                      <tr>
+                        <th className="text-left px-2 py-1">Row</th>
+                        <th className="text-left px-2 py-1">Article</th>
+                        <th className="text-left px-2 py-1">Text preview</th>
+                        <th className="text-left px-2 py-1">Label</th>
+                        <th className="text-left px-2 py-1">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {previewRows.map((row: any) => (
+                        <tr key={`preview-${row.row}`} className="border-t border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+                          <td className="px-2 py-1">{row.row}</td>
+                          <td className="px-2 py-1">{row.article_id || '-'}</td>
+                          <td className="px-2 py-1">{row.text || row.title_or_text || '-'}</td>
+                          <td className="px-2 py-1">{row.label || '-'}</td>
+                          <td className="px-2 py-1">
+                            <span className={row.valid ? 'text-emerald-600 dark:text-emerald-300' : 'text-rose-600 dark:text-rose-300'}>
+                              {row.valid ? 'valid' : 'invalid'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {csvResultTab === 'valid' && (
+                validPreviewRows.length > 0 ? (
+                  <div className="overflow-auto rounded-md border border-slate-200 dark:border-slate-700">
+                    <table className="w-full text-xs">
+                      <thead className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                        <tr>
+                          <th className="text-left px-2 py-1">Row</th>
+                          <th className="text-left px-2 py-1">Article</th>
+                          <th className="text-left px-2 py-1">Text preview</th>
+                          <th className="text-left px-2 py-1">Label</th>
+                          <th className="text-left px-2 py-1">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {validPreviewRows.map((row: any) => (
+                          <tr key={`valid-${row.row}`} className="border-t border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+                            <td className="px-2 py-1">{row.row}</td>
+                            <td className="px-2 py-1">{row.article_id || '-'}</td>
+                            <td className="px-2 py-1">{row.text || row.title_or_text || '-'}</td>
+                            <td className="px-2 py-1">{row.label || '-'}</td>
+                            <td className="px-2 py-1 text-emerald-600 dark:text-emerald-300">valid</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 dark:text-slate-400">No valid sample rows in preview.</p>
+                )
+              )}
+
+              {csvResultTab === 'invalid' && (
+                invalidIssues.length > 0 ? (
+                  <div className="overflow-auto rounded-md border border-slate-200 dark:border-slate-700">
+                    <table className="w-full text-xs">
+                      <thead className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                        <tr>
+                          <th className="text-left px-2 py-1">Row</th>
+                          <th className="text-left px-2 py-1">Reason</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {invalidIssues.map((issue: any, idx: number) => (
+                          <tr key={`invalid-${idx}`} className="border-t border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+                            <td className="px-2 py-1">{issue.row}</td>
+                            <td className="px-2 py-1">{issue.error || issue.reason || issue.message || 'Unknown error'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 dark:text-slate-400">No invalid sample rows in preview.</p>
+                )
+              )}
+
+              {csvResultTab === 'duplicate' && (
+                duplicatePreviewRows.length > 0 ? (
+                  <div className="overflow-auto rounded-md border border-slate-200 dark:border-slate-700">
+                    <table className="w-full text-xs">
+                      <thead className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                        <tr>
+                          <th className="text-left px-2 py-1">Row</th>
+                          <th className="text-left px-2 py-1">Article</th>
+                          <th className="text-left px-2 py-1">Text preview</th>
+                          <th className="text-left px-2 py-1">Label</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {duplicatePreviewRows.map((row: any) => (
+                          <tr key={`duplicate-${row.row}`} className="border-t border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+                            <td className="px-2 py-1">{row.row}</td>
+                            <td className="px-2 py-1">{row.article_id || '-'}</td>
+                            <td className="px-2 py-1">{row.text || row.title_or_text || '-'}</td>
+                            <td className="px-2 py-1">{row.label || '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    No duplicates found in preview sample. Estimated duplicates in full file: {csvValidation.validation?.duplicate_estimate ?? 0}.
+                  </p>
+                )
+              )}
+
+              {csvResultTab === 'rows' && Array.isArray(csvValidation.validation?.raw_preview_rows) && csvValidation.validation.raw_preview_rows.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-xs text-slate-600 dark:text-slate-400">Raw CSV preview (first rows)</p>
+                  <div className="overflow-auto rounded-md border border-slate-200 dark:border-slate-700">
+                    <table className="w-full text-xs">
+                      <thead className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                        <tr>
+                          <th className="text-left px-2 py-1">Row</th>
+                          {(csvValidation.validation.raw_preview_headers || []).map((header: string) => (
+                            <th key={`raw-header-${header}`} className="text-left px-2 py-1">{header}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {csvValidation.validation.raw_preview_rows.map((row: any) => (
+                          <tr key={`raw-row-${row.row}`} className="border-t border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+                            <td className="px-2 py-1">{row.row}</td>
+                            {(csvValidation.validation.raw_preview_headers || []).map((header: string) => (
+                              <td key={`raw-${row.row}-${header}`} className="px-2 py-1">{row.values?.[header] || '-'}</td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         <h4 className="text-lg font-semibold text-slate-900 dark:text-white">Dataset overview</h4>
 
         <QualitySection title="Sentiment model" quality={sentimentQuality} />
