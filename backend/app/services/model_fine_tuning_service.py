@@ -9,6 +9,7 @@ import asyncio
 import logging
 import queue
 import gc
+import threading
 from typing import Dict, List, Optional, Literal
 from datetime import datetime
 from pathlib import Path
@@ -224,6 +225,7 @@ class ModelFineTuningService:
         warmup_steps: int = 100,
         dropout: float = 0.1,
         job_id: Optional[str] = None,
+        cancellation_event: Optional[threading.Event] = None,
     ) -> Dict:
         """
         Fine-tune the sentiment analysis model with collected feedback.
@@ -274,10 +276,18 @@ class ModelFineTuningService:
             # Prepare dataset
             texts = [d["text"] for d in training_data]
             labels = [
-                ModelFineTuningService.SENTIMENT_LABEL_MAP.get(d["label"], 1)
+                ModelFineTuningService.SENTIMENT_LABEL_MAP.get(str(d["label"]), 1)
                 for d in training_data
             ]
             doc_ids = [d["id"] for d in training_data]
+
+            if len(set(labels)) < 2:
+                return {
+                    "status": "skipped",
+                    "message": "Sentiment training needs at least 2 sentiment classes before fine-tuning",
+                    "samples_available": len(training_data),
+                    "min_required": min_samples,
+                }
             
             dataset = Dataset.from_dict({
                 "text": texts,
@@ -324,6 +334,9 @@ class ModelFineTuningService:
             # Training arguments
             ModelFineTuningService._ensure_models_dir()
             train_output_dir = ModelFineTuningService._prepare_training_output_dir("sentiment", run_job_id)
+
+            if cancellation_event and cancellation_event.is_set():
+                raise asyncio.CancelledError()
             
             # Map optimizer string to actual optimizer
             optim_map = {
@@ -384,6 +397,15 @@ class ModelFineTuningService:
                         "timestamp": datetime.utcnow(),
                     }
                     sentiment_logs_queue.put(doc)
+
+            class StopRequestedCallback(TrainerCallback):
+                def on_step_begin(self, args, state, control, **kwargs):
+                    if cancellation_event and cancellation_event.is_set():
+                        control.should_training_stop = True
+                        control.should_save = False
+                        control.should_evaluate = False
+                        control.should_log = False
+                    return control
             
             # Initialize trainer
             trainer = Trainer(
@@ -392,12 +414,14 @@ class ModelFineTuningService:
                 train_dataset=train_dataset,
                 eval_dataset=eval_dataset,
                 compute_metrics=ModelFineTuningService._compute_classification_metrics,
-                callbacks=[LiveTrainerLogCallback()],
+                callbacks=[LiveTrainerLogCallback(), StopRequestedCallback()],
             )
             
             def _run_training_and_eval():
                 start = datetime.utcnow()
                 train_res = trainer.train()
+                if cancellation_event and cancellation_event.is_set():
+                    return train_res, None, start, datetime.utcnow()
                 eval_res = trainer.evaluate()
                 end = datetime.utcnow()
                 return train_res, eval_res, start, end
@@ -417,6 +441,9 @@ class ModelFineTuningService:
                     await db.tuning_job_logs.insert_many(queued_logs)
                 except Exception as e:
                     logger.warning(f"[FINE-TUNE] Failed to flush sentiment logs: {str(e)}")
+
+            if cancellation_event and cancellation_event.is_set():
+                raise asyncio.CancelledError()
             
             extracted_metrics = ModelFineTuningService._extract_training_metrics(train_result, eval_result, epochs)
             accuracy = extracted_metrics["accuracy"]
@@ -544,6 +571,7 @@ class ModelFineTuningService:
         warmup_steps: int = 100,
         dropout: float = 0.1,
         job_id: Optional[str] = None,
+        cancellation_event: Optional[threading.Event] = None,
     ) -> Dict:
         """
         Fine-tune the credibility/fake-news detection model.
@@ -594,12 +622,20 @@ class ModelFineTuningService:
             )
             from datasets import Dataset
             
-            # All collected data is labeled as FAKE (user reports of misleading content)
-            # We need to balance with REAL samples from trusted sources
-            # For now, we'll use all as FAKE and rely on the base model's REAL training
             texts = [d["text"] for d in training_data]
-            labels = [1 for _ in training_data]  # All FAKE
+            labels = [
+                ModelFineTuningService.CREDIBILITY_LABEL_MAP.get(str(d["label"]), 1)
+                for d in training_data
+            ]
             doc_ids = [d["id"] for d in training_data]
+
+            if len(set(labels)) < 2:
+                return {
+                    "status": "skipped",
+                    "message": "Credibility training needs both REAL and FAKE examples before fine-tuning",
+                    "samples_available": len(training_data),
+                    "min_required": min_samples,
+                }
             
             dataset = Dataset.from_dict({
                 "text": texts,
@@ -644,6 +680,9 @@ class ModelFineTuningService:
             # Training args
             ModelFineTuningService._ensure_models_dir()
             train_output_dir = ModelFineTuningService._prepare_training_output_dir("credibility", run_job_id)
+
+            if cancellation_event and cancellation_event.is_set():
+                raise asyncio.CancelledError()
             
             # Map optimizer string to actual optimizer
             optim_map = {
@@ -704,6 +743,15 @@ class ModelFineTuningService:
                         "timestamp": datetime.utcnow(),
                     }
                     credibility_logs_queue.put(doc)
+
+            class StopRequestedCallback(TrainerCallback):
+                def on_step_begin(self, args, state, control, **kwargs):
+                    if cancellation_event and cancellation_event.is_set():
+                        control.should_training_stop = True
+                        control.should_save = False
+                        control.should_evaluate = False
+                        control.should_log = False
+                    return control
             
             trainer = Trainer(
                 model=model,
@@ -711,12 +759,14 @@ class ModelFineTuningService:
                 train_dataset=train_dataset,
                 eval_dataset=eval_dataset,
                 compute_metrics=ModelFineTuningService._compute_classification_metrics,
-                callbacks=[LiveTrainerLogCallback()],
+                callbacks=[LiveTrainerLogCallback(), StopRequestedCallback()],
             )
             
             def _run_training_and_eval():
                 start = datetime.utcnow()
                 train_res = trainer.train()
+                if cancellation_event and cancellation_event.is_set():
+                    return train_res, None, start, datetime.utcnow()
                 eval_res = trainer.evaluate()
                 end = datetime.utcnow()
                 return train_res, eval_res, start, end
@@ -736,6 +786,9 @@ class ModelFineTuningService:
                     await db.tuning_job_logs.insert_many(queued_logs)
                 except Exception as e:
                     logger.warning(f"[FINE-TUNE] Failed to flush credibility logs: {str(e)}")
+
+            if cancellation_event and cancellation_event.is_set():
+                raise asyncio.CancelledError()
             
             extracted_metrics = ModelFineTuningService._extract_training_metrics(train_result, eval_result, epochs)
             accuracy = extracted_metrics["accuracy"]
