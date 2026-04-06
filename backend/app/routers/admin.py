@@ -6,8 +6,12 @@ ALL routes require admin authentication.
 """
 
 import asyncio
+import csv
+import io
+import json
 import logging
-from fastapi import APIRouter, Body, Depends, HTTPException, WebSocket, WebSocketDisconnect
+import threading
+from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from typing import Optional, List
 from bson import ObjectId
 from app.core.database import get_db
@@ -30,6 +34,617 @@ logger = logging.getLogger(__name__)
 
 # Tracks currently running fine-tune background tasks keyed by job_id.
 RUNNING_TUNING_TASKS: dict[str, asyncio.Task] = {}
+# Tracks per-job cooperative cancellation flags keyed by job_id.
+RUNNING_TUNING_STOP_EVENTS: dict[str, threading.Event] = {}
+
+CSV_SCHEMA_ALIASES: dict[str, dict[str, list[str]]] = {
+    "sentiment": {
+        "text": ["text", "content", "article_text", "body", "headline", "title", "description"],
+        "label": ["label", "sentiment", "target", "class", "final_label", "user_label"],
+        "article_id": ["article_id", "id", "news_id", "post_id"],
+        "article_url": ["article_url", "url", "link", "article_link"],
+        "ai_label": ["ai_label", "predicted_label", "prediction"],
+        "ai_confidence": ["ai_confidence", "confidence", "score", "probability"],
+        "source": ["source", "feedback_source", "origin"],
+        "user_id": ["user_id", "uid", "annotator_id", "reviewer_id"],
+    },
+    "credibility": {
+        "title_or_text": ["title", "headline", "text", "content", "article_text"],
+        "label": ["label", "credibility", "verdict", "class", "target", "final_label", "verification_label"],
+        "article_id": ["article_id", "id", "news_id", "post_id"],
+        "article_url": ["article_url", "url", "link", "article_link"],
+        "description": ["description", "summary", "deck"],
+        "content": ["content", "body", "article_body"],
+        "source_domain": ["source_domain", "domain", "publisher", "source"],
+        "ai_label": ["ai_label", "predicted_label", "prediction"],
+        "ai_score": ["ai_score", "confidence", "score", "probability"],
+        "ai_source": ["ai_source", "model_source", "classifier"],
+        "user_reason": ["user_reason", "reason", "notes", "comment"],
+        "user_id": ["user_id", "uid", "annotator_id", "reviewer_id"],
+    },
+}
+
+CSV_REQUIRED_FIELDS = {
+    "sentiment": ["text", "label"],
+    "credibility": ["title_or_text", "label"],
+}
+
+
+def _normalize_header(value: Optional[str]) -> str:
+    if not value:
+        return ""
+    return "".join(ch for ch in str(value).strip().lower() if ch.isalnum())
+
+
+def _normalize_sentiment_label(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    normalized = str(value).strip().lower()
+    if normalized.startswith("pos"):
+        return "Positive"
+    if normalized.startswith("neu"):
+        return "Neutral"
+    if normalized.startswith("neg"):
+        return "Negative"
+    return None
+
+
+def _normalize_credibility_label(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    normalized = str(value).strip().upper()
+    if normalized in ["REAL", "TRUE", "LEGIT", "RELIABLE"]:
+        return "REAL"
+    if normalized in ["FAKE", "FALSE", "MISLEADING", "POTENTIALLY MISLEADING"]:
+        return "FAKE"
+    return None
+
+
+def _clean_csv_value(value: Optional[str]) -> str:
+    return str(value).strip() if value is not None else ""
+
+
+def _coerce_float(value: Optional[str], default: float = 0.0) -> float:
+    try:
+        if value is None or str(value).strip() == "":
+            return default
+        return float(str(value).strip())
+    except (TypeError, ValueError):
+        return default
+
+
+def _combine_article_text(row: dict) -> str:
+    pieces = [
+        _clean_csv_value(row.get("text")),
+        _clean_csv_value(row.get("title")),
+        _clean_csv_value(row.get("description")),
+        _clean_csv_value(row.get("content")),
+    ]
+    return " ".join(piece for piece in pieces if piece).strip()
+
+
+def _derive_article_id(row: dict, index: int, model_type: str) -> str:
+    base = _clean_csv_value(row.get("article_id") or row.get("id") or row.get("article_url"))
+    if base:
+        return base
+    return f"csv-{model_type}-{index + 1}"
+
+
+def _resolve_field_mapping(model_type: str, headers: list[str], override: Optional[dict] = None) -> dict:
+    aliases = CSV_SCHEMA_ALIASES[model_type]
+    normalized_headers = {_normalize_header(header): header for header in headers if str(header).strip()}
+    mapping: dict[str, Optional[str]] = {}
+
+    for canonical_field, candidates in aliases.items():
+        selected = None
+        for candidate in candidates:
+            matched = normalized_headers.get(_normalize_header(candidate))
+            if matched:
+                selected = matched
+                break
+        mapping[canonical_field] = selected
+
+    if override:
+        for canonical_field, chosen_column in override.items():
+            if canonical_field not in aliases:
+                continue
+            if chosen_column and chosen_column in headers:
+                mapping[canonical_field] = chosen_column
+
+    unresolved_required = [field for field in CSV_REQUIRED_FIELDS[model_type] if not mapping.get(field)]
+
+    return {
+        "mapping": mapping,
+        "unresolved_required": unresolved_required,
+        "ready": len(unresolved_required) == 0,
+    }
+
+
+def _extract_row_value(row: dict, mapping: dict, canonical_field: str) -> str:
+    column_name = mapping.get(canonical_field)
+    if not column_name:
+        return ""
+    return _clean_csv_value(row.get(column_name))
+
+
+def _build_csv_validation_result(
+    model_type: str,
+    rows: list[dict],
+    mapping: dict,
+    file_name: Optional[str] = None,
+    headers: Optional[list[str]] = None,
+) -> dict:
+    seen_keys: set[str] = set()
+    duplicate_estimate = 0
+    valid_rows = 0
+    invalid_rows = 0
+    issues: list[dict] = []
+    label_distribution = {"Positive": 0, "Neutral": 0, "Negative": 0} if model_type == "sentiment" else {"REAL": 0, "FAKE": 0}
+    preview_rows: list[dict] = []
+    raw_preview_headers = (headers or [])[:6]
+    raw_preview_rows: list[dict] = []
+
+    for idx, row in enumerate(rows[:8]):
+        raw_preview_rows.append(
+            {
+                "row": idx + 2,
+                "values": {header: _clean_csv_value(row.get(header)) for header in raw_preview_headers},
+            }
+        )
+
+    for index, row in enumerate(rows):
+        article_id = _extract_row_value(row, mapping, "article_id") or _extract_row_value(row, mapping, "article_url") or f"row-{index + 1}"
+        row_key = article_id.lower()
+        if row_key in seen_keys:
+            duplicate_estimate += 1
+        else:
+            seen_keys.add(row_key)
+
+        if model_type == "sentiment":
+            text_value = _extract_row_value(row, mapping, "text")
+            label = _normalize_sentiment_label(_extract_row_value(row, mapping, "label"))
+            row_valid = bool(text_value and label)
+            if label:
+                label_distribution[label] += 1
+            if len(preview_rows) < 8:
+                preview_rows.append(
+                    {
+                        "row": index + 2,
+                        "article_id": article_id,
+                        "text": text_value[:140],
+                        "label": label,
+                        "valid": row_valid,
+                    }
+                )
+            if not row_valid:
+                invalid_rows += 1
+                issues.append({"row": index + 2, "error": "Missing sentiment text or label"})
+            else:
+                valid_rows += 1
+        else:
+            title_or_text = _extract_row_value(row, mapping, "title_or_text")
+            label = _normalize_credibility_label(_extract_row_value(row, mapping, "label"))
+            row_valid = bool(title_or_text and label)
+            if label:
+                label_distribution[label] += 1
+            if len(preview_rows) < 8:
+                preview_rows.append(
+                    {
+                        "row": index + 2,
+                        "article_id": article_id,
+                        "title_or_text": title_or_text[:140],
+                        "label": label,
+                        "valid": row_valid,
+                    }
+                )
+            if not row_valid:
+                invalid_rows += 1
+                issues.append({"row": index + 2, "error": "Missing credibility title/text or REAL/FAKE label"})
+            else:
+                valid_rows += 1
+
+    total_rows = len(rows)
+    warnings: list[str] = []
+    if duplicate_estimate > 0:
+        warnings.append(f"Estimated duplicates: {duplicate_estimate}")
+    if total_rows > 0 and invalid_rows / total_rows > 0.2:
+        warnings.append("More than 20% rows are invalid for this model mapping")
+
+    if model_type == "sentiment":
+        active_classes = sum(1 for count in label_distribution.values() if count > 0)
+        if active_classes < 2:
+            warnings.append("Sentiment data currently has fewer than 2 classes")
+        class_balance_status = "balanced" if active_classes >= 2 else "one-sided"
+    else:
+        has_real = label_distribution["REAL"] > 0
+        has_fake = label_distribution["FAKE"] > 0
+        if not (has_real and has_fake):
+            warnings.append("Credibility data should contain both REAL and FAKE labels")
+        class_balance_status = "balanced" if has_real and has_fake else "one-sided"
+
+    return {
+        "model_type": model_type,
+        "file_name": file_name,
+        "total_rows": total_rows,
+        "valid_rows": valid_rows,
+        "invalid_rows": invalid_rows,
+        "duplicate_estimate": duplicate_estimate,
+        "label_distribution": label_distribution,
+        "class_balance_status": class_balance_status,
+        "warnings": warnings,
+        "issues": issues[:100],
+        "preview_rows": preview_rows,
+        "raw_preview_headers": raw_preview_headers,
+        "raw_preview_rows": raw_preview_rows,
+    }
+
+
+async def _build_model_data_quality(db, model_type: str) -> dict:
+    if model_type == "sentiment":
+        cursor = db.sentiment_training.find(
+            {},
+            {
+                "article_id": 1,
+                "text": 1,
+                "final_label": 1,
+                "user_label": 1,
+                "ai_label": 1,
+                "ai_confidence": 1,
+                "source": 1,
+            },
+        )
+        label_counts = {"positive": 0, "neutral": 0, "negative": 0}
+        min_required = 50
+    else:
+        cursor = db.credibility_training.find(
+            {},
+            {
+                "article_id": 1,
+                "title": 1,
+                "description": 1,
+                "final_label": 1,
+                "verification_status": 1,
+                "ai_label": 1,
+                "ai_score": 1,
+                "source_domain": 1,
+                "report_count": 1,
+            },
+        )
+        label_counts = {"real": 0, "fake": 0}
+        min_required = 30
+
+    total = 0
+    verified_labels = 0
+    duplicates = 0
+    missing_values = 0
+    confidence_sum = 0.0
+    confidence_count = 0
+    seen_article_ids: set[str] = set()
+
+    async for doc in cursor:
+        total += 1
+        article_id = str(doc.get("article_id") or "").strip()
+        if article_id:
+            if article_id in seen_article_ids:
+                duplicates += 1
+            else:
+                seen_article_ids.add(article_id)
+        else:
+            missing_values += 1
+
+        if model_type == "sentiment":
+            text = str(doc.get("text") or "").strip()
+            label = _normalize_sentiment_label(doc.get("final_label") or doc.get("user_label") or doc.get("ai_label"))
+            ai_confidence = doc.get("ai_confidence")
+            if doc.get("user_label"):
+                verified_labels += 1
+            if not text:
+                missing_values += 1
+            if not label:
+                missing_values += 1
+            if isinstance(ai_confidence, (int, float)):
+                confidence_sum += float(ai_confidence)
+                confidence_count += 1
+            else:
+                missing_values += 1
+            if label:
+                label_counts[label.lower()] += 1
+        else:
+            title = str(doc.get("title") or "").strip()
+            label = _normalize_credibility_label(
+                doc.get("final_label") or ("REAL" if doc.get("verification_status") == "rejected" else "FAKE")
+            )
+            ai_score = doc.get("ai_score")
+            if doc.get("verification_status") in ["verified", "multi_reported"] or doc.get("final_label"):
+                verified_labels += 1
+            if not title:
+                missing_values += 1
+            if not label:
+                missing_values += 1
+            if isinstance(ai_score, (int, float)):
+                confidence_sum += float(ai_score)
+                confidence_count += 1
+            else:
+                missing_values += 1
+            if label:
+                label_counts[label.lower()] += 1
+
+    duplicate_rate = round((duplicates / total) * 100, 1) if total else 0.0
+    average_confidence = round(confidence_sum / confidence_count, 2) if confidence_count else 0.0
+    verified_labels_percentage = round((verified_labels / total) * 100, 1) if total else 0.0
+
+    if total == 0:
+        class_balance_status = "no data"
+    else:
+        active_counts = [count for count in label_counts.values() if count > 0]
+        if len(active_counts) <= 1:
+            class_balance_status = "one-sided"
+        else:
+            ratio = min(active_counts) / max(active_counts)
+            if ratio >= 0.75:
+                class_balance_status = "balanced"
+            elif ratio >= 0.4:
+                class_balance_status = "moderately imbalanced"
+            else:
+                class_balance_status = "highly imbalanced"
+
+    tips: list[str] = []
+    if total < min_required:
+        tips.append("Collect more labeled samples before fine-tuning.")
+    if duplicate_rate > 10:
+        tips.append("Remove duplicate articles to reduce label bias.")
+    if class_balance_status in ["one-sided", "highly imbalanced"]:
+        if model_type == "credibility":
+            tips.append("Add REAL examples from trusted CSV sources before training.")
+        else:
+            tips.append("Balance Positive, Neutral, and Negative labels before retraining.")
+    if missing_values > 0:
+        tips.append("Fill missing title, text, and label fields in the source data.")
+
+    warning_message = f"Need {max(0, min_required - total)} more samples to reach minimum threshold." if total < min_required else None
+
+    return {
+        "model_type": model_type,
+        "total_samples": total,
+        "minimum_required": min_required,
+        "samples_shortfall": max(0, min_required - total),
+        "average_confidence": average_confidence,
+        "verified_labels_count": verified_labels,
+        "verified_labels_percentage": verified_labels_percentage,
+        "duplicate_rate": duplicate_rate,
+        "class_balance_status": class_balance_status,
+        "missing_values_count": missing_values,
+        "warning_message": warning_message,
+        "tips": tips,
+        "label_distribution": label_counts,
+    }
+
+
+@router.post("/tuning/import/{model_type}")
+async def import_training_csv(
+    model_type: str,
+    file: UploadFile = File(...),
+    mapping_json: Optional[str] = Form(None),
+    user=Depends(require_admin),
+    db=Depends(get_db),
+):
+    model_type = model_type.lower()
+    if model_type not in ["sentiment", "credibility"]:
+        raise HTTPException(status_code=400, detail="model_type must be 'sentiment' or 'credibility'")
+
+    raw_bytes = await file.read()
+    if not raw_bytes:
+        raise HTTPException(status_code=400, detail="CSV file is empty")
+
+    try:
+        text = raw_bytes.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = raw_bytes.decode("utf-8", errors="replace")
+
+    reader = csv.DictReader(io.StringIO(text))
+    if not reader.fieldnames:
+        raise HTTPException(status_code=400, detail="CSV file must include a header row")
+
+    rows = [{str(k).strip(): _clean_csv_value(v) for k, v in row.items()} for row in reader]
+    if not rows:
+        raise HTTPException(status_code=400, detail="CSV file contains no data rows")
+
+    mapping_override = None
+    if mapping_json:
+        try:
+            parsed = json.loads(mapping_json)
+            if isinstance(parsed, dict):
+                mapping_override = {str(k): str(v) for k, v in parsed.items() if v is not None}
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Invalid mapping_json payload: {str(e)}")
+
+    mapping_result = _resolve_field_mapping(model_type, list(reader.fieldnames), mapping_override)
+    if not mapping_result["ready"]:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": "Required fields are not mapped. Run validation and provide mapping_json.",
+                "unresolved_required": mapping_result["unresolved_required"],
+                "mapping": mapping_result["mapping"],
+            },
+        )
+
+    validation_result = _build_csv_validation_result(
+        model_type,
+        rows,
+        mapping_result["mapping"],
+        file.filename,
+        list(reader.fieldnames),
+    )
+    if validation_result["valid_rows"] == 0:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": "No valid rows found in CSV for the selected model",
+                "validation": validation_result,
+            },
+        )
+
+    skipped = 0
+    errors: list[dict] = []
+    documents: list[dict] = []
+    seen_keys: set[str] = set()
+    admin_id = get_user_id(user)
+    mapping = mapping_result["mapping"]
+
+    for index, row in enumerate(rows):
+        article_id = _extract_row_value(row, mapping, "article_id") or _derive_article_id(row, index, model_type)
+        row_key = article_id.lower()
+        if row_key in seen_keys:
+            skipped += 1
+            continue
+        seen_keys.add(row_key)
+
+        if model_type == "sentiment":
+            text_value = _extract_row_value(row, mapping, "text")
+            label = _normalize_sentiment_label(_extract_row_value(row, mapping, "label"))
+            ai_label = _normalize_sentiment_label(_extract_row_value(row, mapping, "ai_label")) or label or "Neutral"
+            ai_confidence = _coerce_float(_extract_row_value(row, mapping, "ai_confidence"), 0.0)
+            if not text_value or not label:
+                skipped += 1
+                errors.append({"row": index + 2, "error": "Sentiment rows require text and a Positive/Neutral/Negative label"})
+                continue
+
+            documents.append(
+                {
+                    "article_id": article_id,
+                    "article_url": _extract_row_value(row, mapping, "article_url") or None,
+                    "text": text_value,
+                    "ai_label": ai_label,
+                    "ai_confidence": ai_confidence,
+                    "user_label": label,
+                    "final_label": label,
+                    "source": _extract_row_value(row, mapping, "source") or "csv_import",
+                    "user_id": _extract_row_value(row, mapping, "user_id") or admin_id,
+                    "created_at": datetime.utcnow(),
+                    "used_for_training": False,
+                    "import_source": "csv",
+                }
+            )
+        else:
+            title = _extract_row_value(row, mapping, "title_or_text")
+            if not title:
+                skipped += 1
+                errors.append({"row": index + 2, "error": "Credibility rows require at least title or text"})
+                continue
+
+            final_label = _normalize_credibility_label(_extract_row_value(row, mapping, "label"))
+            if not final_label:
+                skipped += 1
+                errors.append({"row": index + 2, "error": "Credibility rows require a REAL or FAKE label"})
+                continue
+
+            documents.append(
+                {
+                    "article_id": article_id,
+                    "article_url": _extract_row_value(row, mapping, "article_url") or None,
+                    "source_domain": _extract_row_value(row, mapping, "source_domain") or None,
+                    "title": title,
+                    "description": _extract_row_value(row, mapping, "description") or None,
+                    "content": _extract_row_value(row, mapping, "content") or None,
+                    "ai_label": _extract_row_value(row, mapping, "ai_label") or final_label,
+                    "ai_score": _coerce_float(_extract_row_value(row, mapping, "ai_score"), 0.0),
+                    "ai_source": _extract_row_value(row, mapping, "ai_source") or "csv_import",
+                    "user_reason": _extract_row_value(row, mapping, "user_reason") or None,
+                    "verification_status": "verified",
+                    "user_id": _extract_row_value(row, mapping, "user_id") or admin_id,
+                    "reporter_ids": [_extract_row_value(row, mapping, "user_id") or admin_id],
+                    "report_count": 1,
+                    "created_at": datetime.utcnow(),
+                    "verified_at": datetime.utcnow(),
+                    "verified_by": admin_id,
+                    "used_for_training": False,
+                    "final_label": final_label,
+                    "import_source": "csv",
+                }
+            )
+
+    if not documents:
+        raise HTTPException(status_code=400, detail={"message": "No valid rows found in CSV", "errors": errors})
+
+    collection = db.sentiment_training if model_type == "sentiment" else db.credibility_training
+    result = await collection.insert_many(documents)
+
+    return {
+        "model_type": model_type,
+        "file_name": file.filename,
+        "mapping": mapping,
+        "validation": {
+            "total_rows": validation_result["total_rows"],
+            "valid_rows": validation_result["valid_rows"],
+            "invalid_rows": validation_result["invalid_rows"],
+            "duplicate_estimate": validation_result["duplicate_estimate"],
+            "label_distribution": validation_result["label_distribution"],
+            "warnings": validation_result["warnings"],
+        },
+        "imported": len(result.inserted_ids),
+        "skipped": skipped,
+        "errors": errors,
+        "message": f"Imported {len(result.inserted_ids)} rows into {model_type} training data",
+    }
+
+
+@router.post("/tuning/import/validate/{model_type}")
+async def validate_training_csv(
+    model_type: str,
+    file: UploadFile = File(...),
+    mapping_json: Optional[str] = Form(None),
+    user=Depends(require_admin),
+    db=Depends(get_db),
+):
+    model_type = model_type.lower()
+    if model_type not in ["sentiment", "credibility"]:
+        raise HTTPException(status_code=400, detail="model_type must be 'sentiment' or 'credibility'")
+
+    raw_bytes = await file.read()
+    if not raw_bytes:
+        raise HTTPException(status_code=400, detail="CSV file is empty")
+
+    try:
+        text = raw_bytes.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = raw_bytes.decode("utf-8", errors="replace")
+
+    reader = csv.DictReader(io.StringIO(text))
+    if not reader.fieldnames:
+        raise HTTPException(status_code=400, detail="CSV file must include a header row")
+
+    rows = [{str(k).strip(): _clean_csv_value(v) for k, v in row.items()} for row in reader]
+    if not rows:
+        raise HTTPException(status_code=400, detail="CSV file contains no data rows")
+
+    mapping_override = None
+    if mapping_json:
+        try:
+            parsed = json.loads(mapping_json)
+            if isinstance(parsed, dict):
+                mapping_override = {str(k): str(v) for k, v in parsed.items() if v is not None}
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Invalid mapping_json payload: {str(e)}")
+
+    mapping_result = _resolve_field_mapping(model_type, list(reader.fieldnames), mapping_override)
+    validation = _build_csv_validation_result(
+        model_type,
+        rows,
+        mapping_result["mapping"],
+        file.filename,
+        list(reader.fieldnames),
+    )
+
+    return {
+        "model_type": model_type,
+        "headers": list(reader.fieldnames),
+        "mapping": mapping_result["mapping"],
+        "required_fields": CSV_REQUIRED_FIELDS[model_type],
+        "unresolved_required": mapping_result["unresolved_required"],
+        "ready_to_import": mapping_result["ready"] and validation["valid_rows"] > 0,
+        "validation": validation,
+    }
 
 
 # --------------------------------------------------
@@ -314,6 +929,8 @@ async def start_fine_tuning_with_hyperparameters(
         ]
     )
 
+    cancellation_event = threading.Event()
+
     async def _runner() -> None:
         try:
             if model_type == "sentiment":
@@ -327,6 +944,7 @@ async def start_fine_tuning_with_hyperparameters(
                     warmup_steps=warmup_steps,
                     dropout=dropout,
                     job_id=job_id,
+                    cancellation_event=cancellation_event,
                 )
             else:
                 result = await ModelFineTuningService.fine_tune_credibility(
@@ -339,6 +957,7 @@ async def start_fine_tuning_with_hyperparameters(
                     warmup_steps=warmup_steps,
                     dropout=dropout,
                     job_id=job_id,
+                    cancellation_event=cancellation_event,
                 )
 
             final_status = result.get("status", "success")
@@ -383,28 +1002,34 @@ async def start_fine_tuning_with_hyperparameters(
                 }
             )
         except asyncio.CancelledError:
-            await db.admin_audit_logs.update_one(
+            existing_audit = await db.admin_audit_logs.find_one(
                 {"_id": audit_insert.inserted_id},
-                {
-                    "$set": {
-                        "details.status": "cancelled",
-                        "details.message": "Fine-tuning cancelled",
-                        "success": False,
-                        "error_message": "cancelled by admin",
+                projection={"details.status": 1},
+            )
+            current_status = (existing_audit or {}).get("details", {}).get("status")
+            if current_status != "cancelled":
+                await db.admin_audit_logs.update_one(
+                    {"_id": audit_insert.inserted_id},
+                    {
+                        "$set": {
+                            "details.status": "cancelled",
+                            "details.message": "Fine-tuning cancelled",
+                            "success": False,
+                            "error_message": "cancelled by admin",
+                        }
+                    },
+                )
+                await db.tuning_job_logs.insert_one(
+                    {
+                        "job_id": job_id,
+                        "model_type": model_type,
+                        "event": "cancelled",
+                        "message": "Fine-tuning cancelled",
+                        "epoch": 9999,
+                        "step": 9999,
+                        "timestamp": datetime.utcnow(),
                     }
-                },
-            )
-            await db.tuning_job_logs.insert_one(
-                {
-                    "job_id": job_id,
-                    "model_type": model_type,
-                    "event": "cancelled",
-                    "message": "Fine-tuning cancelled",
-                    "epoch": 9999,
-                    "step": 9999,
-                    "timestamp": datetime.utcnow(),
-                }
-            )
+                )
             raise
         except Exception as e:
             await db.admin_audit_logs.update_one(
@@ -431,9 +1056,11 @@ async def start_fine_tuning_with_hyperparameters(
             )
         finally:
             RUNNING_TUNING_TASKS.pop(job_id, None)
+            RUNNING_TUNING_STOP_EVENTS.pop(job_id, None)
 
     task = asyncio.create_task(_runner())
     RUNNING_TUNING_TASKS[job_id] = task
+    RUNNING_TUNING_STOP_EVENTS[job_id] = cancellation_event
 
     return {
         "status": "running",
@@ -448,7 +1075,10 @@ async def cancel_fine_tuning(job_id: str, user=Depends(require_admin), db=Depend
     admin_id = get_user_id(user)
 
     task = RUNNING_TUNING_TASKS.get(job_id)
+    stop_event = RUNNING_TUNING_STOP_EVENTS.get(job_id)
     if task and not task.done():
+        if stop_event:
+            stop_event.set()
         await db.admin_audit_logs.update_one(
             {
                 "action": "fine_tune",
@@ -471,7 +1101,6 @@ async def cancel_fine_tuning(job_id: str, user=Depends(require_admin), db=Depend
                 "timestamp": datetime.utcnow(),
             }
         )
-        task.cancel()
         return {
             "status": "cancelled",
             "job_id": job_id,
@@ -715,28 +1344,7 @@ async def get_tuning_data_quality(model_type: str, user=Depends(require_admin), 
     if model_type not in ["sentiment", "credibility"]:
         raise HTTPException(status_code=400, detail="model_type must be 'sentiment' or 'credibility'")
 
-    if model_type == "sentiment":
-        total = await db.sentiment_training.count_documents({})
-        min_required = 50
-    else:
-        total = await db.credibility_training.count_documents({})
-        min_required = 30
-
-    shortfall = max(0, min_required - total)
-    warning = f"Need {shortfall} more samples to reach minimum threshold." if shortfall > 0 else None
-    return {
-        "model_type": model_type,
-        "total_samples": total,
-        "minimum_required": min_required,
-        "samples_shortfall": shortfall,
-        "average_confidence": 0.0,
-        "verified_labels_count": 0,
-        "duplicate_rate": 0.0,
-        "class_balance_status": "unknown",
-        "missing_values_count": 0,
-        "warning_message": warning,
-        "tips": [],
-    }
+    return await _build_model_data_quality(db, model_type)
 
 
 @router.get("/tuning/versions/{model_type}")
