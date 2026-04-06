@@ -255,6 +255,50 @@ export const adminApi = {
     }
   },
 
+  async importTrainingCsv(modelType: 'sentiment' | 'credibility', file: File) {
+    return this.importTrainingCsvWithMapping(modelType, file);
+  },
+
+  async validateTrainingCsv(
+    modelType: 'sentiment' | 'credibility',
+    file: File,
+    mapping?: Record<string, string>
+  ) {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      if (mapping && Object.keys(mapping).length > 0) {
+        formData.append('mapping_json', JSON.stringify(mapping));
+      }
+      const response = await api.post(`/api/admin/tuning/import/validate/${modelType}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to validate training CSV: ${getErrorMessage(error)}`);
+    }
+  },
+
+  async importTrainingCsvWithMapping(
+    modelType: 'sentiment' | 'credibility',
+    file: File,
+    mapping?: Record<string, string>
+  ) {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      if (mapping && Object.keys(mapping).length > 0) {
+        formData.append('mapping_json', JSON.stringify(mapping));
+      }
+      const response = await api.post(`/api/admin/tuning/import/${modelType}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to import training CSV: ${getErrorMessage(error)}`);
+    }
+  },
+
   async getModelVersions(modelType: 'sentiment' | 'credibility') {
     try {
       const response = await api.get(`/api/admin/tuning/versions/${modelType}`);
