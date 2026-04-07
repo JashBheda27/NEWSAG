@@ -27,6 +27,7 @@ interface ModelTuningProps {
 }
 
 type ModelType = 'sentiment' | 'credibility';
+type TrainingDataSource = 'internal' | 'external' | 'combined';
 type TabType = 'jobs' | 'data-quality' | 'versions' | 'logs';
 
 type JobStatus =
@@ -127,6 +128,11 @@ export const ModelTuning: React.FC<ModelTuningProps> = ({ showNotification }) =>
       warmup_steps: 100,
       dropout: 0.1,
     },
+  });
+
+  const [trainingSource, setTrainingSource] = useState<Record<ModelType, TrainingDataSource>>({
+    sentiment: 'internal',
+    credibility: 'internal',
   });
 
   void showNotification;
@@ -351,7 +357,7 @@ export const ModelTuning: React.FC<ModelTuningProps> = ({ showNotification }) =>
 
     try {
       const params = hyperparams[model];
-      const operation = adminApi.startFineTuningWithHyperparameters(model, undefined, {
+      const operation = adminApi.startFineTuningWithHyperparameters(model, undefined, trainingSource[model], {
         learning_rate: params.learning_rate,
         epochs: params.epochs,
         batch_size: params.batch_size,
@@ -483,11 +489,18 @@ export const ModelTuning: React.FC<ModelTuningProps> = ({ showNotification }) =>
         `${response?.message || 'CSV imported'} (Imported: ${response?.imported ?? 0}, Skipped: ${response?.skipped ?? 0})`
       );
 
-      await fetchData(true);
       setCsvValidation(null);
       setCsvFile(null);
       setCsvMapping({});
       setCsvResultTab('rows');
+
+      try {
+        await fetchData(true);
+      } catch (refreshError) {
+        notify.warning(
+          `Imported successfully, but refresh failed: ${refreshError instanceof Error ? refreshError.message : 'Unknown error'}`
+        );
+      }
     } catch (error) {
       notify.error(`CSV import failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
@@ -560,7 +573,8 @@ export const ModelTuning: React.FC<ModelTuningProps> = ({ showNotification }) =>
     const latestCompletedJob = sortedRecentJobs.find((job: any) => job.model === modelType && job.status === 'completed');
 
     const modelStats = modelType === 'sentiment' ? trainingStats?.sentiment_model : trainingStats?.credibility_model;
-    const availableSamples = modelStats?.training_samples;
+    const availableSamples = modelStats?.internal_training_samples ?? modelStats?.training_samples;
+    const externalSamples = modelStats?.external_training_samples ?? 0;
     const minRequiredSamples = modelStats?.min_required_samples;
     const samplesShortfall = modelStats?.samples_shortfall;
 
@@ -599,10 +613,14 @@ export const ModelTuning: React.FC<ModelTuningProps> = ({ showNotification }) =>
             </span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-slate-600 dark:text-slate-400">Training samples</span>
+            <span className="text-slate-600 dark:text-slate-400">Project samples</span>
             <span className="text-slate-900 dark:text-white font-medium">
               {availableSamples ?? '—'}{minRequiredSamples != null ? ` / ${minRequiredSamples}` : ''}
             </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-slate-600 dark:text-slate-400">External samples</span>
+            <span className="text-slate-900 dark:text-white font-medium">{externalSamples}</span>
           </div>
           {samplesShortfall > 0 && (
             <p className="text-[11px] text-amber-600 dark:text-amber-300">Need {samplesShortfall} more samples to meet minimum training threshold.</p>
@@ -668,6 +686,24 @@ export const ModelTuning: React.FC<ModelTuningProps> = ({ showNotification }) =>
 
         {isConfigOpen && (
           <div className="mt-2 bg-slate-50 dark:bg-slate-800 rounded-lg p-2 border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
+            <label className="space-y-1 block">
+              <span className="text-slate-600 dark:text-slate-400">Training data source</span>
+              <select
+                value={trainingSource[modelType]}
+                onChange={(e) =>
+                  setTrainingSource((prev) => ({
+                    ...prev,
+                    [modelType]: e.target.value as TrainingDataSource,
+                  }))
+                }
+                className="w-full px-2 py-1 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+              >
+                <option value="internal">Internal (project data)</option>
+                <option value="external">External (CSV imports)</option>
+                <option value="combined">Combined (internal + external)</option>
+              </select>
+            </label>
+
             <div className="grid grid-cols-2 gap-2">
               <label className="space-y-1">
                 <span className="text-slate-600 dark:text-slate-400">Learning rate</span>
