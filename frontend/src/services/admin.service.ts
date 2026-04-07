@@ -198,6 +198,7 @@ export const adminApi = {
   async startFineTuningWithHyperparameters(
     modelType: 'sentiment' | 'credibility',
     minSamples?: number,
+    dataSource: 'internal' | 'external' | 'combined' = 'internal',
     hyperparameters?: {
       learning_rate?: number;
       epochs?: number;
@@ -211,6 +212,7 @@ export const adminApi = {
       const response = await api.post('/api/admin/tuning/start', {
         model_type: modelType,
         min_samples: minSamples,
+        data_source: dataSource,
         hyperparameters,
       });
       return response.data;
