@@ -41,6 +41,11 @@ class TrainingDataService:
         if normalized in ["FAKE", "FALSE", "MISLEADING", "POTENTIALLY MISLEADING"]:
             return "FAKE"
         return None
+
+    SENTIMENT_INTERNAL_COLLECTION = "sentiment_training"
+    SENTIMENT_EXTERNAL_COLLECTION = "sentiment_training_external"
+    CREDIBILITY_INTERNAL_COLLECTION = "credibility_training"
+    CREDIBILITY_EXTERNAL_COLLECTION = "credibility_training_external"
     
     # =========================================================
     # SENTIMENT TRAINING DATA
@@ -126,6 +131,7 @@ class TrainingDataService:
         db,
         include_used: bool = False,
         limit: int = 1000,
+        data_source: Literal["internal", "external", "combined"] = "internal",
     ) -> List[Dict]:
         """
         Retrieve sentiment training data for fine-tuning.
@@ -138,30 +144,83 @@ class TrainingDataService:
         Returns:
             List of training documents with text and labels
         """
-        query = {}
+        base_internal_query = {"import_source": {"$ne": "csv"}}
+        base_legacy_external_query = {"import_source": "csv"}
+        base_external_query = {}
+
         if not include_used:
-            query["used_for_training"] = False
-        
-        cursor = db.sentiment_training.find(query).limit(limit)
+            base_internal_query["used_for_training"] = False
+            base_legacy_external_query["used_for_training"] = False
+            base_external_query["used_for_training"] = False
+
         data = []
-        
-        async for doc in cursor:
-            label = TrainingDataService._normalize_sentiment_label(
-                doc.get("final_label") or doc.get("user_label") or doc.get("ai_label")
+
+        async def _read_sentiment_collection(collection_name: str, query: Dict, max_limit: int) -> List[Dict]:
+            rows: List[Dict] = []
+            if max_limit <= 0:
+                return rows
+
+            cursor = db[collection_name].find(query).limit(max_limit)
+            async for doc in cursor:
+                label = TrainingDataService._normalize_sentiment_label(
+                    doc.get("final_label") or doc.get("user_label") or doc.get("ai_label")
+                )
+                rows.append(
+                    {
+                        "id": str(doc["_id"]),
+                        "text": doc.get("text", ""),
+                        "label": label or "Neutral",
+                        "source": doc.get("source") or "external_csv",
+                        "ai_confidence": doc.get("ai_confidence", 0.0),
+                        "collection_name": collection_name,
+                    }
+                )
+            return rows
+
+        if data_source == "internal":
+            data = await _read_sentiment_collection(
+                TrainingDataService.SENTIMENT_INTERNAL_COLLECTION,
+                base_internal_query,
+                limit,
             )
-            data.append({
-                "id": str(doc["_id"]),
-                "text": doc["text"],
-                "label": label or "Neutral",
-                "source": doc["source"],
-                "ai_confidence": doc["ai_confidence"],
-            })
+        elif data_source == "external":
+            external_rows = await _read_sentiment_collection(
+                TrainingDataService.SENTIMENT_EXTERNAL_COLLECTION,
+                base_external_query,
+                limit,
+            )
+            remaining = max(0, limit - len(external_rows))
+            legacy_rows = await _read_sentiment_collection(
+                TrainingDataService.SENTIMENT_INTERNAL_COLLECTION,
+                base_legacy_external_query,
+                remaining,
+            )
+            data = external_rows + legacy_rows
+        else:
+            internal_rows = await _read_sentiment_collection(
+                TrainingDataService.SENTIMENT_INTERNAL_COLLECTION,
+                base_internal_query,
+                limit,
+            )
+            remaining_after_internal = max(0, limit - len(internal_rows))
+            external_rows = await _read_sentiment_collection(
+                TrainingDataService.SENTIMENT_EXTERNAL_COLLECTION,
+                base_external_query,
+                remaining_after_internal,
+            )
+            remaining_after_external = max(0, remaining_after_internal - len(external_rows))
+            legacy_rows = await _read_sentiment_collection(
+                TrainingDataService.SENTIMENT_INTERNAL_COLLECTION,
+                base_legacy_external_query,
+                remaining_after_external,
+            )
+            data = internal_rows + external_rows + legacy_rows
         
         logger.info(f"[TRAINING] Retrieved {len(data)} sentiment training samples")
         return data
     
     @staticmethod
-    async def mark_sentiment_data_used(db, doc_ids: List[str]) -> int:
+    async def mark_sentiment_data_used(db, training_rows: List[Dict]) -> int:
         """
         Mark training data as used after fine-tuning.
         
@@ -173,15 +232,37 @@ class TrainingDataService:
             Number of documents updated
         """
         from bson import ObjectId
-        
+
+        grouped_ids: Dict[str, List[ObjectId]] = {}
+        for row in training_rows:
+            if not isinstance(row, dict) or not row.get("id"):
+                continue
+            collection_name = row.get("collection_name") or TrainingDataService.SENTIMENT_INTERNAL_COLLECTION
+            grouped_ids.setdefault(collection_name, []).append(ObjectId(row["id"]))
+
+        total_modified = 0
+        for collection_name, object_ids in grouped_ids.items():
+            result = await db[collection_name].update_many(
+                {"_id": {"$in": object_ids}},
+                {"$set": {"used_for_training": True}},
+            )
+            total_modified += int(result.modified_count)
+
+        logger.info(f"[TRAINING] Marked {total_modified} sentiment samples as used")
+        return total_modified
+
+    @staticmethod
+    async def purge_sentiment_imported_data(db, doc_ids: List[str]) -> int:
+        """Delete CSV-imported sentiment rows after they have been consumed for training."""
+        from bson import ObjectId
+
         object_ids = [ObjectId(id) for id in doc_ids]
-        result = await db.sentiment_training.update_many(
-            {"_id": {"$in": object_ids}},
-            {"$set": {"used_for_training": True}}
-        )
-        
-        logger.info(f"[TRAINING] Marked {result.modified_count} sentiment samples as used")
-        return result.modified_count
+        result = await db.sentiment_training.delete_many({
+            "_id": {"$in": object_ids},
+            "import_source": "csv",
+        })
+        logger.info(f"[TRAINING] Purged {result.deleted_count} imported sentiment samples")
+        return result.deleted_count
     
     # =========================================================
     # CREDIBILITY TRAINING DATA
@@ -301,6 +382,7 @@ class TrainingDataService:
         status_filter: Optional[List[str]] = None,
         include_used: bool = False,
         limit: int = 1000,
+        data_source: Literal["internal", "external", "combined"] = "internal",
     ) -> List[Dict]:
         """
         Retrieve credibility training data for fine-tuning.
@@ -317,32 +399,92 @@ class TrainingDataService:
         """
         if status_filter is None:
             status_filter = ["verified", "multi_reported"]
-        
-        query = {"verification_status": {"$in": status_filter}}
-        if not include_used:
-            query["used_for_training"] = False
-        
-        cursor = db.credibility_training.find(query).limit(limit)
-        data = []
-        
-        async for doc in cursor:
-            # Combine title + description for training text
-            text = doc["title"]
-            if doc.get("description"):
-                text += " " + doc["description"]
 
-            label = TrainingDataService._normalize_credibility_label(doc.get("final_label"))
-            if not label:
-                label = "REAL" if doc.get("verification_status") == "rejected" else "FAKE"
-            
-            data.append({
-                "id": str(doc["_id"]),
-                "text": text,
-                "label": label,
-                "source_domain": doc.get("source_domain"),
-                "report_count": doc.get("report_count", 1),
-                "verification_status": doc["verification_status"],
-            })
+        internal_query: Dict = {
+            "verification_status": {"$in": status_filter},
+            "import_source": {"$ne": "csv"},
+        }
+        legacy_external_query: Dict = {
+            "verification_status": {"$in": status_filter},
+            "import_source": "csv",
+        }
+        external_query: Dict = {}
+
+        if not include_used:
+            internal_query["used_for_training"] = False
+            legacy_external_query["used_for_training"] = False
+            external_query["used_for_training"] = False
+
+        data: List[Dict] = []
+
+        async def _read_credibility_collection(collection_name: str, query: Dict, max_limit: int) -> List[Dict]:
+            rows: List[Dict] = []
+            if max_limit <= 0:
+                return rows
+
+            cursor = db[collection_name].find(query).limit(max_limit)
+            async for doc in cursor:
+                text = str(doc.get("title") or "")
+                if doc.get("description"):
+                    text += " " + str(doc["description"])
+                if not text.strip() and doc.get("content"):
+                    text = str(doc.get("content"))
+
+                label = TrainingDataService._normalize_credibility_label(doc.get("final_label"))
+                if not label:
+                    label = "REAL" if doc.get("verification_status") == "rejected" else "FAKE"
+
+                rows.append(
+                    {
+                        "id": str(doc["_id"]),
+                        "text": text,
+                        "label": label,
+                        "source_domain": doc.get("source_domain"),
+                        "report_count": doc.get("report_count", 1),
+                        "verification_status": doc.get("verification_status"),
+                        "collection_name": collection_name,
+                    }
+                )
+            return rows
+
+        if data_source == "internal":
+            data = await _read_credibility_collection(
+                TrainingDataService.CREDIBILITY_INTERNAL_COLLECTION,
+                internal_query,
+                limit,
+            )
+        elif data_source == "external":
+            external_rows = await _read_credibility_collection(
+                TrainingDataService.CREDIBILITY_EXTERNAL_COLLECTION,
+                external_query,
+                limit,
+            )
+            remaining = max(0, limit - len(external_rows))
+            legacy_rows = await _read_credibility_collection(
+                TrainingDataService.CREDIBILITY_INTERNAL_COLLECTION,
+                legacy_external_query,
+                remaining,
+            )
+            data = external_rows + legacy_rows
+        else:
+            internal_rows = await _read_credibility_collection(
+                TrainingDataService.CREDIBILITY_INTERNAL_COLLECTION,
+                internal_query,
+                limit,
+            )
+            remaining_after_internal = max(0, limit - len(internal_rows))
+            external_rows = await _read_credibility_collection(
+                TrainingDataService.CREDIBILITY_EXTERNAL_COLLECTION,
+                external_query,
+                remaining_after_internal,
+            )
+            remaining_after_external = max(0, remaining_after_internal - len(external_rows))
+            legacy_rows = await _read_credibility_collection(
+                TrainingDataService.CREDIBILITY_INTERNAL_COLLECTION,
+                legacy_external_query,
+                remaining_after_external,
+            )
+            data = internal_rows + external_rows + legacy_rows
         
         logger.info(f"[TRAINING] Retrieved {len(data)} credibility training samples")
         return data
@@ -385,20 +527,42 @@ class TrainingDataService:
         return result.modified_count > 0
     
     @staticmethod
-    async def mark_credibility_data_used(db, doc_ids: List[str]) -> int:
+    async def mark_credibility_data_used(db, training_rows: List[Dict]) -> int:
         """
         Mark credibility training data as used after fine-tuning.
         """
         from bson import ObjectId
-        
+
+        grouped_ids: Dict[str, List[ObjectId]] = {}
+        for row in training_rows:
+            if not isinstance(row, dict) or not row.get("id"):
+                continue
+            collection_name = row.get("collection_name") or TrainingDataService.CREDIBILITY_INTERNAL_COLLECTION
+            grouped_ids.setdefault(collection_name, []).append(ObjectId(row["id"]))
+
+        total_modified = 0
+        for collection_name, object_ids in grouped_ids.items():
+            result = await db[collection_name].update_many(
+                {"_id": {"$in": object_ids}},
+                {"$set": {"used_for_training": True}},
+            )
+            total_modified += int(result.modified_count)
+
+        logger.info(f"[TRAINING] Marked {total_modified} credibility samples as used")
+        return total_modified
+
+    @staticmethod
+    async def purge_credibility_imported_data(db, doc_ids: List[str]) -> int:
+        """Delete CSV-imported credibility rows after they have been consumed for training."""
+        from bson import ObjectId
+
         object_ids = [ObjectId(id) for id in doc_ids]
-        result = await db.credibility_training.update_many(
-            {"_id": {"$in": object_ids}},
-            {"$set": {"used_for_training": True}}
-        )
-        
-        logger.info(f"[TRAINING] Marked {result.modified_count} credibility samples as used")
-        return result.modified_count
+        result = await db.credibility_training.delete_many({
+            "_id": {"$in": object_ids},
+            "import_source": "csv",
+        })
+        logger.info(f"[TRAINING] Purged {result.deleted_count} imported credibility samples")
+        return result.deleted_count
     
     # =========================================================
     # STATS & MONITORING
@@ -409,17 +573,29 @@ class TrainingDataService:
         """
         Get statistics on collected training data.
         """
-        sentiment_total = await db.sentiment_training.count_documents({})
-        sentiment_unused = await db.sentiment_training.count_documents({"used_for_training": False})
+        sentiment_total = await db.sentiment_training.count_documents({"import_source": {"$ne": "csv"}})
+        sentiment_unused = await db.sentiment_training.count_documents({"used_for_training": False, "import_source": {"$ne": "csv"}})
         sentiment_explicit = await db.sentiment_training.count_documents({"source": "explicit"})
         sentiment_implicit = await db.sentiment_training.count_documents({
             "source": {"$in": ["implicit_bookmark", "implicit_read_later"]}
         })
+        sentiment_external = await db.sentiment_training_external.count_documents({"used_for_training": False})
+        sentiment_legacy_external = await db.sentiment_training.count_documents({"import_source": "csv", "used_for_training": False})
         
-        credibility_total = await db.credibility_training.count_documents({})
+        credibility_total = await db.credibility_training.count_documents({"import_source": {"$ne": "csv"}})
         credibility_pending = await db.credibility_training.count_documents({"verification_status": "pending"})
-        credibility_verified = await db.credibility_training.count_documents({"verification_status": "verified"})
-        credibility_multi = await db.credibility_training.count_documents({"verification_status": "multi_reported"})
+        credibility_verified = await db.credibility_training.count_documents({
+            "verification_status": "verified",
+            "import_source": {"$ne": "csv"},
+            "used_for_training": False,
+        })
+        credibility_multi = await db.credibility_training.count_documents({
+            "verification_status": "multi_reported",
+            "import_source": {"$ne": "csv"},
+            "used_for_training": False,
+        })
+        credibility_external = await db.credibility_training_external.count_documents({"used_for_training": False})
+        credibility_legacy_external = await db.credibility_training.count_documents({"import_source": "csv", "used_for_training": False})
         
         return {
             "sentiment": {
@@ -427,6 +603,8 @@ class TrainingDataService:
                 "unused": sentiment_unused,
                 "explicit": sentiment_explicit,
                 "implicit": sentiment_implicit,
+                "external_unused": sentiment_external + sentiment_legacy_external,
+                "combined_unused": sentiment_unused + sentiment_external + sentiment_legacy_external,
             },
             "credibility": {
                 "total": credibility_total,
@@ -434,5 +612,7 @@ class TrainingDataService:
                 "verified": credibility_verified,
                 "multi_reported": credibility_multi,
                 "ready_for_training": credibility_verified + credibility_multi,
+                "external_ready_for_training": credibility_external + credibility_legacy_external,
+                "combined_ready_for_training": credibility_verified + credibility_multi + credibility_external + credibility_legacy_external,
             },
         }
