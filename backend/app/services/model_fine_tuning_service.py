@@ -224,6 +224,7 @@ class ModelFineTuningService:
         optimizer: str = "AdamW",
         warmup_steps: int = 100,
         dropout: float = 0.1,
+        data_source: Literal["internal", "external", "combined"] = "internal",
         job_id: Optional[str] = None,
         cancellation_event: Optional[threading.Event] = None,
     ) -> Dict:
@@ -247,7 +248,10 @@ class ModelFineTuningService:
         
         # Fetch training data
         training_data = await TrainingDataService.get_sentiment_training_data(
-            db, include_used=False, limit=5000
+            db,
+            include_used=False,
+            limit=5000,
+            data_source=data_source,
         )
         
         if len(training_data) < min_samples:
@@ -279,7 +283,8 @@ class ModelFineTuningService:
                 ModelFineTuningService.SENTIMENT_LABEL_MAP.get(str(d["label"]), 1)
                 for d in training_data
             ]
-            doc_ids = [d["id"] for d in training_data]
+            internal_samples_used = sum(1 for d in training_data if d.get("collection_name") == "sentiment_training")
+            external_samples_used = len(training_data) - internal_samples_used
 
             if len(set(labels)) < 2:
                 return {
@@ -287,6 +292,7 @@ class ModelFineTuningService:
                     "message": "Sentiment training needs at least 2 sentiment classes before fine-tuning",
                     "samples_available": len(training_data),
                     "min_required": min_samples,
+                    "data_source": data_source,
                 }
             
             dataset = Dataset.from_dict({
@@ -471,6 +477,9 @@ class ModelFineTuningService:
                     "epochs": epochs_completed,
                     "epochs_completed": epochs_completed,
                     "samples_used": len(training_data),
+                    "samples_used_internal": internal_samples_used,
+                    "samples_used_external": external_samples_used,
+                    "data_source": data_source,
                 }
                 await db.tuning_model_metrics.insert_one(metrics_doc)
                 
@@ -494,6 +503,9 @@ class ModelFineTuningService:
                     "checkpoint_path": str(SENTIMENT_MODEL_PATH),
                     "source_job_id": run_job_id,
                     "is_active": True,
+                    "training_source": data_source,
+                    "internal_samples_used": internal_samples_used,
+                    "external_samples_used": external_samples_used,
                 }
                 
                 # Mark previous version as inactive
@@ -528,8 +540,22 @@ class ModelFineTuningService:
                 logger.error(f"[FINE-TUNE] Sentiment model artifact save failed for {run_job_id}: {str(save_error)}")
 
             # Mark source data as used only after successful training completion.
-            await TrainingDataService.mark_sentiment_data_used(db, doc_ids)
-            remaining_samples = await db.sentiment_training.count_documents({"used_for_training": False})
+            await TrainingDataService.mark_sentiment_data_used(db, training_data)
+            if data_source == "internal":
+                remaining_samples = await db.sentiment_training.count_documents(
+                    {"used_for_training": False, "import_source": {"$ne": "csv"}}
+                )
+            elif data_source == "external":
+                remaining_samples = (
+                    await db.sentiment_training_external.count_documents({"used_for_training": False})
+                    + await db.sentiment_training.count_documents({"used_for_training": False, "import_source": "csv"})
+                )
+            else:
+                remaining_samples = (
+                    await db.sentiment_training.count_documents({"used_for_training": False, "import_source": {"$ne": "csv"}})
+                    + await db.sentiment_training_external.count_documents({"used_for_training": False})
+                    + await db.sentiment_training.count_documents({"used_for_training": False, "import_source": "csv"})
+                )
             
             logger.info(f"[FINE-TUNE] Sentiment training complete. Loss: {float(train_loss or 0.0):.4f}, Accuracy: {accuracy}")
             
@@ -538,6 +564,8 @@ class ModelFineTuningService:
                 "job_id": run_job_id,
                 "model": "sentiment",
                 "samples_used": len(training_data),
+                "samples_used_internal": internal_samples_used,
+                "samples_used_external": external_samples_used,
                 "epochs": epochs,
                 "epochs_completed": epochs_completed,
                 "training_loss": train_loss,
@@ -549,6 +577,7 @@ class ModelFineTuningService:
                 "model_saved_to": str(SENTIMENT_MODEL_PATH),
                 "artifact_saved": artifact_saved,
                 "warning_message": warning_message,
+                "data_source": data_source,
                 "message": warning_message if warning_message else "sentiment fine-tuning completed",
             }
             
@@ -558,6 +587,7 @@ class ModelFineTuningService:
                 "status": "error",
                 "message": str(e),
                 "samples_available": len(training_data),
+                "data_source": data_source,
             }
     
     @staticmethod
@@ -570,6 +600,7 @@ class ModelFineTuningService:
         optimizer: str = "AdamW",
         warmup_steps: int = 100,
         dropout: float = 0.1,
+        data_source: Literal["internal", "external", "combined"] = "internal",
         job_id: Optional[str] = None,
         cancellation_event: Optional[threading.Event] = None,
     ) -> Dict:
@@ -598,6 +629,7 @@ class ModelFineTuningService:
             status_filter=["verified", "multi_reported"],
             include_used=False,
             limit=5000,
+            data_source=data_source,
         )
         
         if len(training_data) < min_samples:
@@ -606,6 +638,7 @@ class ModelFineTuningService:
                 "message": f"Insufficient verified data: {len(training_data)}/{min_samples} samples",
                 "samples_available": len(training_data),
                 "min_required": min_samples,
+                "data_source": data_source,
             }
         
         logger.info(f"[FINE-TUNE] Starting credibility fine-tuning with {len(training_data)} samples")
@@ -627,7 +660,8 @@ class ModelFineTuningService:
                 ModelFineTuningService.CREDIBILITY_LABEL_MAP.get(str(d["label"]), 1)
                 for d in training_data
             ]
-            doc_ids = [d["id"] for d in training_data]
+            internal_samples_used = sum(1 for d in training_data if d.get("collection_name") == "credibility_training")
+            external_samples_used = len(training_data) - internal_samples_used
 
             if len(set(labels)) < 2:
                 return {
@@ -635,6 +669,7 @@ class ModelFineTuningService:
                     "message": "Credibility training needs both REAL and FAKE examples before fine-tuning",
                     "samples_available": len(training_data),
                     "min_required": min_samples,
+                    "data_source": data_source,
                 }
             
             dataset = Dataset.from_dict({
@@ -816,6 +851,9 @@ class ModelFineTuningService:
                     "epochs": epochs_completed,
                     "epochs_completed": epochs_completed,
                     "samples_used": len(training_data),
+                    "samples_used_internal": internal_samples_used,
+                    "samples_used_external": external_samples_used,
+                    "data_source": data_source,
                 }
                 await db.tuning_model_metrics.insert_one(metrics_doc)
                 
@@ -839,6 +877,9 @@ class ModelFineTuningService:
                     "checkpoint_path": str(CREDIBILITY_MODEL_PATH),
                     "source_job_id": run_job_id,
                     "is_active": True,
+                    "training_source": data_source,
+                    "internal_samples_used": internal_samples_used,
+                    "external_samples_used": external_samples_used,
                 }
                 
                 # Mark previous version as inactive
@@ -873,13 +914,44 @@ class ModelFineTuningService:
                 logger.error(f"[FINE-TUNE] Credibility model artifact save failed for {run_job_id}: {str(save_error)}")
 
             # Mark source data as used only after successful training completion.
-            await TrainingDataService.mark_credibility_data_used(db, doc_ids)
-            remaining_samples = await db.credibility_training.count_documents(
-                {
-                    "verification_status": {"$in": ["verified", "multi_reported"]},
-                    "used_for_training": False,
-                }
-            )
+            await TrainingDataService.mark_credibility_data_used(db, training_data)
+            if data_source == "internal":
+                remaining_samples = await db.credibility_training.count_documents(
+                    {
+                        "verification_status": {"$in": ["verified", "multi_reported"]},
+                        "used_for_training": False,
+                        "import_source": {"$ne": "csv"},
+                    }
+                )
+            elif data_source == "external":
+                remaining_samples = (
+                    await db.credibility_training_external.count_documents({"used_for_training": False})
+                    + await db.credibility_training.count_documents(
+                        {
+                            "verification_status": {"$in": ["verified", "multi_reported"]},
+                            "used_for_training": False,
+                            "import_source": "csv",
+                        }
+                    )
+                )
+            else:
+                remaining_samples = (
+                    await db.credibility_training.count_documents(
+                        {
+                            "verification_status": {"$in": ["verified", "multi_reported"]},
+                            "used_for_training": False,
+                            "import_source": {"$ne": "csv"},
+                        }
+                    )
+                    + await db.credibility_training_external.count_documents({"used_for_training": False})
+                    + await db.credibility_training.count_documents(
+                        {
+                            "verification_status": {"$in": ["verified", "multi_reported"]},
+                            "used_for_training": False,
+                            "import_source": "csv",
+                        }
+                    )
+                )
             
             logger.info(f"[FINE-TUNE] Credibility training complete. Loss: {float(train_loss or 0.0):.4f}, Accuracy: {accuracy}")
             
@@ -888,6 +960,8 @@ class ModelFineTuningService:
                 "job_id": run_job_id,
                 "model": "credibility",
                 "samples_used": len(training_data),
+                "samples_used_internal": internal_samples_used,
+                "samples_used_external": external_samples_used,
                 "epochs": epochs,
                 "epochs_completed": epochs_completed,
                 "training_loss": train_loss,
@@ -899,6 +973,7 @@ class ModelFineTuningService:
                 "model_saved_to": str(CREDIBILITY_MODEL_PATH),
                 "artifact_saved": artifact_saved,
                 "warning_message": warning_message,
+                "data_source": data_source,
                 "message": warning_message if warning_message else "credibility fine-tuning completed",
             }
             
@@ -908,6 +983,7 @@ class ModelFineTuningService:
                 "status": "error",
                 "message": str(e),
                 "samples_available": len(training_data),
+                "data_source": data_source,
             }
     
     @staticmethod
