@@ -567,7 +567,7 @@ async def import_training_csv(
     if not documents:
         raise HTTPException(status_code=400, detail={"message": "No valid rows found in CSV", "errors": errors})
 
-    collection = db.sentiment_training if model_type == "sentiment" else db.credibility_training
+    collection = db.sentiment_training_external if model_type == "sentiment" else db.credibility_training_external
     result = await collection.insert_many(documents)
 
     return {
@@ -662,9 +662,13 @@ async def get_training_stats(
     stats = await TrainingDataService.get_training_stats(db)
     model_info = ModelFineTuningService.get_model_info()
 
-    # Use train-ready counts for dashboard cards (not raw totals).
-    sentiment_samples = int((stats.get("sentiment") or {}).get("unused", 0))
-    credibility_samples = int((stats.get("credibility") or {}).get("ready_for_training", 0))
+    # Split counts for model cards: internal project data vs external CSV imports.
+    sentiment_internal_samples = int((stats.get("sentiment") or {}).get("unused", 0))
+    credibility_internal_samples = int((stats.get("credibility") or {}).get("ready_for_training", 0))
+    sentiment_external_samples = int((stats.get("sentiment") or {}).get("external_unused", 0))
+    credibility_external_samples = int((stats.get("credibility") or {}).get("external_ready_for_training", 0))
+    sentiment_combined_samples = int((stats.get("sentiment") or {}).get("combined_unused", sentiment_internal_samples + sentiment_external_samples))
+    credibility_combined_samples = int((stats.get("credibility") or {}).get("combined_ready_for_training", credibility_internal_samples + credibility_external_samples))
 
     def _get_mtime(path):
         try:
@@ -726,11 +730,21 @@ async def get_training_stats(
         "models": model_info,
         "sentiment_model": {
             "last_trained": sentiment_last,
-            "training_samples": sentiment_samples,
+            "training_samples": sentiment_internal_samples,
+            "internal_training_samples": sentiment_internal_samples,
+            "external_training_samples": sentiment_external_samples,
+            "combined_training_samples": sentiment_combined_samples,
+            "min_required_samples": 50,
+            "samples_shortfall": max(0, 50 - sentiment_internal_samples),
         },
         "credibility_model": {
             "last_trained": credibility_last,
-            "training_samples": credibility_samples,
+            "training_samples": credibility_internal_samples,
+            "internal_training_samples": credibility_internal_samples,
+            "external_training_samples": credibility_external_samples,
+            "combined_training_samples": credibility_combined_samples,
+            "min_required_samples": 30,
+            "samples_shortfall": max(0, 30 - credibility_internal_samples),
         },
         "recent_jobs": recent_jobs,
     }
@@ -743,6 +757,7 @@ async def get_training_stats(
 async def fine_tune_sentiment_model(
     min_samples: int = 50,
     epochs: int = 3,
+    data_source: str = "internal",
     user=Depends(require_admin),
     db=Depends(get_db),
 ):
@@ -761,6 +776,7 @@ async def fine_tune_sentiment_model(
         db=db,
         min_samples=min_samples,
         epochs=epochs,
+        data_source=data_source if data_source in ["internal", "external", "combined"] else "internal",
     )
     
     # Log to audit trail
@@ -776,6 +792,7 @@ async def fine_tune_sentiment_model(
             "samples_used": result.get("samples_used"),
             "samples_available": result.get("samples_available"),
             "min_required": result.get("min_required"),
+            "data_source": result.get("data_source", data_source),
             "training_loss": result.get("training_loss"),
             "eval_loss": result.get("eval_loss"),
             "duration_seconds": result.get("duration_seconds"),
@@ -793,6 +810,7 @@ async def fine_tune_sentiment_model(
 async def fine_tune_credibility_model(
     min_samples: int = 30,
     epochs: int = 3,
+    data_source: str = "internal",
     user=Depends(require_admin),
     db=Depends(get_db),
 ):
@@ -811,6 +829,7 @@ async def fine_tune_credibility_model(
         db=db,
         min_samples=min_samples,
         epochs=epochs,
+        data_source=data_source if data_source in ["internal", "external", "combined"] else "internal",
     )
     
     # Log to audit trail
@@ -826,6 +845,7 @@ async def fine_tune_credibility_model(
             "samples_used": result.get("samples_used"),
             "samples_available": result.get("samples_available"),
             "min_required": result.get("min_required"),
+            "data_source": result.get("data_source", data_source),
             "training_loss": result.get("training_loss"),
             "eval_loss": result.get("eval_loss"),
             "duration_seconds": result.get("duration_seconds"),
@@ -870,6 +890,9 @@ async def start_fine_tuning_with_hyperparameters(
         raise HTTPException(status_code=400, detail="model_type must be 'sentiment' or 'credibility'")
 
     min_samples = int(request_body.get("min_samples") or (50 if model_type == "sentiment" else 30))
+    data_source = str(request_body.get("data_source") or "internal").strip().lower()
+    if data_source not in ["internal", "external", "combined"]:
+        raise HTTPException(status_code=400, detail="data_source must be 'internal', 'external', or 'combined'")
     hyperparams = request_body.get("hyperparameters") or {}
     job_id = str(ObjectId())
     now = datetime.utcnow()
@@ -892,6 +915,7 @@ async def start_fine_tuning_with_hyperparameters(
                 "status": "running",
                 "message": "Fine-tuning started",
                 "min_samples": min_samples,
+                "data_source": data_source,
                 "learning_rate": learning_rate,
                 "epochs": epochs,
                 "batch_size": batch_size,
@@ -943,6 +967,7 @@ async def start_fine_tuning_with_hyperparameters(
                     optimizer=optimizer,
                     warmup_steps=warmup_steps,
                     dropout=dropout,
+                    data_source=data_source,
                     job_id=job_id,
                     cancellation_event=cancellation_event,
                 )
@@ -956,6 +981,7 @@ async def start_fine_tuning_with_hyperparameters(
                     optimizer=optimizer,
                     warmup_steps=warmup_steps,
                     dropout=dropout,
+                    data_source=data_source,
                     job_id=job_id,
                     cancellation_event=cancellation_event,
                 )
@@ -969,8 +995,11 @@ async def start_fine_tuning_with_hyperparameters(
                     "$set": {
                         "details.status": final_status,
                         "details.message": final_message,
+                        "details.data_source": result.get("data_source", data_source),
                         "details.warning_message": result.get("warning_message"),
                         "details.samples_used": result.get("samples_used"),
+                        "details.samples_used_internal": result.get("samples_used_internal"),
+                        "details.samples_used_external": result.get("samples_used_external"),
                         "details.samples_available": result.get("samples_available"),
                         "details.samples_remaining": result.get("samples_remaining"),
                         "details.min_required": result.get("min_required"),
@@ -1066,6 +1095,7 @@ async def start_fine_tuning_with_hyperparameters(
         "status": "running",
         "job_id": job_id,
         "model": model_type,
+        "data_source": data_source,
         "message": f"{model_type} fine-tuning started",
     }
 
