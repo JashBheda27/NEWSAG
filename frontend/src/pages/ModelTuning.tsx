@@ -896,6 +896,11 @@ export const ModelTuning: React.FC<ModelTuningProps> = ({ showNotification }) =>
               <p className="text-xs text-slate-600 dark:text-slate-400">
                 {csvFile ? `Selected: ${csvFile.name}` : 'No file selected'}
               </p>
+              {csvModel === 'credibility' && (
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Credibility labels can be REAL/FAKE or 1/0. Binary uploads are normalized before validation and training.
+                </p>
+              )}
             </label>
           </div>
 
