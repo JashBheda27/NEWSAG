@@ -33,9 +33,13 @@ class TrainingDataService:
 
     @staticmethod
     def _normalize_credibility_label(label: Optional[str]) -> Optional[str]:
-        if not label:
+        if label is None or str(label).strip() == "":
             return None
         normalized = str(label).strip().upper()
+        if normalized in ["0", "FALSE", "NO", "FAKE"]:
+            return "FAKE"
+        if normalized in ["1", "TRUE", "YES", "REAL"]:
+            return "REAL"
         if normalized in ["REAL", "TRUE", "LEGIT", "RELIABLE"]:
             return "REAL"
         if normalized in ["FAKE", "FALSE", "MISLEADING", "POTENTIALLY MISLEADING"]:
@@ -130,7 +134,7 @@ class TrainingDataService:
     async def get_sentiment_training_data(
         db,
         include_used: bool = False,
-        limit: int = 1000,
+        limit: Optional[int] = 1000,
         data_source: Literal["internal", "external", "combined"] = "internal",
     ) -> List[Dict]:
         """
@@ -155,12 +159,14 @@ class TrainingDataService:
 
         data = []
 
-        async def _read_sentiment_collection(collection_name: str, query: Dict, max_limit: int) -> List[Dict]:
+        async def _read_sentiment_collection(collection_name: str, query: Dict, max_limit: Optional[int]) -> List[Dict]:
             rows: List[Dict] = []
-            if max_limit <= 0:
+            if max_limit is not None and max_limit <= 0:
                 return rows
 
-            cursor = db[collection_name].find(query).limit(max_limit)
+            cursor = db[collection_name].find(query)
+            if max_limit is not None:
+                cursor = cursor.limit(max_limit)
             async for doc in cursor:
                 label = TrainingDataService._normalize_sentiment_label(
                     doc.get("final_label") or doc.get("user_label") or doc.get("ai_label")
@@ -189,7 +195,7 @@ class TrainingDataService:
                 base_external_query,
                 limit,
             )
-            remaining = max(0, limit - len(external_rows))
+            remaining = None if limit is None else max(0, limit - len(external_rows))
             legacy_rows = await _read_sentiment_collection(
                 TrainingDataService.SENTIMENT_INTERNAL_COLLECTION,
                 base_legacy_external_query,
@@ -202,13 +208,13 @@ class TrainingDataService:
                 base_internal_query,
                 limit,
             )
-            remaining_after_internal = max(0, limit - len(internal_rows))
+            remaining_after_internal = None if limit is None else max(0, limit - len(internal_rows))
             external_rows = await _read_sentiment_collection(
                 TrainingDataService.SENTIMENT_EXTERNAL_COLLECTION,
                 base_external_query,
                 remaining_after_internal,
             )
-            remaining_after_external = max(0, remaining_after_internal - len(external_rows))
+            remaining_after_external = None if remaining_after_internal is None else max(0, remaining_after_internal - len(external_rows))
             legacy_rows = await _read_sentiment_collection(
                 TrainingDataService.SENTIMENT_INTERNAL_COLLECTION,
                 base_legacy_external_query,
@@ -381,7 +387,7 @@ class TrainingDataService:
         db,
         status_filter: Optional[List[str]] = None,
         include_used: bool = False,
-        limit: int = 1000,
+        limit: Optional[int] = 1000,
         data_source: Literal["internal", "external", "combined"] = "internal",
     ) -> List[Dict]:
         """
@@ -417,12 +423,14 @@ class TrainingDataService:
 
         data: List[Dict] = []
 
-        async def _read_credibility_collection(collection_name: str, query: Dict, max_limit: int) -> List[Dict]:
+        async def _read_credibility_collection(collection_name: str, query: Dict, max_limit: Optional[int]) -> List[Dict]:
             rows: List[Dict] = []
-            if max_limit <= 0:
+            if max_limit is not None and max_limit <= 0:
                 return rows
 
-            cursor = db[collection_name].find(query).limit(max_limit)
+            cursor = db[collection_name].find(query)
+            if max_limit is not None:
+                cursor = cursor.limit(max_limit)
             async for doc in cursor:
                 text = str(doc.get("title") or "")
                 if doc.get("description"):
@@ -459,7 +467,7 @@ class TrainingDataService:
                 external_query,
                 limit,
             )
-            remaining = max(0, limit - len(external_rows))
+            remaining = None if limit is None else max(0, limit - len(external_rows))
             legacy_rows = await _read_credibility_collection(
                 TrainingDataService.CREDIBILITY_INTERNAL_COLLECTION,
                 legacy_external_query,
@@ -472,13 +480,13 @@ class TrainingDataService:
                 internal_query,
                 limit,
             )
-            remaining_after_internal = max(0, limit - len(internal_rows))
+            remaining_after_internal = None if limit is None else max(0, limit - len(internal_rows))
             external_rows = await _read_credibility_collection(
                 TrainingDataService.CREDIBILITY_EXTERNAL_COLLECTION,
                 external_query,
                 remaining_after_internal,
             )
-            remaining_after_external = max(0, remaining_after_internal - len(external_rows))
+            remaining_after_external = None if remaining_after_internal is None else max(0, remaining_after_internal - len(external_rows))
             legacy_rows = await _read_credibility_collection(
                 TrainingDataService.CREDIBILITY_INTERNAL_COLLECTION,
                 legacy_external_query,
