@@ -39,8 +39,8 @@ class ModelFineTuningService:
     }
     
     CREDIBILITY_LABEL_MAP = {
-        "REAL": 0,
-        "FAKE": 1,
+        "FAKE": 0,
+        "REAL": 1,
     }
     
     @staticmethod
@@ -250,7 +250,7 @@ class ModelFineTuningService:
         training_data = await TrainingDataService.get_sentiment_training_data(
             db,
             include_used=False,
-            limit=5000,
+            limit=None,
             data_source=data_source,
         )
         
@@ -628,7 +628,7 @@ class ModelFineTuningService:
             db,
             status_filter=["verified", "multi_reported"],
             include_used=False,
-            limit=5000,
+            limit=None,
             data_source=data_source,
         )
         
