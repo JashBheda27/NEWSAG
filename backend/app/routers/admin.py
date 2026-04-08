@@ -90,9 +90,13 @@ def _normalize_sentiment_label(value: Optional[str]) -> Optional[str]:
 
 
 def _normalize_credibility_label(value: Optional[str]) -> Optional[str]:
-    if not value:
+    if value is None or str(value).strip() == "":
         return None
     normalized = str(value).strip().upper()
+    if normalized in ["0", "FALSE", "NO", "FAKE"]:
+        return "FAKE"
+    if normalized in ["1", "TRUE", "YES", "REAL"]:
+        return "REAL"
     if normalized in ["REAL", "TRUE", "LEGIT", "RELIABLE"]:
         return "REAL"
     if normalized in ["FAKE", "FALSE", "MISLEADING", "POTENTIALLY MISLEADING"]:
@@ -239,7 +243,7 @@ def _build_csv_validation_result(
                 )
             if not row_valid:
                 invalid_rows += 1
-                issues.append({"row": index + 2, "error": "Missing credibility title/text or REAL/FAKE label"})
+                issues.append({"row": index + 2, "error": "Missing credibility title/text or REAL/FAKE label (or 1/0)"})
             else:
                 valid_rows += 1
 
@@ -536,7 +540,7 @@ async def import_training_csv(
             final_label = _normalize_credibility_label(_extract_row_value(row, mapping, "label"))
             if not final_label:
                 skipped += 1
-                errors.append({"row": index + 2, "error": "Credibility rows require a REAL or FAKE label"})
+                errors.append({"row": index + 2, "error": "Credibility rows require a REAL/FAKE label or binary 1/0 label"})
                 continue
 
             documents.append(
