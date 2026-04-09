@@ -68,6 +68,8 @@ const mapStatus = (status: JobStatus): 'running' | 'completed' | 'failed' | 'ski
 };
 
 export const ModelTuning: React.FC<ModelTuningProps> = ({ showNotification }) => {
+  const csvInputRef = useRef<HTMLInputElement | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [tuning, setTuning] = useState<ModelType | null>(null);
   const [cancelling, setCancelling] = useState<string | null>(null);
@@ -881,9 +883,25 @@ export const ModelTuning: React.FC<ModelTuningProps> = ({ showNotification }) =>
 
             <label className="space-y-1 text-xs flex-1">
               <span className="text-slate-600 dark:text-slate-400">CSV file</span>
+              <div className="flex w-full overflow-hidden rounded border border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-700">
+                <button
+                  type="button"
+                  onClick={() => csvInputRef.current?.click()}
+                  className="shrink-0 border-r border-slate-300 px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-600"
+                >
+                  Choose File
+                </button>
+                <div className="flex min-w-0 flex-1 items-center px-3 py-1.5 text-slate-500 dark:text-slate-300">
+                  <span className="truncate">{csvFile ? csvFile.name : 'No file chosen'}</span>
+                </div>
+              </div>
               <input
+                ref={csvInputRef}
                 type="file"
                 accept=".csv,text/csv"
+                onClick={(e) => {
+                  e.currentTarget.value = '';
+                }}
                 onChange={(e) => {
                   const file = e.target.files?.[0] || null;
                   setCsvFile(file);
@@ -891,11 +909,8 @@ export const ModelTuning: React.FC<ModelTuningProps> = ({ showNotification }) =>
                   setCsvMapping({});
                   setCsvResultTab('rows');
                 }}
-                className="w-full px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                className="hidden"
               />
-              <p className="text-xs text-slate-600 dark:text-slate-400">
-                {csvFile ? `Selected: ${csvFile.name}` : 'No file selected'}
-              </p>
               {csvModel === 'credibility' && (
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   Credibility labels can be REAL/FAKE or 1/0. Binary uploads are normalized before validation and training.
