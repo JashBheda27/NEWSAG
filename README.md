@@ -1,263 +1,332 @@
-# NewsAura
+# 🌟 NewsAura
 
-NewsAura is a full-stack, AI-augmented news reader designed for personalized discovery, saving and lightweight analytics. It combines a React + Tailwind frontend with a Python FastAPI backend, stores user content and activity in MongoDB, and uses Redis for caching. The app integrates with external news sources and provides summarization and sentiment insights to improve reading workflows.
+![Build](https://img.shields.io/badge/build-local%20only-lightgrey)
+![License](https://img.shields.io/badge/license-MIT-green)
+![React](https://img.shields.io/badge/React-19.2.0-61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.9.3-3178C6)
+![Vite](https://img.shields.io/badge/Vite-7.2.4-646CFF)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4.18-38B2AC)
+![FastAPI](https://img.shields.io/badge/FastAPI-backend-009688)
+![MongoDB](https://img.shields.io/badge/MongoDB-database-47A248)
+![Redis](https://img.shields.io/badge/Redis-cache-DC382D)
 
----
+AI-augmented news reader for personalized discovery, saving, summaries, sentiment, credibility checks, and lightweight analytics.
 
-## 1. Project Overview
+## 🧭 Project Overview
 
-- What NewsAura is
-  - A web application for browsing, saving, and summarizing news. It provides curated topic feeds, the ability to bookmark or save articles to read later, and AI-powered summaries and sentiment signals.
+NewsAura is a full-stack news workspace that helps users browse curated topic feeds, save articles, read later, and understand stories faster with server-side summaries, sentiment labels, and a chatbot assistant. It exists to cut down the time spent sifting through large volumes of news while keeping everything tied to a user profile, reading history, and admin review workflow.
 
-- Core problem it solves
-  - Reduces friction of consuming many daily news stories by surfacing topic-based feeds, enabling users to save articles for later, and offering quick AI summaries and sentiment/context to speed comprehension.
+It is built for readers, analysts, journalists, researchers, and admins who need a more organized way to follow news, verify quality signals, and measure engagement over time.
 
-- High-level feature list
-  - Topic/category-based news feeds
-  - Search and suggestion features
-  - Bookmark and Read Later lists per user
-  - AI-generated article summaries (server-side)
-  - Sentiment extraction for saved items
-  - Profile analytics (articles read, saved counts, weekly activity, top category, engagement scoring)
-  - Light caching with Redis to reduce external API load
+## ✨ Features
 
----
+- 📰 Topic-based news feeds with search, suggestions, and trending headlines.
+- 🔖 Bookmarks and read-later lists backed by authenticated user storage.
+- 🧠 Server-side article summaries with translation support.
+- 😊 ML-powered sentiment analysis for saved content and feedback flows.
+- ✅ Credibility review tools for report queues and fake-news classification support.
+- 💬 A chatbot assistant that can use saved context and local LLM responses.
+- 🔊 Text-to-speech generation for article content and summaries.
+- 📈 Profile analytics with streaks, weekly activity, top categories, and engagement scoring.
+- 🛠️ Admin tuning tools for importing training data, reviewing jobs, and tracking metrics.
+- ⚡ Redis-backed caching and GNews hit tracking for faster, cheaper feed delivery.
+- 🔐 Clerk-based authentication and route protection for user and admin features.
 
-## 2. Tech Stack
+## 🛠️ Tech Stack
 
-- Frontend
-  - React (TypeScript), Vite, Tailwind CSS
+### Frontend
 
-- Backend
-  - Python, FastAPI, Uvicorn (ASGI)
+- ⚛️ React 19.2.0 for the UI shell and route-based pages.
+- 🟦 TypeScript 5.9.3 for typed components, services, and models.
+- ⚡ Vite 7.2.4 for local development and production builds.
+- 🎨 Tailwind CSS 3.4.18 for styling.
+- 🎞️ Framer Motion for animated UI transitions.
+- 📊 Recharts for profile and analytics visualizations.
+- 🔐 Clerk React for sign-in and session handling.
+- 🧭 React Router for navigation and protected routes.
 
-- Database
-  - MongoDB for persistent storage of bookmarks, read-later items, summary logs and user-driven content
+### Backend
 
-- Caching
-  - Redis (used for cache / hit counters / performance — see `backend/app/core/cache.py` and project docs)
+- 🐍 Python with FastAPI for the API layer.
+- 🚀 Uvicorn as the ASGI server.
+- 🧰 Motor for async MongoDB access.
+- 🧠 Transformers and PyTorch for sentiment and credibility ML services.
+- 🤖 Ollama for chatbot responses.
+- 🔊 Amazon Polly integration for TTS.
+- 🌍 Deep-translator for translation support.
 
-- External APIs
-  - GNews (integration documentation and config files exist in the repo)
+### Database
 
-- Authentication
-  - Clerk (project contains setup docs and references to Clerk integration)
+- 🍃 MongoDB for bookmarks, read later, comments, summaries, feedback, audit logs, training data, and profile analytics.
+- 🧠 Redis for caching, hit counters, and request-response acceleration.
 
----
+### DevOps
 
-## 3. System Architecture
+- 🧪 Pytest for backend verification.
+- 🧹 ESLint and TypeScript checks for frontend quality.
+- 📝 Structured logging and startup index creation in the backend.
+- 🔄 Environment-driven configuration through `.env` files.
+- 🚫 No Docker or CI workflow is committed in this repository scan; the build badge above is informational only.
 
-High level flow:
+## 📁 Project Structure
 
-  Frontend (React) <--HTTP/JSON--> FastAPI backend <--(optional cache)--> External News API (GNews)
-
-- The frontend calls backend endpoints (news feeds, bookmarks, read-later, summaries, analytics).
-- The backend queries external news APIs and may cache results in Redis to reduce request volume and improve latency.
-- User actions (bookmark/read-later) are persisted in MongoDB; summary and sentiment logs are also persisted to support analytics.
-
-ASCII diagram
-
-  [Browser/React] --(REST)--> [FastAPI backend]
-        |                         |---> [GNews API]
-        |                         |---> [Redis cache]
-        |                         \---> [MongoDB]
-
-- Redis role: caches frequently-requested feed responses and hits counters (improves throughput and reduces external API calls).
-- MongoDB role: primary persistent store for user data and event logs.
-- Rate limiting strategy: the codebase does not include an explicit, application-level rate limiter. For production deployments, a Redis-backed rate limiter or API gateway should be used to protect external API keys and backend endpoints.
-
----
-
-## 4. Backend Architecture
-
-Overview
-- The backend is a FastAPI application with a modular layout under `backend/app/`.
-
-Major modules
-- `routers/` — HTTP endpoints grouped by feature (news, bookmarks, read_laters, profile analytics, sentiments, summary, etc.). Each router returns JSON responses and relies on services for core logic.
-- `services/` — Domain logic and integrations. Notable modules include the news integration, summarizer, and `sentiment_ml` for sentiment processing.
-- `core/` — Core cross-cutting utilities such as `auth.py` (Clerk authentication helpers), `cache.py` (Redis connection and cache helpers), `config.py` (configuration loader), and `database.py` (MongoDB connection factory).
-- `models/` — Pydantic models for request/response and Mongo objects (bookmarks, read_later, summary logs, etc.).
-
-GNews integration
-- The backend fetches topic-based or search-based news from GNews (integration details and keys are referenced in repository docs). Results are normalized and, where applicable, stored or summarized.
-
-Redis caching
-- Used to cache feed responses and counters. Cache helpers live under `core` and are used by services/routers to reduce repeated external API calls.
-
-Sentiment analysis
-- The `sentiment_ml` service/module is responsible for extracting sentiment labels from saved content; those labels are stored alongside bookmarks/read-later entries and used in profile analytics.
-
-Summaries
-- Summaries are generated on the backend (summarizer service). The frontend requests an article summary and the backend either uses cached summaries or generates a new one via the summarizer implementation.
-
-Analytics & engagement
-- Profile analytics are computed server-side (see `routers/profile.py`). The endpoint aggregates counts from MongoDB (articles read, bookmarks, read-later), computes weekly activity by created_at timestamps, builds a category breakdown, and calculates an `engagement_score` defined as:
-
-  engagement_score = articles_read + (bookmarks_count * 2) + read_later_count
-
-  The engagement score maps to labels such as “Casual Reader”, “Active Reader”, and “Power Reader”.
-
----
-
-## 5. Frontend Architecture
-
-Overview
-- Located under `frontend/`, the UI is a TypeScript React app scaffolded with Vite and styled using Tailwind CSS.
-
-Key structure
-- `src/pages/` — Top-level routes/pages (`Home`, `Bookmarks`, `ReadLater`, `Profile`).
-- `src/components/` — Reusable UI components (layout, news cards, modals, sentiment badge, toast, etc.).
-- `src/services/` — HTTP client wrappers (`api.ts`) and typed service modules (`news.service.ts`, `user.service.ts`) that call backend endpoints.
-- `src/utils/` — Utility functions (time formatting, text helpers).
-
-State management
-- Uses component state and local hooks (no external global state manager required). Data is fetched from typed `userService` and `newsService` modules.
-
-API integration pattern
-- Services call backend endpoints via a shared `api` client; responses map to TypeScript interfaces defined in `src/types.ts`.
-
----
-
-## 6. Search & Discovery Flow
-
-- Category-based fetching: Frontend requests category/topic endpoints; backend queries the external news API (GNews) and returns normalized articles.
-- Keyword search: Search queries are passed to backend endpoints which proxy search to the external API and return paged or limited results.
-- Search suggestions: A lightweight suggestions service exists to return cached or derived suggestions (see `news.service.ts` and `api` utilities).
-- Cache-first strategy: Feed requests can be served from Redis cache first when available to reduce external API calls and improve local responsiveness.
-
----
-
-## 7. User Interaction Flow
-
-- Reading articles: Users click through to the original article (external link) or open an AI summary modal generated by the backend summarizer.
-- AI summaries: Triggered by the frontend, generated server-side, and optionally cached.
-- Bookmarking: User bookmarks are posted to `/api/bookmarks/` and persisted in MongoDB. Bookmarks include article metadata and optional category.
-- Read Later: Similar to bookmarks; saved items include metadata and timestamps.
-- Comments: The repo contains comment-related routers and frontend components — comments are persisted and fetched per-article.
-
----
-
-## 8. Analytics & Profile Dashboard
-
-- What is tracked
-  - Articles read (summary log entries)
-  - Bookmarks count
-  - Read Later count
-  - Weekly activity (counts by day)
-  - Top category (computed from saved bookmarks/read-later category fields)
-  - Sentiment breakdown for saved items (Positive/Neutral/Negative)
-
-- How metrics are calculated
-  - Aggregated server-side from MongoDB documents and timestamp fields (created_at). Top category is computed by counting categories across bookmark and read-later collections.
-
-- Engagement scoring
-  - engagement_score = articles_read + (bookmarks_count * 2) + read_later_count
-  - Labels are derived from score ranges (e.g., “Power Reader” for high engagement).
-
----
-
-## 9. Folder Structure
-
-Top-level (abridged):
-
-```
-NEWSAG/
-├─ backend/
-│  ├─ app/
-│  │  ├─ routers/         # API endpoints (news, bookmarks, read_laters, profile, sentiments, summary, ...)
-│  │  ├─ services/        # Business logic (news integration, summarizer, sentiment)
-│  │  ├─ core/            # auth, cache, config, database helpers
-│  │  ├─ models/          # Pydantic models for requests/responses and Mongo documents
-│  │  └─ main.py          # FastAPI application entrypoint
-│  └─ requirements.txt
-├─ frontend/
-│  ├─ src/
-│  │  ├─ pages/           # Home, Profile, Bookmarks, ReadLater
-│  │  ├─ components/      # UI building blocks
-│  │  ├─ services/        # API clients and typed services
-│  │  ├─ utils/           # helper functions
-│  │  └─ index.css        # global styles + Tailwind setup
-│  ├─ package.json
-│  └─ vite.config.ts
-└─ docs and project-level .md files (setup guides, migration notes)
+```text
+NEWSAG/                           # Monorepo root for the full-stack NewsAura app
+├── backend/                      # FastAPI backend, ML services, tests, and utilities
+│   ├── app/                      # Application source code
+│   │   ├── main.py              # FastAPI entrypoint, middleware, and router wiring
+│   │   ├── core/                # Auth, cache, config, logging, database, and indexes
+│   │   ├── models/              # Pydantic schemas and Mongo-facing models
+│   │   ├── routers/             # API routes for news, summaries, bookmarks, admin, and more
+│   │   └── services/            # Business logic, ML pipelines, chatbot, TTS, and integrations
+│   ├── tests/                   # Pytest coverage for policy, metrics, streaks, and imports
+│   ├── scripts/                 # Maintenance and migration helpers
+│   └── requirements.txt         # Python dependency list
+├── frontend/                     # React + TypeScript app
+│   ├── src/                      # UI source code
+│   │   ├── app/                 # App shell, router, and layout bootstrap
+│   │   ├── components/          # Shared UI, layout, news, profile, and utility components
+│   │   ├── hooks/               # Reusable React hooks
+│   │   ├── lib/                 # Notification and helper utilities
+│   │   ├── pages/               # Home, login, profile, bookmarks, admin, and tooling screens
+│   │   ├── services/            # Axios API clients and feature-specific service wrappers
+│   │   ├── utils/               # Constants and helper functions
+│   │   ├── index.css            # Global styling and Tailwind entry styles
+│   │   └── main.tsx             # Frontend bootstrap and Clerk provider setup
+│   ├── public/                   # Static assets served by Vite
+│   ├── package.json              # Frontend scripts and dependencies
+│   ├── vite.config.ts            # Vite build and dev server config
+│   └── tailwind.config.js        # Tailwind theme configuration
+├── *.md                          # Project guides, feature notes, migration docs, and troubleshooting notes
+└── diagnose.py                   # Local diagnostic helper
 ```
 
-Short explanations
-- `backend/app/routers` — every public API route is grouped here (e.g., `profile.py` contains analytics aggregations).
-- `backend/app/services` — contains specialized modules (summarizer, sentiment_ml, news_service) that perform external API calls and processing.
-- `frontend/src/services` — client-side service wrappers used by pages/components to fetch typed data.
+## ⚙️ Prerequisites
 
----
+- 🐍 Python 3.9 or higher.
+- 🟩 Node.js 18.0.0 or higher.
+- 📦 npm 8.0.0 or higher.
+- 🧰 Git 2.0 or higher.
+- 🍃 MongoDB instance or cluster.
+- 🧠 Redis server for caching and hit counters.
+- 🔐 Clerk application for authentication.
+- 📰 GNews API key for news retrieval.
+- 🤖 Optional local Ollama server for the chatbot.
+- ☁️ Optional AWS credentials if you want Amazon Polly TTS.
 
-## 10. Environment Configuration
+## 🚀 Getting Started
 
-Required environment variables (inferred from integrations and code structure):
+### 1) Clone the repository
 
-```
-# MongoDB connection string
-MONGODB_URI=mongodb://localhost:27017/newsag
-
-# Redis connection (if using redis caching)
-REDIS_URL=redis://localhost:6379/0
-
-# External news API
-GNEWS_API_KEY=your_gnews_api_key_here
-
-# Clerk (if using Clerk authentication — see Clerk docs in repo)
-CLERK_FRONTEND_API=your_clerk_frontend_api
-CLERK_API_KEY=your_clerk_api_key
-
-# Optional: backend host/port
-BACKEND_HOST=0.0.0.0
-BACKEND_PORT=8000
+```bash
+git clone <repository-url>
+cd NEWSAG
 ```
 
-Placeholders should be stored in a `.env` file read by backend `config.py` or injected into your environment when running locally. Do not commit real keys.
-
----
-
-## 11. Performance & Scalability Considerations
-
-- Redis caching strategy: Cache high-traffic feed responses and frequently-requested summaries; use short TTLs for freshness.
-- API hit protection: There is no explicit rate-limiter in the codebase; a production deployment should add a Redis-backed rate limiter or API gateway to protect external API usage.
-- ML model loading: Sentiment and summarization components are implemented server-side; ensure models are loaded lazily and reused across requests to avoid repeated initialization cost.
-- Async handling: The FastAPI code uses async Mongo and async endpoints; this enables high concurrency when combined with an ASGI server (uvicorn) and proper connection pooling.
-
----
-
-## 12. Security Considerations
-
-- Authentication: Clerk is used for user auth; tokens and session checks are validated in `core/auth.py`.
-- Token validation: Backend routes call helper functions to validate the authenticated user before allowing writes to user-scoped collections.
-- Rate-limit safety: Not implemented; recommend a Redis-based limiter.
-- Data isolation: All user-scoped queries include `user_id` filters to avoid cross-user data leaks.
-
----
-
-## 13. Future Enhancements (future scope — not implemented)
-
-- Add server-side rate limiting and throttling middleware.
-- Implement background tasks for heavy summarization work (Celery/RQ) to avoid blocking request handlers.
-- Add paged, incremental loading for very large bookmark/read-later lists.
-- Add richer personalization and recommendation signals (off-device ML or model-service architecture).
-
----
-
-## 14. How to Run the Project (Local development)
-
-Backend (Python/FastAPI)
-
-1. Create a Python virtual environment and install requirements:
+### 2) Configure the backend
 
 ```bash
 cd backend
 python -m venv .venv
-source .venv/Scripts/activate   # Windows: .venv\Scripts\activate
+.venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-2. Provide environment variables (example `.env`) and start the server:
+Create a `.env` file in `backend/` with the variables listed below, then start the API:
+
+```bash
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Backend URLs:
+
+- API: http://localhost:8000
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
+- Health: http://localhost:8000/health
+
+### 3) Configure the frontend
+
+```bash
+cd ../frontend
+npm install
+```
+
+Create a `.env` file in `frontend/` with the frontend variables listed below, then start the app:
+
+```bash
+npm run dev
+```
+
+Frontend URL:
+
+- App: http://localhost:5173
+
+### 4) Optional verification commands
+
+```bash
+# Frontend build and lint
+cd frontend
+npm run build
+npm run lint
+
+# Backend tests
+cd ../backend
+pytest
+```
+
+## 🔐 Environment Variables
+
+### Backend
+
+| Variable | Required | Example | Description |
+|---|---:|---|---|
+| `HOST` | No | `127.0.0.1` | Backend bind host. |
+| `PORT` | No | `8000` | Backend bind port. |
+| `MONGO_URI` | Yes | `mongodb://localhost:27017/newsaura` | MongoDB connection string. |
+| `REDIS_URL` | No | `redis://localhost:6379` | Redis cache connection string. |
+| `CLERK_ISSUER` | Yes | `https://your-clerk-domain.clerk.accounts.dev` | Clerk issuer used for JWT validation. |
+| `CLERK_AUDIENCE` | Yes | `your-clerk-audience` | Expected JWT audience. |
+| `CLERK_API_KEY` | Yes for admin features | `sk_test_...` | Clerk Admin API key. |
+| `ADMIN_USER_IDS` | No | `user_123,user_456` | Comma-separated admin allowlist. |
+| `CLERK_ADMIN_METADATA_KEY` | No | `admin` | Metadata key used for admin checks. |
+| `CLERK_ADMIN_ORG_ROLES` | No | `admin,owner` | Clerk org roles that grant admin access. |
+| `JWKS_FAILURE_COOLDOWN_SECONDS` | No | `30` | JWKS retry cooldown after auth provider errors. |
+| `GNEWS_API_KEY` | Yes | `your_gnews_key` | GNews API key used for news fetching. |
+| `CACHE_TTL_NEWS` | No | `900` | Base news cache TTL in seconds. |
+| `CACHE_TTL_NEWS_TOPIC` | No | `432000` | Topic cache TTL in seconds. |
+| `GNEWS_REFRESH_INTERVAL_SEC` | No | `900` | Refresh interval for GNews data. |
+| `OLLAMA_BASE_URL` | No | `http://localhost:11434` | Local Ollama server URL. |
+| `OLLAMA_MODEL` | No | `llama3.2:1b` | Ollama model name used by the chatbot. |
+| `OLLAMA_TIMEOUT` | No | `90` | Ollama request timeout in seconds. |
+| `LOG_LEVEL` | No | `INFO` | Backend log level. |
+| `LOG_FILE` | No | `logs/app.log` | Log file path. |
+| `AWS_ACCESS_KEY_ID` | Optional | `AKIA...` | AWS credential for Polly. |
+| `AWS_SECRET_ACCESS_KEY` | Optional | `...` | AWS secret key for Polly. |
+| `AWS_REGION` | Optional | `ap-south-1` | AWS region for Polly. |
+| `CLERK_API_BASE` | No | `https://api.clerk.com/v1` | Clerk API base URL. |
+| `CLERK_COUNT_CACHE_TTL` | No | `30` | Clerk user count cache TTL. |
+
+### Frontend
+
+| Variable | Required | Example | Description |
+|---|---:|---|---|
+| `VITE_API_URL` | No | `http://localhost:8000` | Backend base URL for the frontend API client. |
+| `VITE_CLERK_PUBLISHABLE_KEY` | Yes | `pk_test_...` | Clerk publishable key used by the React app. |
+| `VITE_ENABLE_CHATBOT` | No | `true` | Optional feature flag from the example config. |
+| `VITE_ENABLE_DARK_MODE` | No | `true` | Optional feature flag from the example config. |
+| `VITE_ENABLE_ANALYTICS` | No | `true` | Optional feature flag from the example config. |
+| `VITE_REDIS_URL` | No | `redis://localhost:6379` | Present in the example config; not currently consumed by the frontend code. |
+
+## 📡 API Reference
+
+Base URL: `http://localhost:8000/api`
+
+| Method | Endpoint | Description | Auth required |
+|---|---|---|---|
+| GET | `/news/suggestions` | Search suggestions and discovery results. | No |
+| GET | `/news/trending/headlines` | Trending headlines feed. | No |
+| GET | `/news/topic/{topic}` | Topic-specific news feed. | No |
+| GET | `/news/{category}` | Category feed with cached articles. | No |
+| GET | `/news/status/hits` | GNews hit counter status. | No |
+| POST | `/news/admin/reset-hits` | Reset hit counter. | Yes, admin |
+| POST | `/news/refresh/{category}` | Refresh a category cache. | Yes, admin |
+| POST | `/news/refresh-all` | Refresh all cached categories. | Yes, admin |
+| GET | `/news/action-status` | Cached user action status for article keys. | Yes |
+| POST | `/news/rate` | Rate an article for analytics. | Yes |
+| POST | `/news/report` | Report a problematic article. | Yes |
+| GET | `/summary/languages` | Supported summary translation languages. | No |
+| POST | `/summary/` | Generate or fetch an article summary. | Yes, optional user context |
+| POST | `/sentiment/` | Analyze text sentiment. | No |
+| POST | `/comments/` | Add a comment to an article. | Yes |
+| GET | `/comments/{article_id}` | Fetch article comments. | No |
+| DELETE | `/comments/{comment_id}` | Delete a comment owned by the user. | Yes |
+| POST | `/bookmarks/` | Add a bookmark. | Yes |
+| GET | `/bookmarks/` | List the user’s bookmarks. | Yes |
+| DELETE | `/bookmarks/` | Delete all bookmarks or a selected bookmark set. | Yes |
+| DELETE | `/bookmarks/{bookmark_id}` | Delete one bookmark. | Yes |
+| POST | `/read-later/` | Add a read-later item. | Yes |
+| GET | `/read-later/` | List the user’s read-later items. | Yes |
+| DELETE | `/read-later/` | Delete all read-later items or a selected item set. | Yes |
+| DELETE | `/read-later/{item_id}` | Delete one read-later item. | Yes |
+| POST | `/feedback/` | Submit feedback. | No |
+| POST | `/profile/activity/read` | Log a read event. | Yes |
+| GET | `/profile/stats` | User stats summary. | Yes |
+| GET | `/profile/analytics` | Detailed profile analytics and badge data. | Yes |
+| POST | `/chat/message` | Send a chatbot message. | Yes, optional user context |
+| GET | `/chat/history` | Fetch chat history. | Yes, optional user context |
+| GET | `/tts/languages` | Supported TTS languages. | No |
+| POST | `/tts/generate` | Generate audio with Polly. | Yes |
+| GET | `/tts/usage` | TTS usage stats. | Yes, admin |
+| GET | `/tts/health` | TTS service health. | No |
+| POST | `/admin/tuning/import/{model_type}` | Import training data CSV. | Yes, admin |
+| POST | `/admin/tuning/import/validate/{model_type}` | Validate training CSV shape. | Yes, admin |
+| GET | `/admin/training/stats` | Training data statistics. | Yes, admin |
+| POST | `/admin/tuning/start` | Start a fine-tuning job. | Yes, admin |
+| POST | `/admin/tuning/cancel/{job_id}` | Cancel a running tuning job. | Yes, admin |
+| DELETE | `/admin/tuning/jobs/{job_id}` | Delete a tuning job record. | Yes, admin |
+| GET | `/admin/tuning/jobs` | List tuning jobs. | Yes, admin |
+| GET | `/admin/tuning/logs/{job_id}` | Stream or fetch tuning logs. | Yes, admin |
+| GET | `/admin/tuning/metrics/{model_type}` | Model performance metrics. | Yes, admin |
+| GET | `/admin/tuning/data-quality/{model_type}` | Data quality report. | Yes, admin |
+| GET | `/admin/tuning/versions/{model_type}` | Model version history. | Yes, admin |
+| GET | `/admin/reports/pending` | Pending credibility reports. | Yes, admin |
+| POST | `/admin/reports/{report_id}/verify` | Verify a credibility report. | Yes, admin |
+| GET | `/admin/feedback/sentiment` | Sentiment feedback collection. | Yes, admin |
+| GET | `/admin/sentiment/trends` | Sentiment trends over time. | Yes, admin |
+| GET | `/admin/sentiment/heatmap` | Sentiment heatmap data. | Yes, admin |
+| PATCH | `/admin/feedback/sentiment/{feedback_id}/override-label` | Override a sentiment label. | Yes, admin |
+| PATCH | `/admin/feedback/sentiment/{feedback_id}/flag` | Flag suspicious sentiment feedback. | Yes, admin |
+| POST | `/admin/feedback/sentiment/{feedback_id}/reanalyze` | Re-analyze a feedback item. | Yes, admin |
+| GET | `/admin/sentiment/anomaly-config` | Get anomaly detection config. | Yes, admin |
+| PUT | `/admin/sentiment/anomaly-config` | Update anomaly detection config. | Yes, admin |
+| GET | `/admin/sentiment/anomalies` | Detected sentiment anomalies. | Yes, admin |
+| GET | `/admin/audit/logs` | Admin audit log entries. | Yes, admin |
+| GET | `/admin/audit/activity-summary` | Admin activity summary. | Yes, admin |
+| GET | `/admin/metrics` | System-wide metrics. | Yes, admin |
+| GET | `/admin/metrics/hits` | GNews hit metrics. | Yes, admin |
+| GET | `/admin/clerk-user-count` | Total Clerk user count. | Yes, admin |
+| GET | `/admin/system/status` | System status snapshot. | Yes, admin |
+
+## 🖼️ Screenshots
+
+Add UI screenshots here after capturing the home feed, article viewer, bookmarks, read later, profile analytics, and admin dashboard.
+
+## 🧪 Running Tests
+
+### Backend
+
+```bash
+cd backend
+pytest
+pytest --cov=app tests/
+pytest tests/test_badge_policy.py -v
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm run build
+npm run lint
+npm run type-check
+```
+
+The repository includes a frontend component test at `frontend/src/pages/Profile.test.tsx`, but no dedicated frontend test script is currently defined in `frontend/package.json`.
+
+## 🤝 Contributing
+
+1. Fork the repository.
+2. Create a branch for your change.
+3. Make focused commits with clear messages.
+4. Run the relevant backend or frontend checks before opening a pull request.
+5. Open a PR and describe what changed, why it changed, and how you verified it.
+
+## 📄 License
+
+No LICENSE file was present in the repository scan, so MIT is the default recommendation for this project.
+
+If you want, add a `LICENSE` file at the repository root and update this section to match it.
 
 ```bash
 export MONGODB_URI='mongodb://localhost:27017/newsag'
