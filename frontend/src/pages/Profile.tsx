@@ -179,7 +179,7 @@ export const Profile: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 py-0 dark:bg-slate-900">
       <div className="mx-auto w-full max-w-[1600px] px-3 md:px-6 xl:px-8">
-        <section className="grid grid-cols-1 gap-4 xl:grid-cols-12">
+        <section className="grid grid-cols-1 gap-4 xl:grid-cols-12 xl:items-stretch">
           <div className="space-y-4 xl:col-span-8">
             <div className="overflow-hidden rounded-3xl border border-slate-200/70 bg-white shadow-xl shadow-indigo-100/30 dark:border-slate-700/80 dark:bg-slate-800 dark:shadow-slate-950/50">
               <div className="h-16 bg-gradient-to-r from-indigo-600/85 via-indigo-500/80 to-violet-500/80 md:h-20" />
@@ -259,57 +259,32 @@ export const Profile: React.FC = () => {
               <ProfileAnalyticsCharts weeklyActivity={weeklyActivity} categoryData={categoryData} trendLabel={trendLabel} />
             </Suspense>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900/60">
-              <h3 className="mb-3 text-sm font-black text-slate-900 dark:text-white">Recent Activity</h3>
-
-              {recentActivity.length ? (
-                <div className="space-y-2">
-                  {recentActivity.map((item) => (
-                    <Link
-                      key={`${item.url}-${item.timestamp}`}
-                      to={`/article-viewer?url=${encodeURIComponent(item.url)}&title=${encodeURIComponent(item.title)}&source=${encodeURIComponent(item.source || '')}`}
-                      className="group flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-2.5 transition-all hover:-translate-y-0.5 hover:border-indigo-200 hover:bg-indigo-50/40 dark:border-slate-700 dark:hover:border-indigo-500/50 dark:hover:bg-indigo-500/10"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-bold text-slate-800 group-hover:text-[#6C63FF] dark:text-slate-100">{item.title}</p>
-                        <div className="mt-1 flex items-center gap-2 text-xs">
-                          <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold capitalize text-slate-600 dark:bg-slate-800 dark:text-slate-300">{item.category}</span>
-                          <span className="text-slate-400 dark:text-slate-500"><RelativeTime timestamp={item.timestamp} /></span>
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">No recent reading activity yet.</p>
-              )}
-            </div>
           </div>
 
-          <aside className="space-y-4 xl:col-span-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-1">
-              <div className="rounded-2xl border border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50 p-4 dark:border-orange-600/40 dark:from-orange-500/10 dark:to-amber-500/10">
-                <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-orange-500">Reading Streak</p>
-                <p className="flex items-center gap-2 text-3xl font-black text-slate-900 dark:text-white">
-                  <Flame className="text-orange-500" size={24} />
+          <aside className="space-y-4 xl:col-span-4 xl:flex xl:min-h-0 xl:flex-col">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50 p-2.5 dark:border-orange-600/40 dark:from-orange-500/10 dark:to-amber-500/10">
+                <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-orange-500">Reading Streak</p>
+                <p className="flex items-center gap-1.5 text-[30px] font-black leading-none text-slate-900 dark:text-white">
+                  <Flame className="text-orange-500" size={18} />
                   {tier4?.reading_streak.current ?? 0} days
                 </p>
-                <p className="mt-1 text-xs font-semibold text-slate-600 dark:text-slate-300">Best streak: {tier4?.reading_streak.best ?? 0} days</p>
+                <p className="mt-1 text-[11px] font-semibold text-slate-600 dark:text-slate-300">Best streak: {tier4?.reading_streak.best ?? 0} days</p>
               </div>
 
-              <div className="rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-50 to-cyan-50 p-4 dark:border-sky-600/40 dark:from-sky-500/10 dark:to-cyan-500/10">
-                <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-sky-600">Reading Time Estimate</p>
-                <p className="flex items-center gap-2 text-3xl font-black text-slate-900 dark:text-white">
-                  <Timer className="text-sky-500" size={24} />
+              <div className="rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-50 to-cyan-50 p-2.5 dark:border-sky-600/40 dark:from-sky-500/10 dark:to-cyan-500/10">
+                <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-sky-600">Reading Time Estimate</p>
+                <p className="flex items-center gap-1.5 text-[30px] font-black leading-none text-slate-900 dark:text-white">
+                  <Timer className="text-sky-500" size={18} />
                   ~{tier4?.reading_time_estimate_minutes_week ?? 0} min
                 </p>
-                <p className="mt-1 text-xs font-semibold text-slate-600 dark:text-slate-300">Estimated this week</p>
+                <p className="mt-1 text-[11px] font-semibold text-slate-600 dark:text-slate-300">Estimated this week</p>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 to-fuchsia-50 p-4 dark:border-violet-600/40 dark:from-violet-500/10 dark:to-fuchsia-500/10">
-              <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-violet-600">Most Read Category</p>
-              <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-sm font-black capitalize text-violet-700 shadow-sm dark:bg-slate-900 dark:text-violet-300">
+            <div className="rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 to-fuchsia-50 p-3 dark:border-violet-600/40 dark:from-violet-500/10 dark:to-fuchsia-500/10">
+              <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-violet-600">Most Read Category</p>
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-black capitalize text-violet-700 shadow-sm dark:bg-slate-900 dark:text-violet-300">
                 <Layers size={14} />
                 <span>{tier4?.most_read_category || tier2?.top_category || 'general'}</span>
               </div>
@@ -343,6 +318,32 @@ export const Profile: React.FC = () => {
                   Next: {tier4?.badge.next_tier || 'Top tier reached'}
                 </p>
               </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900/60 xl:flex xl:min-h-0 xl:flex-1 xl:flex-col">
+              <h3 className="text-sm font-black text-slate-900 dark:text-white">Recent Activity</h3>
+
+              {recentActivity.length ? (
+                <div className="mt-3 h-[186px] space-y-2 overflow-y-auto pr-1">
+                  {recentActivity.map((item) => (
+                    <Link
+                      key={`${item.url}-${item.timestamp}`}
+                      to={`/article-viewer?url=${encodeURIComponent(item.url)}&title=${encodeURIComponent(item.title)}&source=${encodeURIComponent(item.source || '')}`}
+                      className="group flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-2.5 transition-all hover:-translate-y-0.5 hover:border-indigo-200 hover:bg-indigo-50/40 dark:border-slate-700 dark:hover:border-indigo-500/50 dark:hover:bg-indigo-500/10"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold text-slate-800 group-hover:text-[#6C63FF] dark:text-slate-100">{item.title}</p>
+                        <div className="mt-1 flex items-center gap-2 text-xs">
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold capitalize text-slate-600 dark:bg-slate-800 dark:text-slate-300">{item.category}</span>
+                          <span className="text-slate-400 dark:text-slate-500"><RelativeTime timestamp={item.timestamp} /></span>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-3 text-sm font-medium text-slate-500 dark:text-slate-400">No recent reading activity yet.</p>
+              )}
             </div>
           </aside>
         </section>
