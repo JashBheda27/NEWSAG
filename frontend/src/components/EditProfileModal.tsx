@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useUser } from '@clerk/clerk-react';
-import { AlertTriangle, CheckCircle2, Loader2, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
 import { FormErrorMessage } from './ui/FormErrorMessage';
 
 interface EditProfileModalProps {
@@ -195,10 +195,11 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
           </div>
           <button
             onClick={onClose}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700/60 dark:hover:text-slate-300 transition-colors"
+            type="button"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-slate-100/80 text-slate-700 hover:bg-slate-200 hover:text-slate-900 dark:border-slate-600 dark:bg-slate-700/70 dark:text-slate-100 dark:hover:bg-slate-600 transition-colors"
             aria-label="Close edit profile modal"
           >
-            <X size={20} aria-hidden="true" />
+            <span className="text-xl font-bold leading-none" aria-hidden="true">&times;</span>
           </button>
         </div>
 
