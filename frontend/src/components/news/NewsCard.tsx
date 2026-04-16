@@ -622,6 +622,12 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
             </div>
           )}
         </Modal>
+
+        <Modal isOpen={isCommentsOpen} onClose={() => setIsCommentsOpen(false)} title="Comments" accent="comments">
+          <Suspense fallback={<div className="py-8 flex items-center justify-center"><div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>}>
+            <CommentSection articleId={article.id} articleTitle={article.title} />
+          </Suspense>
+        </Modal>
       </div>
     );
   }
