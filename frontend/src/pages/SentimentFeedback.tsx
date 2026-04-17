@@ -125,6 +125,14 @@ export const SentimentFeedback: React.FC<SentimentFeedbackProps> = ({ showNotifi
     return source ?? 'Unknown';
   };
 
+  const confidenceToPercent = (confidence?: number) => {
+    if (!Number.isFinite(confidence)) return 0;
+
+    const value = confidence as number;
+    const percent = value <= 1 ? value * 100 : value;
+    return Math.max(0, Math.min(100, percent));
+  };
+
   const getSentimentColor = (label?: string) => {
     switch (normalizeSentiment(label)) {
       case 'positive':
@@ -370,7 +378,7 @@ export const SentimentFeedback: React.FC<SentimentFeedbackProps> = ({ showNotifi
       escapeCsv(s.article_id),
       escapeCsv(s.text),
       escapeCsv(s.ai_label),
-      escapeCsv((s.ai_confidence * 100).toFixed(2)),
+      escapeCsv(confidenceToPercent(s.ai_confidence).toFixed(2)),
       escapeCsv(s.user_label),
       escapeCsv(s.final_label),
       escapeCsv(s.source),
@@ -668,7 +676,7 @@ export const SentimentFeedback: React.FC<SentimentFeedbackProps> = ({ showNotifi
                       }`}
                     />
                     <span>{formatSentimentLabel(sample.ai_label)}</span>
-                    <span>{(sample.ai_confidence * 100).toFixed(0)}%</span>
+                    <span>{confidenceToPercent(sample.ai_confidence).toFixed(0)}%</span>
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -758,11 +766,11 @@ export const SentimentFeedback: React.FC<SentimentFeedbackProps> = ({ showNotifi
               <div className="flex items-center gap-2">
                 <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wide backdrop-blur-md shadow-lg shadow-black/30 ${getSentimentColor(selectedSample.final_label || selectedSample.ai_label)}`}>
                   <span>{formatSentimentLabel(selectedSample.final_label || selectedSample.ai_label)}</span>
-                  <span>{(selectedSample.ai_confidence * 100).toFixed(0)}%</span>
+                  <span>{confidenceToPercent(selectedSample.ai_confidence).toFixed(0)}%</span>
                 </span>
               </div>
               <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
-                <div className="h-2 rounded-full bg-indigo-500" style={{ width: `${Math.max(0, Math.min(100, selectedSample.ai_confidence * 100))}%` }} />
+                <div className="h-2 rounded-full bg-indigo-500" style={{ width: `${confidenceToPercent(selectedSample.ai_confidence)}%` }} />
               </div>
             </div>
 
