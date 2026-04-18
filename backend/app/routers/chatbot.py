@@ -10,7 +10,8 @@ Uses Ollama LLM for natural conversational responses with safe fallbacks.
 import logging
 import re
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
+from urllib.parse import urlparse
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
@@ -24,6 +25,98 @@ from app.services.chat_llm import chat_llm, get_fallback_message
 router = APIRouter()
 logger = logging.getLogger(__name__)
 summarizer = TextSummarizer()
+CHATBOT_TELEMETRY_DAILY_COLLECTION = "chatbot_telemetry_daily"
+
+
+def _utc_day_key(ts: datetime) -> str:
+    return ts.strftime("%Y-%m-%d")
+
+
+def _infer_deployment_mode(base_url: str) -> str:
+    try:
+        host = (urlparse(base_url).hostname or "").lower()
+    except Exception:
+        host = ""
+
+    if not host:
+        return "unknown"
+
+    if host in {"localhost", "127.0.0.1", "::1"}:
+        return "local"
+
+    if host.startswith("10.") or host.startswith("192.168."):
+        return "local"
+
+    if host.startswith("172."):
+        parts = host.split(".")
+        if len(parts) > 1:
+            try:
+                second = int(parts[1])
+                if 16 <= second <= 31:
+                    return "local"
+            except ValueError:
+                pass
+
+    if host.endswith(".local"):
+        return "local"
+
+    return "cloud"
+
+
+async def _record_chatbot_daily_telemetry(db, metrics: dict[str, Any]) -> None:
+    """Upsert daily chatbot telemetry for admin monitoring dashboard."""
+    now = datetime.utcnow()
+    day = _utc_day_key(now)
+
+    latency = metrics.get("latency_ms")
+    try:
+        latency_value = float(latency) if latency is not None else 0.0
+    except (TypeError, ValueError):
+        latency_value = 0.0
+
+    prompt_tokens = metrics.get("prompt_tokens")
+    completion_tokens = metrics.get("completion_tokens")
+    total_tokens = metrics.get("total_tokens")
+    token_source = metrics.get("token_source") or "none"
+    success = bool(metrics.get("success"))
+
+    inc: dict[str, Any] = {
+        "request_count": 1,
+        "success_count": 1 if success else 0,
+        "failure_count": 0 if success else 1,
+        "latency_total_ms": latency_value,
+        "latency_samples": 1,
+    }
+
+    if isinstance(prompt_tokens, int) and prompt_tokens >= 0:
+        inc["prompt_tokens_total"] = prompt_tokens
+    if isinstance(completion_tokens, int) and completion_tokens >= 0:
+        inc["completion_tokens_total"] = completion_tokens
+    if isinstance(total_tokens, int) and total_tokens >= 0:
+        inc["tokens_total"] = total_tokens
+
+    if token_source == "estimated":
+        inc["estimated_token_requests"] = 1
+
+    update_doc: dict[str, Any] = {
+        "$setOnInsert": {
+            "date_utc": day,
+            "created_at": now,
+        },
+        "$set": {
+            "provider": metrics.get("provider") or "ollama",
+            "llm_name": str(metrics.get("provider") or "ollama").title(),
+            "model_name": metrics.get("model") or "unknown",
+            "deployment_mode": _infer_deployment_mode(chat_llm.base_url),
+            "base_url": chat_llm.base_url,
+            "updated_at": now,
+            "last_request_at": now,
+            "last_error": metrics.get("error") if not success else None,
+        },
+        "$inc": inc,
+    }
+
+    await db[CHATBOT_TELEMETRY_DAILY_COLLECTION].update_one({"date_utc": day}, update_doc, upsert=True)
 
 
 # --------------------------------------------------
@@ -912,11 +1005,12 @@ async def chat_message(
         logger.warning("[CHATBOT] article_qa intent but empty context - article_id=%s, article=%s", 
                       article_id, "found" if article else "not_found")
     
-    llm_response = await chat_llm.send_prompt(
+    llm_result = await chat_llm.send_prompt_with_metrics(
         context=llm_context,
         user_message=message,
         intent=intent
     )
+    llm_response = llm_result.get("text")
 
     if llm_response:
         reply = llm_response
@@ -929,6 +1023,11 @@ async def chat_message(
             logger.info("[CHATBOT] Applied article formatting to response")
     else:
         reply = get_fallback_message()
+
+    try:
+        await _record_chatbot_daily_telemetry(db, llm_result)
+    except Exception as telemetry_error:
+        logger.warning("[CHATBOT] Failed to persist telemetry: %s", telemetry_error)
     
     if article_from_cache and article:
         content_complete = is_article_content_complete(article)
