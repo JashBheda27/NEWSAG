@@ -7,11 +7,28 @@ Does NOT replace summarizer or sentiment_ml services.
 
 import logging
 import httpx
-from typing import Optional
+import time
+from typing import Any, Optional
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+def _safe_int(value: Any) -> Optional[int]:
+    try:
+        if value is None:
+            return None
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _estimate_tokens(text: str) -> int:
+    """Rough token estimate fallback when provider token counts are unavailable."""
+    if not text:
+        return 0
+    return max(1, int(len(text.split()) * 1.3))
 
 
 class ChatLLMService:
@@ -70,12 +87,12 @@ QUESTION:
 Answer:
 """
 
-    async def send_prompt(
+    async def send_prompt_with_metrics(
         self,
         context: str,
         user_message: str,
         intent: str = "general"
-    ) -> Optional[str]:
+    ) -> dict[str, Any]:
         """
         Send a prompt to Ollama and return the response.
         
@@ -85,7 +102,7 @@ Answer:
             intent: Detected intent (for logging)
         
         Returns:
-            LLM response string, or None if unavailable/error
+            Structured result with text, token usage, latency, and error metadata.
         """
         # Log context details for debugging
         has_article_context = "=== CURRENT ARTICLE ===" in context
@@ -95,6 +112,7 @@ Answer:
         
         # Build intent-aware prompt (simplified for small models)
         prompt = self._build_prompt(context, user_message, intent)
+        started = time.perf_counter()
         
         # Use separate connect (10s) and read (full timeout) limits
         timeout = httpx.Timeout(self.timeout, connect=10.0)
@@ -119,31 +137,120 @@ Answer:
                 if response.status_code != 200:
                     logger.error("[CHAT_LLM] Ollama returned %d: %s", 
                                 response.status_code, response.text[:200])
-                    return None
+                    return {
+                        "text": None,
+                        "success": False,
+                        "provider": "ollama",
+                        "model": self.model,
+                        "prompt_tokens": None,
+                        "completion_tokens": None,
+                        "total_tokens": None,
+                        "token_source": "none",
+                        "latency_ms": (time.perf_counter() - started) * 1000,
+                        "error": f"http_{response.status_code}",
+                    }
                 
                 data = response.json()
                 generated_text = data.get("response", "").strip()
                 
                 if not generated_text:
                     logger.warning("[CHAT_LLM] Empty response from Ollama")
-                    return None
+                    return {
+                        "text": None,
+                        "success": False,
+                        "provider": "ollama",
+                        "model": self.model,
+                        "prompt_tokens": None,
+                        "completion_tokens": None,
+                        "total_tokens": None,
+                        "token_source": "none",
+                        "latency_ms": (time.perf_counter() - started) * 1000,
+                        "error": "empty_response",
+                    }
+
+                prompt_tokens = _safe_int(data.get("prompt_eval_count"))
+                completion_tokens = _safe_int(data.get("eval_count"))
+
+                token_source = "actual"
+                if prompt_tokens is None:
+                    prompt_tokens = _estimate_tokens(prompt)
+                    token_source = "estimated"
+                if completion_tokens is None:
+                    completion_tokens = _estimate_tokens(generated_text)
+                    token_source = "estimated"
+
+                total_tokens = prompt_tokens + completion_tokens
                 
                 # Check if this looks like a fallback/refusal response
                 is_fallback = "don't have enough information" in generated_text.lower()
                 logger.info("[CHAT_LLM] Generated response for intent=%s (len=%d) is_fallback=%s",
                            intent, len(generated_text), is_fallback)
                 
-                return generated_text
+                return {
+                    "text": generated_text,
+                    "success": True,
+                    "provider": "ollama",
+                    "model": self.model,
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "total_tokens": total_tokens,
+                    "token_source": token_source,
+                    "latency_ms": (time.perf_counter() - started) * 1000,
+                    "error": None,
+                }
                 
         except httpx.TimeoutException:
             logger.error("[CHAT_LLM] Ollama request timed out after %ds", self.timeout)
-            return None
+            return {
+                "text": None,
+                "success": False,
+                "provider": "ollama",
+                "model": self.model,
+                "prompt_tokens": None,
+                "completion_tokens": None,
+                "total_tokens": None,
+                "token_source": "none",
+                "latency_ms": (time.perf_counter() - started) * 1000,
+                "error": "timeout",
+            }
         except httpx.ConnectError:
             logger.error("[CHAT_LLM] Cannot connect to Ollama at %s — is 'ollama serve' running?", self.base_url)
-            return None
+            return {
+                "text": None,
+                "success": False,
+                "provider": "ollama",
+                "model": self.model,
+                "prompt_tokens": None,
+                "completion_tokens": None,
+                "total_tokens": None,
+                "token_source": "none",
+                "latency_ms": (time.perf_counter() - started) * 1000,
+                "error": "connect_error",
+            }
         except Exception as e:
             logger.error("[CHAT_LLM] Unexpected error: %s", e)
-            return None
+            return {
+                "text": None,
+                "success": False,
+                "provider": "ollama",
+                "model": self.model,
+                "prompt_tokens": None,
+                "completion_tokens": None,
+                "total_tokens": None,
+                "token_source": "none",
+                "latency_ms": (time.perf_counter() - started) * 1000,
+                "error": "unexpected_error",
+            }
+
+    async def send_prompt(
+        self,
+        context: str,
+        user_message: str,
+        intent: str = "general"
+    ) -> Optional[str]:
+        """Backward-compatible helper returning only generated text."""
+        result = await self.send_prompt_with_metrics(context=context, user_message=user_message, intent=intent)
+        return result.get("text")
     
     async def explain_like_five(self, article_title: str, article_content: str) -> Optional[str]:
         """
