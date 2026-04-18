@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Database, Eye, RefreshCcw, RotateCw, Server, Settings2 } from 'lucide-react';
-import { adminApi } from '../services/admin.service';
+import { adminApi, type SystemStatus } from '../services/admin.service';
 import { notify } from '../lib/notify';
 
 interface SystemOpsProps {
@@ -12,7 +12,34 @@ export const SystemOps: React.FC<SystemOpsProps> = ({ showNotification }) => {
   const [refreshing, setRefreshing] = useState<string | null>(null);
   const [resetting, setResetting] = useState(false);
 
-  const [systemStatus, setSystemStatus] = useState<any>(null);
+  const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
+
+  const chatbot = systemStatus?.chatbot;
+  const chatbotConnected = chatbot?.connected ?? false;
+  const chatbotStatusClass = chatbotConnected ? 'bg-emerald-500' : 'bg-rose-500';
+  const chatbotStatusText = chatbotConnected ? 'Online' : 'Offline';
+  const gnewsRemaining = systemStatus?.gnews?.remaining;
+  const gnewsStatusClass =
+    typeof gnewsRemaining !== 'number'
+      ? 'bg-amber-500'
+      : gnewsRemaining > 0
+        ? 'bg-emerald-500'
+        : 'bg-rose-500';
+  const gnewsStatusText =
+    typeof gnewsRemaining !== 'number'
+      ? 'Initializing'
+      : gnewsRemaining > 0
+        ? 'Ready'
+        : 'Limit Reached';
+
+  const formatUtcDateTime = (value?: string | null) => {
+    if (!value) return '—';
+    try {
+      return new Date(value).toLocaleString();
+    } catch {
+      return value;
+    }
+  };
 
   useEffect(() => {
     const fetchStatus = async () => {
@@ -179,8 +206,8 @@ export const SystemOps: React.FC<SystemOpsProps> = ({ showNotification }) => {
               <div className="flex items-center justify-between text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Connection</span>
                 <span className="inline-flex items-center gap-1">
-                  <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
-                  <span className="text-slate-900 dark:text-white">Connected</span>
+                  <span className={`w-2 h-2 rounded-full ${systemStatus?.database?.connected ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                  <span className="text-slate-900 dark:text-white">{systemStatus?.database?.connected ? 'Connected' : 'Offline'}</span>
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm">
@@ -210,18 +237,71 @@ export const SystemOps: React.FC<SystemOpsProps> = ({ showNotification }) => {
               <div className="flex items-center justify-between text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Cache (Redis)</span>
                 <span className="inline-flex items-center gap-1">
-                  <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
-                  <span className="text-slate-900 dark:text-white">Connected</span>
+                  <span className={`w-2 h-2 rounded-full ${systemStatus?.redis?.connected ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                  <span className="text-slate-900 dark:text-white">{systemStatus?.redis?.connected ? 'Connected' : 'Offline'}</span>
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-slate-600 dark:text-slate-400">API (GNews)</span>
                 <span className="inline-flex items-center gap-1">
-                  <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
-                  <span className="text-slate-900 dark:text-white">Initializing</span>
+                  <span className={`w-2 h-2 rounded-full ${gnewsStatusClass}`}></span>
+                  <span className="text-slate-900 dark:text-white">{gnewsStatusText}</span>
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-600 dark:text-slate-400">Chatbot (LLM)</span>
+                <span className="inline-flex items-center gap-1">
+                  <span className={`w-2 h-2 rounded-full ${chatbotStatusClass}`}></span>
+                  <span className="text-slate-900 dark:text-white">{chatbotStatusText}</span>
                 </span>
               </div>
             </div>
+          </div>
+
+          <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg md:col-span-2">
+            <p className="text-sm font-medium text-slate-900 dark:text-white mb-3">
+              <Server size={14} className="inline mr-2" aria-hidden="true" />
+              Chatbot Telemetry
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-600 dark:text-slate-400">Provider</span>
+                <span className="text-slate-900 dark:text-white uppercase">{chatbot?.provider ?? 'ollama'}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-600 dark:text-slate-400">LLM Name</span>
+                <span className="text-slate-900 dark:text-white">{chatbot?.llm_name ?? 'Ollama'}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-600 dark:text-slate-400">Model</span>
+                <span className="text-slate-900 dark:text-white">{chatbot?.model_name ?? '—'}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-600 dark:text-slate-400">Mode</span>
+                <span className="text-slate-900 dark:text-white capitalize">{chatbot?.deployment_mode ?? 'unknown'}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-600 dark:text-slate-400">Token Usage (Today)</span>
+                <span className="text-slate-900 dark:text-white">{chatbot?.tokens_today?.total ?? 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-600 dark:text-slate-400">Requests (Today)</span>
+                <span className="text-slate-900 dark:text-white">{chatbot?.tokens_today?.requests ?? 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-600 dark:text-slate-400">Avg Latency</span>
+                <span className="text-slate-900 dark:text-white">{typeof chatbot?.avg_latency_ms === 'number' ? `${chatbot.avg_latency_ms.toFixed(1)} ms` : '—'}</span>
+              </div>
+              <div className="flex items-center justify-between md:col-span-2">
+                <span className="text-slate-600 dark:text-slate-400">Last Request</span>
+                <span className="text-slate-900 dark:text-white">{formatUtcDateTime(chatbot?.last_request_at)}</span>
+              </div>
+            </div>
+            {chatbot?.last_error && (
+              <p className="mt-3 text-xs text-rose-700 dark:text-rose-300">
+                Last error: {chatbot.last_error}
+              </p>
+            )}
           </div>
         </div>
       </div>
