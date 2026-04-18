@@ -148,6 +148,49 @@ export interface AdminMetrics {
   articles_indexed: number;
   avg_sentiment: number | null; // either 0-1 fraction or 0-100 percent depending on backend
 }
+
+export interface ChatbotTokenUsage {
+  requests: number;
+  success: number;
+  failure: number;
+  prompt: number;
+  completion: number;
+  total: number;
+  estimated_requests: number;
+}
+
+export interface ChatbotSystemStatus {
+  connected: boolean;
+  provider: string;
+  llm_name: string;
+  model_name: string;
+  base_url: string;
+  deployment_mode: 'local' | 'cloud' | 'unknown';
+  tokens_today: ChatbotTokenUsage;
+  avg_latency_ms: number | null;
+  last_request_at: string | null;
+  last_error: string | null;
+}
+
+export interface SystemStatus {
+  database?: {
+    connected?: boolean;
+    latency_ms?: number | null;
+    collections?: number | null;
+  };
+  redis?: {
+    connected?: boolean;
+    hit_rate?: number | null;
+    memory_usage?: string | null;
+  };
+  gnews?: {
+    today_hits?: number | null;
+    remaining?: number | null;
+    limit?: number | null;
+    reset_time?: string | null;
+  };
+  chatbot?: ChatbotSystemStatus;
+}
 export const adminApi = {
   /**
    * Training & Fine-Tuning
@@ -529,7 +572,7 @@ export const adminApi = {
       throw new Error(`Failed to fetch hit history: ${getErrorMessage(error)}`);
     }
   },
-  async getSystemStatus(): Promise<any> {
+  async getSystemStatus(): Promise<SystemStatus> {
     try {
       const response = await api.get('/api/admin/system/status');
       return response.data;
