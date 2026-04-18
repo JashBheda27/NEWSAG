@@ -26,8 +26,11 @@ from app.core.gnews_counter import GNewsCounter
 from datetime import datetime, timedelta
 import time
 import os
+from urllib.parse import urlparse
 from app.services.metrics_service import MetricsService
 from app.services.clerk_service import get_clerk_user_count
+from app.services.chat_llm import chat_llm
+from app.core.config import settings
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -36,6 +39,7 @@ logger = logging.getLogger(__name__)
 RUNNING_TUNING_TASKS: dict[str, asyncio.Task] = {}
 # Tracks per-job cooperative cancellation flags keyed by job_id.
 RUNNING_TUNING_STOP_EVENTS: dict[str, threading.Event] = {}
+CHATBOT_TELEMETRY_DAILY_COLLECTION = "chatbot_telemetry_daily"
 
 CSV_SCHEMA_ALIASES: dict[str, dict[str, list[str]]] = {
     "sentiment": {
@@ -106,6 +110,37 @@ def _normalize_credibility_label(value: Optional[str]) -> Optional[str]:
 
 def _clean_csv_value(value: Optional[str]) -> str:
     return str(value).strip() if value is not None else ""
+
+
+def _infer_deployment_mode(base_url: str) -> str:
+    try:
+        host = (urlparse(base_url).hostname or "").lower()
+    except Exception:
+        host = ""
+
+    if not host:
+        return "unknown"
+
+    if host in {"localhost", "127.0.0.1", "::1"}:
+        return "local"
+
+    if host.startswith("10.") or host.startswith("192.168."):
+        return "local"
+
+    if host.startswith("172."):
+        parts = host.split(".")
+        if len(parts) > 1:
+            try:
+                second = int(parts[1])
+                if 16 <= second <= 31:
+                    return "local"
+            except ValueError:
+                pass
+
+    if host.endswith(".local"):
+        return "local"
+
+    return "cloud"
 
 
 def _coerce_float(value: Optional[str], default: float = 0.0) -> float:
@@ -2330,6 +2365,72 @@ async def get_system_status(
     except Exception:
         gnews_info = None
 
+    chatbot_info = {
+        "connected": False,
+        "provider": "ollama",
+        "llm_name": "Ollama",
+        "model_name": settings.OLLAMA_MODEL,
+        "base_url": settings.OLLAMA_BASE_URL,
+        "deployment_mode": _infer_deployment_mode(settings.OLLAMA_BASE_URL),
+        "tokens_today": {
+            "requests": 0,
+            "success": 0,
+            "failure": 0,
+            "prompt": 0,
+            "completion": 0,
+            "total": 0,
+            "estimated_requests": 0,
+        },
+        "avg_latency_ms": None,
+        "last_request_at": None,
+        "last_error": None,
+    }
+
+    try:
+        chatbot_info["connected"] = await chat_llm.is_available()
+    except Exception:
+        chatbot_info["connected"] = False
+
+    try:
+        today_key = datetime.utcnow().strftime("%Y-%m-%d")
+        telemetry = await db[CHATBOT_TELEMETRY_DAILY_COLLECTION].find_one({"date_utc": today_key})
+        if telemetry:
+            latency_total = float(telemetry.get("latency_total_ms") or 0)
+            latency_samples = int(telemetry.get("latency_samples") or 0)
+            chatbot_info["tokens_today"] = {
+                "requests": int(telemetry.get("request_count") or 0),
+                "success": int(telemetry.get("success_count") or 0),
+                "failure": int(telemetry.get("failure_count") or 0),
+                "prompt": int(telemetry.get("prompt_tokens_total") or 0),
+                "completion": int(telemetry.get("completion_tokens_total") or 0),
+                "total": int(telemetry.get("tokens_total") or 0),
+                "estimated_requests": int(telemetry.get("estimated_token_requests") or 0),
+            }
+            chatbot_info["avg_latency_ms"] = (latency_total / latency_samples) if latency_samples > 0 else None
+
+            last_request_at = telemetry.get("last_request_at")
+            if isinstance(last_request_at, datetime):
+                chatbot_info["last_request_at"] = last_request_at.isoformat() + "Z"
+            elif isinstance(last_request_at, str):
+                chatbot_info["last_request_at"] = last_request_at
+
+            chatbot_info["last_error"] = telemetry.get("last_error")
+
+            telemetry_provider = telemetry.get("provider")
+            telemetry_llm_name = telemetry.get("llm_name")
+            telemetry_model = telemetry.get("model_name")
+            telemetry_mode = telemetry.get("deployment_mode")
+            if telemetry_provider:
+                chatbot_info["provider"] = telemetry_provider
+            if telemetry_llm_name:
+                chatbot_info["llm_name"] = telemetry_llm_name
+            if telemetry_model:
+                chatbot_info["model_name"] = telemetry_model
+            if telemetry_mode:
+                chatbot_info["deployment_mode"] = telemetry_mode
+    except Exception as telemetry_error:
+        logger.warning("[ADMIN] Failed loading chatbot telemetry: %s", telemetry_error)
+
     return {
         "database": db_status,
         "redis": {
@@ -2338,6 +2439,7 @@ async def get_system_status(
             "memory_usage": redis_info.get("used_memory_human"),
         },
         "gnews": gnews_info,
+        "chatbot": chatbot_info,
     }
 
 
