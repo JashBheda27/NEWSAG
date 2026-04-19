@@ -11,12 +11,12 @@ import logging
 import re
 from datetime import datetime
 from typing import Any, Optional
-from urllib.parse import urlparse
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.core.database import get_db
 from app.core.auth import get_current_user_optional, get_user_id
+from app.core.deployment import infer_deployment_mode
 from app.core.cache import get_from_cache, gnews_cache_key
 from app.core.constants import NEWS_CATEGORIES
 from app.services.summarizer import TextSummarizer
@@ -30,37 +30,6 @@ CHATBOT_TELEMETRY_DAILY_COLLECTION = "chatbot_telemetry_daily"
 
 def _utc_day_key(ts: datetime) -> str:
     return ts.strftime("%Y-%m-%d")
-
-
-def _infer_deployment_mode(base_url: str) -> str:
-    try:
-        host = (urlparse(base_url).hostname or "").lower()
-    except Exception:
-        host = ""
-
-    if not host:
-        return "unknown"
-
-    if host in {"localhost", "127.0.0.1", "::1"}:
-        return "local"
-
-    if host.startswith("10.") or host.startswith("192.168."):
-        return "local"
-
-    if host.startswith("172."):
-        parts = host.split(".")
-        if len(parts) > 1:
-            try:
-                second = int(parts[1])
-                if 16 <= second <= 31:
-                    return "local"
-            except ValueError:
-                pass
-
-    if host.endswith(".local"):
-        return "local"
-
-    return "cloud"
 
 
 async def _record_chatbot_daily_telemetry(db, metrics: dict[str, Any]) -> None:
@@ -107,7 +76,7 @@ async def _record_chatbot_daily_telemetry(db, metrics: dict[str, Any]) -> None:
             "provider": metrics.get("provider") or "ollama",
             "llm_name": str(metrics.get("provider") or "ollama").title(),
             "model_name": metrics.get("model") or "unknown",
-            "deployment_mode": _infer_deployment_mode(chat_llm.base_url),
+            "deployment_mode": infer_deployment_mode(chat_llm.base_url),
             "base_url": chat_llm.base_url,
             "updated_at": now,
             "last_request_at": now,
