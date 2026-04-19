@@ -159,13 +159,16 @@ export interface ChatbotTokenUsage {
   estimated_requests: number;
 }
 
+export const CHATBOT_DEPLOYMENT_MODES = ['local', 'cloud', 'unknown'] as const;
+export type ChatbotDeploymentMode = (typeof CHATBOT_DEPLOYMENT_MODES)[number];
+
 export interface ChatbotSystemStatus {
   connected: boolean;
   provider: string;
   llm_name: string;
   model_name: string;
   base_url: string;
-  deployment_mode: 'local' | 'cloud' | 'unknown';
+  deployment_mode: ChatbotDeploymentMode;
   tokens_today: ChatbotTokenUsage;
   avg_latency_ms: number | null;
   last_request_at: string | null;
