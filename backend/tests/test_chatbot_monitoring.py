@@ -1,6 +1,6 @@
 import pytest
 
-from app.routers.admin import _infer_deployment_mode
+from app.core.deployment import DEPLOYMENT_MODES, infer_deployment_mode, is_valid_deployment_mode
 from app.routers.chatbot import _record_chatbot_daily_telemetry, CHATBOT_TELEMETRY_DAILY_COLLECTION
 
 
@@ -32,7 +32,10 @@ class _FakeDb:
     ],
 )
 def test_infer_deployment_mode(url, expected):
-    assert _infer_deployment_mode(url) == expected
+    mode = infer_deployment_mode(url)
+    assert mode == expected
+    assert mode in DEPLOYMENT_MODES
+    assert is_valid_deployment_mode(mode)
 
 
 @pytest.mark.asyncio
