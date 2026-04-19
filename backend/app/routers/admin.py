@@ -26,11 +26,11 @@ from app.core.gnews_counter import GNewsCounter
 from datetime import datetime, timedelta
 import time
 import os
-from urllib.parse import urlparse
 from app.services.metrics_service import MetricsService
 from app.services.clerk_service import get_clerk_user_count
 from app.services.chat_llm import chat_llm
 from app.core.config import settings
+from app.core.deployment import infer_deployment_mode
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -110,37 +110,6 @@ def _normalize_credibility_label(value: Optional[str]) -> Optional[str]:
 
 def _clean_csv_value(value: Optional[str]) -> str:
     return str(value).strip() if value is not None else ""
-
-
-def _infer_deployment_mode(base_url: str) -> str:
-    try:
-        host = (urlparse(base_url).hostname or "").lower()
-    except Exception:
-        host = ""
-
-    if not host:
-        return "unknown"
-
-    if host in {"localhost", "127.0.0.1", "::1"}:
-        return "local"
-
-    if host.startswith("10.") or host.startswith("192.168."):
-        return "local"
-
-    if host.startswith("172."):
-        parts = host.split(".")
-        if len(parts) > 1:
-            try:
-                second = int(parts[1])
-                if 16 <= second <= 31:
-                    return "local"
-            except ValueError:
-                pass
-
-    if host.endswith(".local"):
-        return "local"
-
-    return "cloud"
 
 
 def _coerce_float(value: Optional[str], default: float = 0.0) -> float:
@@ -2371,7 +2340,7 @@ async def get_system_status(
         "llm_name": "Ollama",
         "model_name": settings.OLLAMA_MODEL,
         "base_url": settings.OLLAMA_BASE_URL,
-        "deployment_mode": _infer_deployment_mode(settings.OLLAMA_BASE_URL),
+        "deployment_mode": infer_deployment_mode(settings.OLLAMA_BASE_URL),
         "tokens_today": {
             "requests": 0,
             "success": 0,
