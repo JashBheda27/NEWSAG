@@ -1,73 +1,73 @@
-# React + TypeScript + Vite
+# NewsAura Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+I built this frontend as the user-facing experience for NewsAura, a modern news platform focused on curated articles, personalization, and editorial tools. It is a React + TypeScript + Vite application that combines a fast news feed with authentication, bookmarking, read-later support, admin views, and an in-app chatbot.
 
-Currently, two official plugins are available:
+## What this frontend does
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+I use this app to let readers browse trending and categorized news, search by topic, save articles for later, bookmark stories, and inspect individual articles in a dedicated viewer. The interface also includes protected profile pages, an admin dashboard, feedback flows, and theme switching for a cleaner reading experience.
 
-## React Compiler
+## Key features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Responsive news feed with grid and list layouts
+- Category-based browsing and topic filtering
+- Article viewer, bookmarks, and read-later pages
+- Clerk-based authentication and protected routes
+- Admin dashboard and admin-only routes
+- In-app chatbot and toast notifications
+- Lightweight loading states and lazy-loaded secondary pages
+- Framer Motion and Recharts for richer UI and insight views
 
-## Expanding the ESLint configuration
+## Tech stack
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- React 19
+- TypeScript
+- Vite
+- Tailwind CSS
+- React Router
+- Clerk authentication
+- Axios for API requests
+- Framer Motion for animations
+- Lucide icons
+- Recharts for charts and data visualizations
+- Sonner and NProgress for notifications and route feedback
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Main routes
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+- `/` Home news feed
+- `/login` Authentication screen
+- `/profile` User profile
+- `/bookmarks` Saved stories
+- `/read-later` Reading queue
+- `/article-viewer` Detailed article view
+- `/admin/*` Admin dashboard area
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Getting started
+
+Install dependencies and start the dev server:
+
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Build the production bundle:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run build
 ```
+
+Run lint checks:
+
+```bash
+npm run lint
+```
+
+Preview the production build locally:
+
+```bash
+npm run preview
+```
+
+## Project notes
+
+I kept the app structured around reusable services, shared UI components, and route-level guards so the experience stays maintainable as the product grows. The frontend is designed to work with the NewsAura backend APIs and to support authenticated user interactions without slowing down the initial page load.
