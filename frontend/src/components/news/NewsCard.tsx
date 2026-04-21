@@ -105,6 +105,12 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
     setReportSubmitted(Boolean(initialIsReported));
   }, [initialIsReported]);
 
+  useEffect(() => {
+    if (feedbackSubmitted) {
+      setShowFeedbackMenu(false);
+    }
+  }, [feedbackSubmitted]);
+
   const handleSentimentFeedback = useCallback(async (userLabel: string) => {
     setIsSubmittingFeedback(true);
     try {
@@ -324,7 +330,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
   // ✅ List View Layout (Horizontal)
   if (viewType === 'list') {
     return (
-      <div className={`group relative bg-white dark:bg-slate-800/90 rounded-2xl overflow-hidden border border-gray-200 dark:border-slate-700/50 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col sm:flex-row hover:-translate-y-0.5 ${showFeedbackMenu ? 'z-20' : ''}`}>
+      <div className={`group relative bg-white dark:bg-slate-800/90 rounded-2xl overflow-visible border border-gray-200 dark:border-slate-700/50 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col sm:flex-row hover:-translate-y-0.5 ${showFeedbackMenu ? 'z-20' : ''}`}>
         {/* Image Section - Adaptive for small screens */}
         <div className="relative w-full sm:w-52 h-[180px] sm:h-44 overflow-hidden flex-shrink-0">
           <img 
@@ -390,7 +396,11 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
               {/* ✅ ML Feedback Button (List View) */}
               <div className="relative z-30">
                 <button 
-                  onClick={() => setShowFeedbackMenu(!showFeedbackMenu)}
+                  onClick={() => {
+                    if (!feedbackSubmitted) {
+                      setShowFeedbackMenu((current) => !current);
+                    }
+                  }}
                   className={`${ACTION_BTN_BASE} ${
                     feedbackSubmitted 
                       ? ACTION_BTN_ACTIVE_SUCCESS
@@ -406,7 +416,7 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
                 </button>
                 
                 {showFeedbackMenu && !feedbackSubmitted && (
-                  <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-slate-800/95 backdrop-blur-xl rounded-xl shadow-xl border border-gray-200 dark:border-slate-600/50 py-2 z-[70] min-w-[140px] animate-slide-up">
+                  <div className="absolute left-0 bottom-full mb-2 bg-white dark:bg-slate-800/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-200 dark:border-slate-600/50 py-2 z-[70] min-w-[160px] animate-slide-up origin-bottom-left">
                     <div className="px-3 py-1.5 text-[9px] uppercase tracking-widest text-gray-500 dark:text-slate-500 font-bold">
                       Rate Sentiment
                     </div>
@@ -433,8 +443,11 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
               
               {/* ✅ Report Button (List View) */}
               <button 
-                onClick={() => setShowReportModal(true)}
-                className={`${ACTION_BTN_BASE} ${
+                onClick={() => {
+                  setShowFeedbackMenu(false);
+                  setShowReportModal(true);
+                }}
+                className={`${ACTION_BTN_BASE} relative z-40 ${
                   reportSubmitted 
                     ? ACTION_BTN_ACTIVE_WARNING
                     : 'text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-600 dark:hover:text-rose-400 hover:scale-105'
@@ -628,6 +641,38 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
             <CommentSection articleId={article.id} articleTitle={article.title} />
           </Suspense>
         </Modal>
+
+        {/* ✅ Report Misleading Modal */}
+        <Modal isOpen={showReportModal} onClose={() => setShowReportModal(false)} title="Report Misleading Content">
+          <div className="p-4">
+            <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">
+              Help improve our AI by reporting potentially misleading or inaccurate content.
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">Why do you think this is misleading?</label>
+              <textarea
+                value={reportReason}
+                onChange={(e) => setReportReason(e.target.value)}
+                placeholder="Optional: Describe the issue..."
+                className="w-full p-3 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                rows={3}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setShowReportModal(false)}>
+                Cancel
+              </Button>
+              <Button 
+                size="sm" 
+                onClick={handleReportMisleading}
+                disabled={isSubmittingFeedback}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                {isSubmittingFeedback ? 'Submitting...' : 'Submit Report'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
       </div>
     );
   }
@@ -715,7 +760,11 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
             {/* ✅ ML Feedback Dropdown */}
             <div className="relative z-30">
               <button 
-                onClick={() => setShowFeedbackMenu(!showFeedbackMenu)}
+                onClick={() => {
+                  if (!feedbackSubmitted) {
+                    setShowFeedbackMenu((current) => !current);
+                  }
+                }}
                 className={`${ACTION_BTN_BASE} ${
                   feedbackSubmitted 
                     ? ACTION_BTN_ACTIVE_SUCCESS
@@ -730,9 +779,8 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
                 )}
               </button>
               
-              {/* Feedback Dropdown Menu */}
               {showFeedbackMenu && !feedbackSubmitted && (
-                <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-slate-800/95 backdrop-blur-xl rounded-xl shadow-xl border border-gray-200 dark:border-slate-600/50 py-2 z-[70] min-w-[140px] animate-slide-up">
+                <div className="absolute left-0 bottom-full mb-2 bg-white dark:bg-slate-800/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-200 dark:border-slate-600/50 py-2 z-[70] min-w-[160px] animate-slide-up origin-bottom-left">
                   <div className="px-3 py-1.5 text-[9px] uppercase tracking-widest text-gray-500 dark:text-slate-500 font-bold">
                     Rate Sentiment
                   </div>
@@ -759,8 +807,11 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
             
             {/* ✅ Report Misleading Button */}
             <button 
-              onClick={() => setShowReportModal(true)}
-              className={`${ACTION_BTN_BASE} ${
+              onClick={() => {
+                setShowFeedbackMenu(false);
+                setShowReportModal(true);
+              }}
+              className={`${ACTION_BTN_BASE} relative z-40 ${
                 reportSubmitted 
                   ? ACTION_BTN_ACTIVE_WARNING
                   : 'text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-600 dark:hover:text-rose-400 hover:scale-105'
