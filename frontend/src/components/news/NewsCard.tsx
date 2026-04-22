@@ -18,12 +18,18 @@ const AudioPlayer = lazy(() => import('./AudioPlayer').then(m => ({ default: m.A
 
 const SENTIMENT_OPTIONS = ['Positive', 'Neutral', 'Negative'] as const;
 
-const ACTION_BTN_BASE = 'relative inline-flex items-center justify-center p-2 sm:p-2.5 rounded-xl transition-all duration-200 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900';
+const ACTION_BTN_BASE = 'relative inline-flex items-center justify-center p-2 sm:p-2.5 rounded-xl transition-all duration-200 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:!focus-visible:ring-offset-slate-900';
 const ACTION_BTN_INACTIVE = 'text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-105';
 const ACTION_BTN_ACTIVE_PRIMARY = 'text-white bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg shadow-indigo-500/30';
 const ACTION_BTN_ACTIVE_SUCCESS = 'text-white bg-gradient-to-br from-emerald-500 to-green-600 shadow-lg shadow-emerald-500/30';
 const ACTION_BTN_ACTIVE_WARNING = 'text-white bg-gradient-to-br from-orange-500 to-amber-600 shadow-lg shadow-orange-500/30';
 const ACTION_ICON_CLASS = 'w-[17px] h-[17px] stroke-[1.9] transition-transform duration-200';
+const FEEDBACK_MENU_CLASS = 'absolute left-0 bottom-full mb-2 rounded-2xl border py-3 px-2 z-[70] min-w-[180px] animate-slide-up origin-bottom-left bg-white border-gray-200 shadow-2xl backdrop-blur-xl dark:!bg-[#1f1f1f] dark:!border-[#2d2d30] dark:!shadow-black/80 dark:!ring-1 dark:!ring-[#2d2d30]';
+const FEEDBACK_MENU_HEADER_CLASS = 'px-2 py-1.5 text-[9px] uppercase tracking-widest font-bold text-gray-500 dark:!text-slate-300';
+const FEEDBACK_MENU_ITEM_CLASS = 'relative w-full text-left px-3 py-2.5 text-xs transition-all flex items-center gap-2.5 rounded-lg hover:bg-gray-100 dark:!hover:bg-[#2d2d30]/60 dark:!rounded-lg dark:!my-0.5 dark:!mx-0 border border-transparent dark:!border-transparent dark:!bg-[#1f1f1f]';
+const FEEDBACK_MENU_ITEM_TEXT_CLASS = 'text-gray-700 dark:!text-slate-300';
+const FEEDBACK_MENU_ITEM_SELECTED_CLASS = 'text-indigo-600 dark:!text-indigo-200 font-semibold dark:!bg-[#2d2d30] dark:!border-transparent dark:!text-indigo-100';
+const FEEDBACK_MENU_DOT_BASE = 'w-2 h-2 rounded-full ring-1 ring-black/5 dark:!ring-white/10';
 
 interface NewsCardProps {
   article: Article;
@@ -416,8 +422,8 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
                 </button>
                 
                 {showFeedbackMenu && !feedbackSubmitted && (
-                  <div className="absolute left-0 bottom-full mb-2 bg-white dark:bg-slate-800/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-200 dark:border-slate-600/50 py-2 z-[70] min-w-[160px] animate-slide-up origin-bottom-left">
-                    <div className="px-3 py-1.5 text-[9px] uppercase tracking-widest text-gray-500 dark:text-slate-500 font-bold">
+                  <div className={FEEDBACK_MENU_CLASS}>
+                    <div className={FEEDBACK_MENU_HEADER_CLASS}>
                       Rate Sentiment
                     </div>
                     {SENTIMENT_OPTIONS.map((option) => (
@@ -425,16 +431,16 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
                         key={option}
                         onClick={() => handleSentimentFeedback(option)}
                         disabled={isSubmittingFeedback}
-                        className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-all flex items-center gap-2.5 ${
-                          article.sentiment?.label === option ? 'text-indigo-600 font-semibold' : 'text-gray-700 dark:text-slate-300'
+                        className={`${FEEDBACK_MENU_ITEM_CLASS} ${
+                          article.sentiment?.label === option ? FEEDBACK_MENU_ITEM_SELECTED_CLASS : FEEDBACK_MENU_ITEM_TEXT_CLASS
                         }`}
                       >
-                        <span className={`w-2 h-2 rounded-full ${
+                          <span className={`${FEEDBACK_MENU_DOT_BASE} ${
                           option === 'Positive' ? 'bg-emerald-500' : 
                           option === 'Negative' ? 'bg-rose-500' : 'bg-slate-400'
                         }`}></span>
                         {option}
-                        {article.sentiment?.label === option && <span className="text-[9px] opacity-50 ml-auto">(AI)</span>}
+                          {article.sentiment?.label === option && <span className="text-[9px] opacity-60 ml-auto">(AI)</span>}
                       </button>
                     ))}
                   </div>
@@ -780,8 +786,8 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
               </button>
               
               {showFeedbackMenu && !feedbackSubmitted && (
-                <div className="absolute left-0 bottom-full mb-2 bg-white dark:bg-slate-800/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-200 dark:border-slate-600/50 py-2 z-[70] min-w-[160px] animate-slide-up origin-bottom-left">
-                  <div className="px-3 py-1.5 text-[9px] uppercase tracking-widest text-gray-500 dark:text-slate-500 font-bold">
+                <div className={FEEDBACK_MENU_CLASS}>
+                  <div className={FEEDBACK_MENU_HEADER_CLASS}>
                     Rate Sentiment
                   </div>
                   {SENTIMENT_OPTIONS.map((option) => (
@@ -789,16 +795,16 @@ export const NewsCard: React.FC<NewsCardProps> = memo(({
                       key={option}
                       onClick={() => handleSentimentFeedback(option)}
                       disabled={isSubmittingFeedback}
-                      className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-all flex items-center gap-2.5 ${
-                        article.sentiment?.label === option ? 'text-indigo-600 font-semibold' : 'text-gray-700 dark:text-slate-300'
+                      className={`${FEEDBACK_MENU_ITEM_CLASS} ${
+                        article.sentiment?.label === option ? FEEDBACK_MENU_ITEM_SELECTED_CLASS : FEEDBACK_MENU_ITEM_TEXT_CLASS
                       }`}
                     >
-                      <span className={`w-2 h-2 rounded-full ${
+                      <span className={`${FEEDBACK_MENU_DOT_BASE} ${
                         option === 'Positive' ? 'bg-emerald-500' : 
                         option === 'Negative' ? 'bg-rose-500' : 'bg-slate-400'
                       }`}></span>
                       {option}
-                      {article.sentiment?.label === option && <span className="text-[9px] opacity-50 ml-auto">(AI)</span>}
+                      {article.sentiment?.label === option && <span className="text-[9px] opacity-60 ml-auto">(AI)</span>}
                     </button>
                   ))}
                 </div>
