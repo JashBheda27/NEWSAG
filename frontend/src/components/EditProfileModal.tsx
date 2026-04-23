@@ -184,37 +184,37 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
     <>
       {/* Modal */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4 animate-fadeIn">
-      <div className="w-full max-w-4xl overflow-hidden rounded-3xl border border-white/30 bg-white dark:bg-slate-800 shadow-2xl animate-slideUp">
-        <div className="h-1.5 w-full bg-gradient-to-r from-indigo-500 via-violet-500 to-cyan-500" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-2 sm:p-3 md:p-4 animate-fadeIn overflow-y-auto">
+      <div className="w-full max-w-xs sm:max-w-sm md:max-w-2xl lg:max-w-4xl overflow-hidden rounded-2xl sm:rounded-3xl border border-white/30 bg-white dark:bg-slate-800 shadow-2xl animate-slideUp my-4">
+        <div className="h-1 sm:h-1.5 w-full bg-gradient-to-r from-indigo-500 via-violet-500 to-cyan-500" />
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-4 md:px-6 py-4">
-          <div>
-            <h2 className="text-xl font-black text-slate-900 dark:text-slate-100">Edit Profile</h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Manage account details and password</p>
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-3 sm:px-4 md:px-6 py-3 sm:py-4 gap-2">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-slate-100 truncate">Edit Profile</h2>
+            <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">Manage account details and password</p>
           </div>
           <button
             onClick={onClose}
             type="button"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-slate-100/80 text-slate-700 hover:bg-slate-200 hover:text-slate-900 dark:border-slate-600 dark:bg-slate-700/70 dark:text-slate-100 dark:hover:bg-slate-600 transition-colors"
+            className="inline-flex h-8 sm:h-9 w-8 sm:w-9 items-center justify-center rounded-lg border border-slate-200 bg-slate-100/80 text-slate-700 hover:bg-slate-200 hover:text-slate-900 dark:border-slate-600 dark:bg-slate-700/70 dark:text-slate-100 dark:hover:bg-slate-600 transition-colors flex-shrink-0"
             aria-label="Close edit profile modal"
           >
-            <span className="text-xl font-bold leading-none" aria-hidden="true">&times;</span>
+            <span className="text-lg sm:text-xl font-bold leading-none" aria-hidden="true">&times;</span>
           </button>
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSubmit} className="px-4 md:px-6 py-5 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <section className="rounded-2xl border border-slate-200/90 bg-slate-50/80 dark:bg-slate-900/30 dark:border-slate-700/80 p-4 space-y-3">
-              <div className="mb-1">
-                <h3 className="text-sm font-black text-slate-900 dark:text-slate-100">Profile Details</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Update your public information</p>
+        <form onSubmit={handleSubmit} className="px-3 sm:px-4 md:px-6 py-3 sm:py-5 space-y-3 sm:space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+            <section className="rounded-xl sm:rounded-2xl border border-slate-200/90 bg-slate-50/80 dark:bg-slate-900/30 dark:border-slate-700/80 p-3 sm:p-4 space-y-2.5 sm:space-y-3">
+              <div className="mb-0.5 sm:mb-1">
+                <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100">Profile Details</h3>
+                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Update your public information</p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                 <div>
-                  <label htmlFor="firstName" className="block text-xs font-semibold text-slate-900 dark:text-slate-100 mb-1">
+                  <label htmlFor="firstName" className="block text-[10px] sm:text-xs font-semibold text-slate-900 dark:text-slate-100 mb-0.5 sm:mb-1">
                     First Name
                   </label>
                   <input
@@ -225,12 +225,12 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
                     onChange={handleInputChange}
                     placeholder="First name"
                     disabled={isSaving}
-                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-2 sm:px-3 py-1.5 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="lastName" className="block text-xs font-semibold text-slate-900 dark:text-slate-100 mb-1">
+                  <label htmlFor="lastName" className="block text-[10px] sm:text-xs font-semibold text-slate-900 dark:text-slate-100 mb-0.5 sm:mb-1">
                     Last Name
                   </label>
                   <input
@@ -241,12 +241,12 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
                     onChange={handleInputChange}
                     placeholder="Last name"
                     disabled={isSaving}
-                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-2 sm:px-3 py-1.5 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="username" className="block text-xs font-semibold text-slate-900 dark:text-slate-100 mb-1">
+                  <label htmlFor="username" className="block text-[10px] sm:text-xs font-semibold text-slate-900 dark:text-slate-100 mb-0.5 sm:mb-1">
                     Username
                   </label>
                   <input
@@ -257,19 +257,19 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
                     onChange={handleInputChange}
                     placeholder="Username"
                     disabled={isSaving}
-                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-2 sm:px-3 py-1.5 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   />
                   {formData.username !== user?.username && (
-                    <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
-                      <AlertTriangle size={12} aria-hidden="true" />
-                      Changing username requires account verification
+                    <p className="text-[9px] sm:text-[10px] text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                      <AlertTriangle size={12} aria-hidden="true" className="flex-shrink-0" />
+                      <span>Changing username requires account verification</span>
                     </p>
                   )}
                 </div>
 
                 <div>
-                  <label htmlFor="imageUrl" className="block text-xs font-semibold text-slate-900 dark:text-slate-100 mb-1">
-                    Image URL <span className="text-[10px] text-slate-400">optional</span>
+                  <label htmlFor="imageUrl" className="block text-[10px] sm:text-xs font-semibold text-slate-900 dark:text-slate-100 mb-0.5 sm:mb-1">
+                    Image URL <span className="text-[8px] sm:text-[10px] text-slate-400">optional</span>
                   </label>
                   <input
                     id="imageUrl"
@@ -279,21 +279,21 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
                     onChange={handleInputChange}
                     placeholder="https://..."
                     disabled={isSaving}
-                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-2 sm:px-3 py-1.5 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   />
                 </div>
               </div>
             </section>
 
-            <section className="rounded-2xl border border-slate-200/90 bg-slate-50/80 dark:bg-slate-900/30 dark:border-slate-700/80 p-4 space-y-3">
-              <div className="mb-1">
-                <h3 className="text-sm font-black text-slate-900 dark:text-slate-100">Change Password</h3>
+            <section className="rounded-xl sm:rounded-2xl border border-slate-200/90 bg-slate-50/80 dark:bg-slate-900/30 dark:border-slate-700/80 p-3 sm:p-4 space-y-2.5 sm:space-y-3">
+              <div className="mb-0.5 sm:mb-1">
+                <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100">Change Password</h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">Leave empty if you do not want to update</p>
               </div>
 
               {user?.passwordEnabled ? (
                 <div>
-                  <label htmlFor="currentPassword" className="block text-xs font-semibold text-slate-900 dark:text-slate-100 mb-1">
+                  <label htmlFor="currentPassword" className="block text-[10px] sm:text-xs font-semibold text-slate-900 dark:text-slate-100 mb-0.5 sm:mb-1">
                     Current Password
                   </label>
                   <input
@@ -304,16 +304,16 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
                     onChange={handleInputChange}
                     placeholder="Enter current password"
                     disabled={isSaving}
-                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-2 sm:px-3 py-1.5 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   />
                 </div>
               ) : (
                 <p className="text-[11px] text-indigo-600 dark:text-indigo-400">No password set yet. Create one below.</p>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                 <div>
-                  <label htmlFor="newPassword" className="block text-xs font-semibold text-slate-900 dark:text-slate-100 mb-1">
+                  <label htmlFor="newPassword" className="block text-[10px] sm:text-xs font-semibold text-slate-900 dark:text-slate-100 mb-0.5 sm:mb-1">
                     New Password
                   </label>
                   <input
@@ -324,12 +324,12 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
                     onChange={handleInputChange}
                     placeholder="New password"
                     disabled={isSaving}
-                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-2 sm:px-3 py-1.5 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="confirmPassword" className="block text-xs font-semibold text-slate-900 dark:text-slate-100 mb-1">
+                  <label htmlFor="confirmPassword" className="block text-[10px] sm:text-xs font-semibold text-slate-900 dark:text-slate-100 mb-0.5 sm:mb-1">
                     Confirm Password
                   </label>
                   <input
@@ -340,7 +340,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
                     onChange={handleInputChange}
                     placeholder="Confirm password"
                     disabled={isSaving}
-                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-2 sm:px-3 py-1.5 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   />
                 </div>
               </div>
@@ -355,16 +355,16 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
 
           {/* Success Messages - Large Prominent Alert */}
           {showSuccess && successMessages.length > 0 && (
-            <div className="rounded-2xl bg-green-50 dark:bg-green-900/30 border-2 border-green-300 dark:border-green-600 px-6 py-4 animate-slideDown">
-              <div className="space-y-3">
+            <div className="rounded-xl sm:rounded-2xl bg-green-50 dark:bg-green-900/30 border-2 border-green-300 dark:border-green-600 px-3 sm:px-4 md:px-6 py-3 sm:py-4 animate-slideDown">
+              <div className="space-y-2 sm:space-y-3">
                 {successMessages.map((msg, index) => (
-                  <div key={index} className="flex items-center gap-3">
-                    <CheckCircle2 size={24} className="flex-shrink-0 text-green-600 dark:text-green-400" aria-hidden="true" />
-                    <span className="text-lg font-bold text-green-700 dark:text-green-300">{msg}</span>
+                  <div key={index} className="flex items-start gap-2 sm:gap-3">
+                    <CheckCircle2 size={20} className="flex-shrink-0 text-green-600 dark:text-green-400 mt-0.5" aria-hidden="true" />
+                    <span className="text-sm sm:text-base md:text-lg font-bold text-green-700 dark:text-green-300">{msg}</span>
                   </div>
                 ))}
               </div>
-              <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-green-200/70 dark:bg-green-800/60">
+              <div className="mt-2 sm:mt-3 h-1 w-full overflow-hidden rounded-full bg-green-200/70 dark:bg-green-800/60">
                 <div
                   className="h-full w-full origin-left rounded-full bg-green-500/80 dark:bg-green-400/80 animate-successProgress"
                   style={{ animationDuration: `${AUTO_CLOSE_MS}ms` }}
@@ -374,19 +374,19 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
           )}
 
           {/* Footer */}
-          <div className="flex gap-2.5 border-t border-slate-200 dark:border-slate-700 pt-4 justify-end">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-2.5 border-t border-slate-200 dark:border-slate-700 pt-3 sm:pt-4 justify-end">
             <button
               type="button"
               onClick={onClose}
               disabled={isSaving}
-              className="px-4 py-2.5 rounded-lg font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg font-semibold text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed order-2 sm:order-1"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSaving}
-              className="px-5 py-2.5 rounded-lg font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-indigo-500/30"
+              className="px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg font-semibold text-sm bg-indigo-600 hover:bg-indigo-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/30 order-1 sm:order-2"
             >
               {isSaving ? (
                 <>
