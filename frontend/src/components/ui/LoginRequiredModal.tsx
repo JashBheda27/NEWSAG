@@ -6,12 +6,16 @@ interface LoginRequiredModalProps {
   isOpen: boolean;
   onClose: () => void;
   categoryName?: string;
+  message?: string;
+  showFeatures?: boolean;
 }
 
 export const LoginRequiredModal: React.FC<LoginRequiredModalProps> = ({
   isOpen,
   onClose,
   categoryName = 'this content',
+  message,
+  showFeatures = true,
 }) => {
   const navigate = useNavigate();
   const [isClosing, setIsClosing] = React.useState(false);
@@ -48,22 +52,31 @@ export const LoginRequiredModal: React.FC<LoginRequiredModalProps> = ({
               <div className="w-14 h-14 bg-white/95 rounded-xl flex items-center justify-center mx-auto mb-2 shadow-lg shadow-indigo-500/30">
                 <Lock size={28} className="text-indigo-600" aria-hidden="true" />
               </div>
-              <h2 className="text-lg font-black text-white mb-0">Login Required</h2>
-              <p className="text-indigo-200/80 text-xs mt-1">Unlock NewsAura features</p>
+              <h2 className="text-lg font-black text-white mb-0">{message ? 'Access Denied' : 'Login Required'}</h2>
+              <p className="text-indigo-200/80 text-xs mt-1">{message ? 'Admin access required' : 'Unlock NewsAura features'}</p>
             </div>
           </div>
 
           {/* Content */}
           <div className="px-6 py-3">
-            <p className="text-slate-700 dark:text-slate-300 text-center mb-0 text-xs">
-              To access <span className="font-bold text-indigo-600 dark:text-indigo-400">{categoryName}</span>
-            </p>
-            <p className="text-slate-500 dark:text-slate-400 text-center text-xs mt-1 mb-3">
-              Sign in to continue
-            </p>
+            {message ? (
+              <p className="text-slate-700 dark:text-slate-300 text-center mb-3 text-sm leading-relaxed">
+                {message}
+              </p>
+            ) : (
+              <>
+                <p className="text-slate-700 dark:text-slate-300 text-center mb-0 text-xs">
+                  To access <span className="font-bold text-indigo-600 dark:text-indigo-400">{categoryName}</span>
+                </p>
+                <p className="text-slate-500 dark:text-slate-400 text-center text-xs mt-1 mb-3">
+                  Sign in to continue
+                </p>
+              </>
+            )}
 
-            {/* Features */}
-            <div className="space-y-1.5 mb-3">
+            {/* Features - only show if showFeatures is true and no custom message */}
+            {showFeatures && !message && (
+              <div className="space-y-1.5 mb-3">
               <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-50/80 dark:bg-slate-800/50">
                 <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" aria-hidden="true" />
                 <span className="text-xs text-slate-700 dark:text-slate-300 font-medium">Access all categories</span>
@@ -77,6 +90,7 @@ export const LoginRequiredModal: React.FC<LoginRequiredModalProps> = ({
                 <span className="text-xs text-slate-700 dark:text-slate-300 font-medium">AI recommendations</span>
               </div>
             </div>
+            )}
 
             {/* Actions */}
             <div className="space-y-3 mt-3">
