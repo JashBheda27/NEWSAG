@@ -6,6 +6,9 @@ import { Skeleton } from '../components/ui/Skeleton';
 interface AuditLog {
   id: string;
   admin_user_id: string;
+  admin_username?: string;
+  admin_name?: string;
+  admin_display?: string;
   action: string;
   resource_type: string;
   resource_id?: string;
@@ -27,6 +30,10 @@ export const AdminAuditLog: React.FC<AdminAuditLogProps> = ({ showNotification }
     resource_type: '',
   });
   const [showFilters, setShowFilters] = useState(false);
+
+  const getAdminLabel = (log: AuditLog): string => {
+    return log.admin_display || log.admin_username || log.admin_name || `${log.admin_user_id.substring(0, 8)}...`;
+  };
 
   useEffect(() => {
     fetchAuditLogs();
@@ -93,7 +100,7 @@ export const AdminAuditLog: React.FC<AdminAuditLogProps> = ({ showNotification }
 
       const rows = logs.map(log => [
         log.created_at || 'N/A',
-        log.admin_user_id,
+        getAdminLabel(log),
         log.action,
         log.resource_type,
         log.resource_id || 'N/A',
@@ -290,9 +297,7 @@ export const AdminAuditLog: React.FC<AdminAuditLogProps> = ({ showNotification }
                       {log.created_at ? new Date(log.created_at).toLocaleString() : 'N/A'}
                     </td>
                     <td className="px-6 py-3 text-sm text-foreground">
-                      <code className="bg-muted px-2 py-1 rounded text-xs">
-                        {log.admin_user_id.substring(0, 8)}...
-                      </code>
+                      <span className="font-medium">{getAdminLabel(log)}</span>
                     </td>
                     <td className="px-6 py-3 text-sm">
                       <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getActionBadgeColor(log.action)}`}>
