@@ -22,6 +22,8 @@ from datetime import datetime
 import time
 
 from app.core.database import get_db
+from app.core.config import settings
+from app.services.clerk_service import get_clerk_user_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -106,12 +108,24 @@ async def get_jwks():
             )
 
 
+def _parse_admin_org_roles() -> list:
+    """
+    Parse configured admin org roles from settings.
+    Expects comma-separated string (e.g., 'admin,owner').
+    Returns list of role strings.
+    """
+    roles_str = settings.CLERK_ADMIN_ORG_ROLES or "admin,owner"
+    return [role.strip() for role in roles_str.split(",") if role.strip()]
+
+
 async def _validate_token(token: str) -> dict:
     """
     Internal: Validate JWT token and return user payload.
-    Hybrid admin detection:
-    - Primary: check ADMIN_USER_IDS allowlist (env-based, fast)
-    - Fallback: check Clerk metadata/custom claims for admin role
+    Hybrid admin detection (in priority order):
+    1. Check Clerk metadata for admin key (primary: metadata.admin=true)
+    2. Check Clerk org_role against configured roles (settings.CLERK_ADMIN_ORG_ROLES)
+    3. Fallback: check ADMIN_USER_IDS allowlist (env-based)
+    Logs which method granted admin access for transparency.
     Raises HTTPException on failure.
     """
     global _missing_aud_warning_logged
@@ -169,19 +183,71 @@ async def _validate_token(token: str) -> dict:
             full_name = " ".join(part for part in [first_name, last_name] if part)
             display_name = full_name or username
         
-        # Hybrid admin detection
-        is_admin = user_id in ADMIN_USER_IDS
+        # Hybrid admin detection (priority order with diagnostic logging)
+        is_admin = False
+        admin_detection_method = None
         
-        # Fallback to Clerk metadata if not in allowlist
-        # Check for admin role in custom claims or org metadata
+        # Strategy 1: Check Clerk metadata (PRIMARY)
+        # JWT often does not include user metadata by default, so try both:
+        # 1) token claims (metadata/public_metadata/unsafe_metadata)
+        # 2) Clerk Admin API by user_id
+        admin_metadata_key = settings.CLERK_ADMIN_METADATA_KEY or "admin"
+        metadata_candidates = []
+
+        for claim_key in ("metadata", "public_metadata", "unsafe_metadata"):
+            claim_value = payload.get(claim_key)
+            if isinstance(claim_value, dict):
+                metadata_candidates.append((f"jwt.{claim_key}", claim_value))
+
+        clerk_user_metadata = await get_clerk_user_metadata(user_id)
+        if isinstance(clerk_user_metadata, dict):
+            public_md = clerk_user_metadata.get("public_metadata")
+            private_md = clerk_user_metadata.get("private_metadata")
+            unsafe_md = clerk_user_metadata.get("unsafe_metadata")
+
+            # Fill identity fields from Clerk Admin API when token lacks them.
+            if not email:
+                email = clerk_user_metadata.get("email") or email
+            if not username:
+                username = clerk_user_metadata.get("username") or username
+            if not display_name:
+                display_name = clerk_user_metadata.get("name") or username
+
+            if isinstance(public_md, dict):
+                metadata_candidates.append(("clerk.public_metadata", public_md))
+            if isinstance(private_md, dict):
+                metadata_candidates.append(("clerk.private_metadata", private_md))
+            if isinstance(unsafe_md, dict):
+                metadata_candidates.append(("clerk.unsafe_metadata", unsafe_md))
+
+        for source, metadata in metadata_candidates:
+            metadata_value = metadata.get(admin_metadata_key)
+            if metadata_value is True or metadata_value in ["admin", "owner"]:
+                is_admin = True
+                admin_detection_method = (
+                    f"Clerk metadata ({source}.{admin_metadata_key}={repr(metadata_value)})"
+                )
+                break
+        
+        # Strategy 2: Check org_role against configured roles
+        if not is_admin and "org_role" in payload:
+            admin_org_roles = _parse_admin_org_roles()
+            user_org_role = payload.get("org_role")
+            if user_org_role in admin_org_roles:
+                is_admin = True
+                admin_detection_method = f"Clerk org_role ({user_org_role})"
+        
+        # Strategy 3: Fallback to ADMIN_USER_IDS allowlist (ENV-BASED)
+        if not is_admin and user_id in ADMIN_USER_IDS:
+            is_admin = True
+            admin_detection_method = "ADMIN_USER_IDS allowlist (env-fallback)"
+
+        actor_label = username or display_name or email or user_id
+        
+        # Log only non-admin decision here.
+        # Admin grant logging is centralized in require_admin() to avoid duplicates.
         if not is_admin:
-            # Option 1: Check custom metadata (if using Clerk metadata API)
-            custom_claims = payload.get("metadata", {})
-            is_admin = custom_claims.get("admin", False)
-            
-            # Option 2: Check org roles (if using Clerk organizations)
-            if not is_admin and "org_role" in payload:
-                is_admin = payload.get("org_role") in ["admin", "owner"]
+            logger.info(f"[AUTH] Non-admin user {actor_label} (no metadata/org_role/allowlist match)")
         
         return {
             "user_id": user_id,
@@ -189,6 +255,7 @@ async def _validate_token(token: str) -> dict:
             "username": username,
             "name": display_name,
             "is_admin": is_admin,
+            "admin_detection_method": admin_detection_method,
         }
 
     except StopIteration:
@@ -271,13 +338,18 @@ async def require_admin(
         dict: {"user_id": str, "email": str, "is_admin": True}
     """
     user = await _validate_token(credentials.credentials)
+    actor_label = user.get("username") or user.get("name") or user.get("email") or user.get("user_id")
     
     if not user.get("is_admin"):
-        logger.warning(f"[AUTH] Non-admin user {user['user_id']} attempted admin access")
+        logger.warning(f"[AUTH] Access denied: non-admin user {actor_label} attempted admin access")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required",
         )
+    
+    # Log successful admin access once, with explicit strategy for traceability
+    admin_detection_method = user.get("admin_detection_method") or "unknown"
+    logger.info(f"[AUTH] Admin access granted to {actor_label} via {admin_detection_method}")
     
     # Upsert admin user into DB (ensure admin presence is tracked)
     try:
@@ -292,7 +364,6 @@ async def require_admin(
     except Exception as e:
         logger.warning(f"[AUTH] Failed to upsert admin user to DB: {e}")
 
-    logger.info(f"[AUTH] Admin access granted to {user['user_id']}")
     return user
 
 
