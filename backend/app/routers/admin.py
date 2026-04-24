@@ -915,6 +915,9 @@ async def start_fine_tuning_with_hyperparameters(
     audit_insert = await db.admin_audit_logs.insert_one(
         {
             "admin_user_id": admin_id,
+            "admin_username": user.get("username"),
+            "admin_name": user.get("name"),
+            "admin_display": user.get("username") or user.get("name") or admin_id,
             "action": "fine_tune",
             "resource_type": f"{model_type}_model",
             "resource_id": None,
