@@ -36,13 +36,35 @@ def _normalize_label(raw_label: str) -> str:
 
 def _truncate_text(text: str, max_tokens: int = 512) -> str:
     """
-    Truncate text to avoid transformer overflow.
-    Uses word-level truncation (rough estimate: 1 token ≈ 1 word).
+    Best-effort word-level fallback truncation.
+    Real truncation is handled with the model tokenizer when available.
     """
     words = text.split()
     if len(words) > max_tokens:
         words = words[:max_tokens]
     return " ".join(words)
+
+
+def _truncate_with_tokenizer(text: str, tokenizer, max_tokens: int = 512) -> str:
+    """Truncate text using the actual transformer tokenizer when available."""
+    if tokenizer is None:
+        return _truncate_text(text, max_tokens=max_tokens)
+
+    try:
+        encoded = tokenizer(
+            text,
+            truncation=True,
+            max_length=max_tokens,
+            add_special_tokens=True,
+            return_tensors=None,
+        )
+        input_ids = encoded.get("input_ids") if isinstance(encoded, dict) else None
+        if input_ids:
+            return tokenizer.decode(input_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True)
+    except Exception:
+        pass
+
+    return _truncate_text(text, max_tokens=max_tokens)
 
 
 class SentimentService:
@@ -102,14 +124,19 @@ class SentimentService:
                     "model": SentimentService.MODEL_NAME
                 }
 
-            # Truncate to avoid overflow
-            truncated_text = _truncate_text(text.strip(), max_tokens=512)
+            # Truncate to avoid overflow using the model tokenizer when possible
+            tokenizer = getattr(pipeline, "tokenizer", None)
+            max_tokens = 512
+            tokenizer_max_length = getattr(tokenizer, "model_max_length", None)
+            if isinstance(tokenizer_max_length, int) and tokenizer_max_length > 0:
+                max_tokens = min(max_tokens, tokenizer_max_length)
+            truncated_text = _truncate_with_tokenizer(text.strip(), tokenizer, max_tokens=max_tokens)
 
             # ✅ Run inference in thread pool (CPU-bound, would block event loop)
             loop = asyncio.get_event_loop()
             results = await loop.run_in_executor(
                 ML_EXECUTOR,
-                lambda: pipeline(truncated_text, top_k=1)
+                lambda: pipeline(truncated_text, top_k=1, truncation=True, max_length=max_tokens)
             )
             
             if not results or len(results) == 0:
