@@ -105,6 +105,9 @@ export interface SentimentAnomalyReport {
 export interface AuditLog {
   id: string;
   admin_user_id: string;
+  admin_username?: string;
+  admin_name?: string;
+  admin_display?: string;
   action: string;
   resource_type: string;
   resource_id?: string;
