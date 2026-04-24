@@ -12,31 +12,57 @@ interface AdminRouteProps {
 /**
  * AdminRoute: Ensures user is signed in AND has admin access.
  * 
- * Admin access is determined by:
- * 1. Backend validation via Authorization header (require_admin dependency)
- * 2. Frontend can optionally check user metadata if Clerk metadata is configured
+ * Admin access is determined by checking Clerk user metadata for admin flag:
+ * - Primary: Check metadata.admin (configured via CLERK_ADMIN_METADATA_KEY in backend)
+ * - If not admin, block access and show permission denied modal
+ * - Backend enforces final security check via require_admin on API calls
  * 
- * For now, we rely on backend to enforce admin check on API calls.
- * Frontend shows admin content if user is authenticated.
+ * Frontend check is UX guard to prevent broken admin pages for non-admin users.
+ * Backend remains the source of truth for admin authorization.
  */
 export const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
-  const { isLoaded, isSignedIn } = useUser();
+  const { isLoaded, isSignedIn, user } = useUser();
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
+  const [modalMessage, setModalMessage] = useState('');
+  const [isPermissionDenied, setIsPermissionDenied] = useState(false);
 
   useEffect(() => {
     if (isLoaded) {
       if (!isSignedIn) {
+        // Not logged in - show login modal
+        setModalMessage('You must be signed in to access the admin dashboard.');
         setShowModal(true);
+        setIsPermissionDenied(false);
+        setIsCheckingAdmin(false);
+      } else if (user) {
+        // Check admin metadata in Clerk user object
+        // Supports both boolean flags (admin=true) and string roles (role="admin")
+        const metadata = user.publicMetadata as Record<string, unknown> | undefined;
+        
+        // Check both "admin" and "role" keys for flexibility
+        const adminValue = metadata?.['admin'] || metadata?.['role'];
+        
+        // Debug log (can be removed after testing)
+        console.log('[AdminRoute] User metadata:', { metadata, adminValue, userEmail: user.primaryEmailAddress?.emailAddress });
+        
+        // Check if metadata indicates admin (boolean true OR string "admin"/"owner")
+        const isAdmin = adminValue === true || adminValue === 'admin' || adminValue === 'owner';
+        console.log('[AdminRoute] Is admin?', isAdmin);
+        
+        if (!isAdmin) {
+          // Signed in but not admin - show permission denied modal
+          setModalMessage('You do not have admin permissions. Please contact an administrator for access.');
+          setShowModal(true);
+          setIsPermissionDenied(true);
+        }
         setIsCheckingAdmin(false);
       } else {
-        // In a more advanced setup, you could check user metadata here
-        // For now, we rely on backend to validate admin status on each API call
         setIsCheckingAdmin(false);
       }
     }
-  }, [isLoaded, isSignedIn]);
+  }, [isLoaded, isSignedIn, user]);
 
   if (!isLoaded || isCheckingAdmin) {
     return (
@@ -49,8 +75,8 @@ export const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
     );
   }
 
-  // Block access if not signed in
-  if (!isSignedIn) {
+  // Block access if not signed in or not admin
+  if (!isSignedIn || isPermissionDenied) {
     return (
       <LoginRequiredModal
         isOpen={showModal}
@@ -59,12 +85,14 @@ export const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
           navigate('/');
         }}
         categoryName="Admin Dashboard"
+        message={isPermissionDenied ? modalMessage : undefined}
+        showFeatures={!isPermissionDenied}
       />
     );
   }
 
-  // User is signed in; show admin content
-  // Backend will enforce actual admin role on API calls
+  // User is signed in and has admin metadata - show admin content
+  // Backend will enforce final security check via require_admin on API calls
   return <>{children}</>;
 };
 
