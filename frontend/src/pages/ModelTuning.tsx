@@ -21,6 +21,7 @@ import { adminApi } from '../services/admin.service';
 import { EmptyState } from '../components/ui/EmptyState';
 import { notify } from '../lib/notify';
 import { Skeleton } from '../components/ui/Skeleton';
+import DataImprovementTips from '../components/ui/DataImprovementTips';
 
 interface ModelTuningProps {
   showNotification: (msg: string, type?: 'error' | 'success' | 'warning' | 'info') => void;
@@ -1162,17 +1163,10 @@ export const ModelTuning: React.FC<ModelTuningProps> = ({ showNotification }) =>
         <QualitySection title="Sentiment model" quality={sentimentQuality} />
         <QualitySection title="Credibility model" quality={credibilityQuality} />
 
-        <button
-          onClick={() =>
-            notify.info(
-              [...(sentimentQuality.tips || []), ...(credibilityQuality.tips || [])].join(' | ') || 'No additional tips right now'
-            )
-          }
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-        >
-          <span className="font-semibold text-sm">Get data improvement tips</span>
-          <ExternalLink size={13} aria-hidden="true" />
-        </button>
+        <DataImprovementTips 
+          sentimentQuality={sentimentQuality} 
+          credibilityQuality={credibilityQuality} 
+        />
       </div>
     );
   };
